@@ -72,7 +72,10 @@ export function normalise(state: HouseholdState): void {
     const D = daysInMonth(k);
     const cfg = M.config && Array.isArray(M.config.rooms) ? M.config : null;
     const validRooms = cfg ? cfg.rooms.map((r) => r.id) : roomIds;
-    const validPeople = cfg && Array.isArray(cfg.people) ? cfg.people.map((x) => x.id) : state.people.map((x) => x.id);
+    const validPeople =
+      cfg && Array.isArray(cfg.people)
+        ? cfg.people.map((x) => x.id)
+        : state.people.map((x) => x.id);
     const fallbackRoom = cfg
       ? ((cfg.rooms.find((r) => !r.communal) || cfg.rooms[0])?.id ?? "")
       : firstPrivate;

@@ -15,7 +15,6 @@ export function lastRoomOf(state: HouseholdState, personId: string): string {
     const st = (month.stints || []).filter((x) => x.personId === personId).pop();
     if (st) return st.roomId;
   }
-  if (state._seedRooms && state._seedRooms[personId]) return state._seedRooms[personId];
   if (DEFAULT_ROOM_OF[personId]) return DEFAULT_ROOM_OF[personId];
   const bedrooms = state.rooms.filter((r) => !r.communal);
   return bedrooms[0]?.id ?? state.rooms[0]?.id ?? "";

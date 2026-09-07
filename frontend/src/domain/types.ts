@@ -1,6 +1,7 @@
 export type CurrencySymbol = "£" | "$" | "€";
 
 export type TabId =
+  | "home"
   | "month"
   | "stints"
   | "balances"
@@ -113,19 +114,16 @@ export type Snapshot = {
 
 export type Preset = {
   name: string;
-  snapshot: Snapshot | null;
-  legacy: unknown | null;
+  snapshot: Snapshot;
 };
 
 export type HouseholdState = Snapshot & {
-  v: 2;
   presets: Preset[];
   activePresetName: string | null;
   currentMonth: string;
   activeTab: TabId;
   sectionsOpen: Record<string, boolean>;
   openStatements: Record<string, boolean>;
-  _seedRooms?: Record<string, string>;
 };
 
 export type DayModel = {

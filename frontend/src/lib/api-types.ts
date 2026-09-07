@@ -1,11 +1,67 @@
-# API types shared conceptually with the Node server.
-# Keep these in sync with `server/server.js` route handlers.
+// API types shared conceptually with the Node server.
+// Keep these in sync with `server/server.js` route handlers.
+
+export type AccountRole = "admin" | "tenant";
+
+export type SessionInfo = {
+  accountId: string;
+  username: string;
+  role: AccountRole;
+  personId: string | null;
+  personName: string | null;
+};
+
+export type PublicAccount = {
+  id: string;
+  username: string;
+  personId: string | null;
+  role: AccountRole;
+  enabled: boolean;
+  passwordSetAt: string | null;
+};
 
 export type HealthResponse = {
   app: "rent-split";
   version: number;
   authRequired: boolean;
   authed: boolean;
+  session: SessionInfo | null;
+};
+
+export type LoginRequest = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponse = {
+  ok: true;
+  session: SessionInfo;
+};
+
+export type CreateAccountRequest = {
+  username: string;
+  password: string;
+  personId: string | null;
+  role: AccountRole;
+};
+
+export type PatchAccountRequest = {
+  username?: string;
+  password?: string;
+  personId?: string | null;
+  role?: AccountRole;
+  enabled?: boolean;
+};
+
+export type SettleRequest = {
+  id: string;
+  personId: string;
+  amount: number;
+  date: string;
+  note: string;
+  monthKey?: string;
+  rev?: number;
+  force?: boolean;
 };
 
 export type DataEnvelope = {

@@ -5,6 +5,7 @@ import { ensureMonth, sortedMonthKeys } from "../domain/months";
 import type { MonthCompute } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Icon } from "./icon";
+import { screenClass } from "./screen-class";
 import { Kpi, Section } from "./section";
 
 type HistoryScreenProps = {
@@ -12,18 +13,26 @@ type HistoryScreenProps = {
 };
 
 export function HistoryScreen(props: HistoryScreenProps) {
-  const { store, state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const keys = sortedMonthKeys(state);
 
   if (!keys.length) {
-    return <div className={`screen${state.activeTab === "history" ? " active" : ""}`} data-screen="history" />;
+    return (
+      <div className={screenClass("history", activeTab)} data-screen="history" />
+    );
   }
 
   const cache: Record<string, MonthCompute> = {};
   keys.forEach((k) => {
     cache[k] = computeMonth(state, k, "eff");
   });
-  const ids = [...new Set(keys.flatMap((k) => Object.keys(cache[k]?.totals ?? {}).filter((id) => (cache[k]?.totals[id] ?? 0) > 0)))];
+  const ids = [
+    ...new Set(
+      keys.flatMap((k) =>
+        Object.keys(cache[k]?.totals ?? {}).filter((id) => (cache[k]?.totals[id] ?? 0) > 0),
+      ),
+    ),
+  ];
   const grand = keys.reduce((s, k) => s + (cache[k]?.grand ?? 0), 0);
   const realised = keys.filter((k) => monthAllActual(state, state.months[k]));
   const firstKey = keys[0] ?? "";
@@ -38,15 +47,23 @@ export function HistoryScreen(props: HistoryScreenProps) {
   }
 
   return (
-    <div className={`screen${state.activeTab === "history" ? " active" : ""}`} data-screen="history">
+    <div className={screenClass("history", activeTab)} data-screen="history">
       <div className="kpis">
         <Kpi
           label="Months on record"
           value={String(keys.length)}
           sub={`${monthLabel(firstKey, true)} – ${monthLabel(lastKey, true)}`}
         />
-        <Kpi label="Total housed cost" value={money0(state.currency, grand)} sub="rent and bills, all months" />
-        <Kpi label="Average month" value={money0(state.currency, grand / keys.length)} sub={`${realised.length} fully realised`} />
+        <Kpi
+          label="Total housed cost"
+          value={money0(state.currency, grand)}
+          sub="rent and bills, all months"
+        />
+        <Kpi
+          label="Average month"
+          value={money0(state.currency, grand / keys.length)}
+          sub={`${realised.length} fully realised`}
+        />
       </div>
 
       <Section
@@ -81,13 +98,21 @@ export function HistoryScreen(props: HistoryScreenProps) {
                 const done = monthAllActual(state, state.months[k]);
                 const tot = ids.reduce((s, id) => s + (c?.totals[id] || 0), 0);
                 return (
-                  <tr key={k} style={{ cursor: "pointer", opacity: done ? undefined : 0.62 }} onClick={() => goToMonth(k)}>
+                  <tr
+                    key={k}
+                    style={{ cursor: "pointer", opacity: done ? undefined : 0.62 }}
+                    onClick={() => goToMonth(k)}
+                  >
                     <td>
                       {monthLabel(k)}
-                      {done ? null : <span style={{ fontSize: 10.5, color: "var(--muted)" }}> est</span>}
+                      {done ? null : (
+                        <span style={{ fontSize: 10.5, color: "var(--muted)" }}> est</span>
+                      )}
                     </td>
                     {ids.map((id) => (
-                      <td key={id}>{c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}</td>
+                      <td key={id}>
+                        {c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}
+                      </td>
                     ))}
                     <td className="strong">{money(state.currency, tot)}</td>
                   </tr>
@@ -106,14 +131,19 @@ export function HistoryScreen(props: HistoryScreenProps) {
                 <td className="strong">
                   {money(
                     state.currency,
-                    keys.reduce((s, k) => s + ids.reduce((a, id) => a + (cache[k]?.totals[id] || 0), 0), 0),
+                    keys.reduce(
+                      (s, k) => s + ids.reduce((a, id) => a + (cache[k]?.totals[id] || 0), 0),
+                      0,
+                    ),
                   )}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-        <div className="helper">Tap a month to open it. Figures in a lighter tone are still estimates.</div>
+        <div className="helper">
+          Tap a month to open it. Figures in a lighter tone are still estimates.
+        </div>
       </Section>
 
       <Section
@@ -132,21 +162,39 @@ export function HistoryScreen(props: HistoryScreenProps) {
           state.bills.map((b) => {
             const vals = keys.map((k) => {
               const L = state.months[k]?.lines[b.id] ?? { est: 0, act: null };
-              return { v: typeof L.act === "number" ? L.act : +L.est || 0, actual: typeof L.act === "number" };
+              return {
+                v: typeof L.act === "number" ? L.act : +L.est || 0,
+                actual: typeof L.act === "number",
+              };
             });
             const max = Math.max(...vals.map((v) => v.v), 1);
             const realisedVals = vals.filter((v) => v.actual).map((v) => v.v);
-            const avg = realisedVals.length ? realisedVals.reduce((s, v) => s + v, 0) / realisedVals.length : 0;
+            const avg = realisedVals.length
+              ? realisedVals.reduce((s, v) => s + v, 0) / realisedVals.length
+              : 0;
             return (
               <div
                 key={b.id}
-                style={{ background: "var(--card-2)", borderRadius: "var(--radius)", padding: "12px 14px", marginBottom: 10 }}
+                style={{
+                  background: "var(--card-2)",
+                  borderRadius: "var(--radius)",
+                  padding: "12px 14px",
+                  marginBottom: 10,
+                }}
               >
                 <div className="row-h">
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</div>
                   <div className="spacer" />
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
-                    {realisedVals.length ? `avg ${state.currency}${avg.toFixed(2)} realised` : "no realised figures yet"}
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: "var(--muted)",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {realisedVals.length
+                      ? `avg ${state.currency}${avg.toFixed(2)} realised`
+                      : "no realised figures yet"}
                   </div>
                 </div>
                 <div className="trend">
@@ -159,7 +207,15 @@ export function HistoryScreen(props: HistoryScreenProps) {
                     />
                   ))}
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "var(--muted-2)", marginTop: 4 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 10.5,
+                    color: "var(--muted-2)",
+                    marginTop: 4,
+                  }}
+                >
                   <span>{monthLabel(firstKey, true)}</span>
                   <span>{monthLabel(lastKey, true)}</span>
                 </div>

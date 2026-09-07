@@ -2,16 +2,16 @@ import { freshHousehold } from "../domain/defaults";
 import { todayKey } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import { normalise } from "../domain/normalise";
-import { hydrate, migrateFromV1, serializeEnvelope } from "../domain/hydrate";
+import { hydrate, serializeEnvelope } from "../domain/hydrate";
 import { APP_ID } from "../domain/schema";
 import { applySnapshot, resetHousehold, snapshotCurrent } from "../domain/snapshot";
-import type { DataEnvelope, HouseholdState, TabId } from "../domain/types";
+import type { DataEnvelope, HouseholdState, LedgerEntry, TabId } from "../domain/types";
+import type { SessionInfo } from "../lib/api-types";
 import {
   ConflictError,
   NeedAuthError,
   localAdapter,
   pickAdapter,
-  readV1,
   type StorageAdapter,
 } from "../storage/adapters";
 
@@ -20,6 +20,7 @@ export type ToastFn = (msg: string) => void;
 export class HouseholdStore {
   state: HouseholdState = freshHousehold();
   adapter: StorageAdapter = localAdapter();
+  session: SessionInfo | null = null;
   dirty = false;
   lastError = "";
   needAuth = false;
@@ -34,6 +35,8 @@ export class HouseholdStore {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private toast: ToastFn = () => {};
 
+  snapshot: { version: number } = { version: 0 };
+
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => {
@@ -41,7 +44,7 @@ export class HouseholdStore {
     };
   };
 
-  getSnapshot = (): this => this;
+  getSnapshot = (): { version: number } => this.snapshot;
 
   setToast(fn: ToastFn): void {
     this.toast = fn;
@@ -53,7 +56,12 @@ export class HouseholdStore {
 
   private notify(): void {
     this.version += 1;
+    this.snapshot = { version: this.version };
     this.listeners.forEach((l) => l());
+  }
+
+  notifyPublic(): void {
+    this.notify();
   }
 
   mutate(fn: () => void, opts: { persist?: boolean; quiet?: boolean } = {}): void {
@@ -63,10 +71,26 @@ export class HouseholdStore {
     this.notify();
   }
 
+  isAdmin(): boolean {
+    return this.session?.role !== "tenant";
+  }
+
+  isTenant(): boolean {
+    return this.session?.role === "tenant";
+  }
+
   async init(): Promise<void> {
     const picked = await pickAdapter();
     this.adapter = picked.adapter;
     this.needAuth = picked.needAuth;
+    this.session = picked.session;
+    if (this.session) this.adapter.setRole?.(this.session.role);
+    this.notify();
+  }
+
+  applySession(session: SessionInfo | null): void {
+    this.session = session;
+    if (session) this.adapter.setRole?.(session.role);
     this.notify();
   }
 
@@ -77,7 +101,7 @@ export class HouseholdStore {
     } catch {
       /* ignore */
     }
-    if (!data && this.adapter.name !== "local") {
+    if (!data && this.adapter.name !== "local" && !this.isTenant()) {
       try {
         data = await localAdapter().load();
       } catch {
@@ -100,6 +124,9 @@ export class HouseholdStore {
 
   save(): void {
     if (this.readOnly) return;
+    if (this.isTenant()) {
+      return;
+    }
     this.saveLocal();
     if (this.adapter.shared) {
       this.dirty = true;
@@ -116,7 +143,11 @@ export class HouseholdStore {
   warnNoStorage(): void {
     if (this.warned) return;
     this.warned = true;
-    setTimeout(() => this.toast("This browser won't save anything — export a backup before you close the tab."), 900);
+    setTimeout(
+      () =>
+        this.toast("This browser won't save anything — export a backup before you close the tab."),
+      900,
+    );
   }
 
   async push(force = false): Promise<void> {
@@ -145,7 +176,7 @@ export class HouseholdStore {
         }
         const fresh = await this.adapter.load();
         if (fresh) {
-          hydrate(this.state, fresh, (raw) => migrateFromV1(this.state, raw));
+          hydrate(this.state, fresh);
         }
         this.dirty = false;
       } else {
@@ -168,7 +199,7 @@ export class HouseholdStore {
       try {
         const fresh = await this.adapter.load();
         if (fresh) {
-          const { outcome } = hydrate(this.state, fresh, (raw) => migrateFromV1(this.state, raw));
+          const { outcome } = hydrate(this.state, fresh);
           if (outcome === true) {
             this.notify();
             this.toast("Updated — somebody else made a change.");
@@ -180,33 +211,24 @@ export class HouseholdStore {
     }, 12000);
   }
 
-  applyHydrate(saved: unknown): { outcome: ReturnType<typeof hydrate>["outcome"]; changed: boolean } {
-    const result = hydrate(this.state, saved, (raw) => migrateFromV1(this.state, raw));
+  applyHydrate(saved: unknown): {
+    outcome: ReturnType<typeof hydrate>["outcome"];
+    changed: boolean;
+  } {
+    const result = hydrate(this.state, saved);
     this.loadNote = result.loadNote;
     return { outcome: result.outcome, changed: result.changed };
   }
 
-  applyV1(raw: Record<string, unknown>): string[] {
-    return migrateFromV1(this.state, raw);
-  }
-
-  importPayload(o: unknown): "ok" | "tooNew" | "v1" | "unrecognised" {
-    if (o && typeof o === "object") {
-      const rec = o as Record<string, unknown>;
-      if (rec.app === APP_ID || rec.v === 2 || rec.months) {
-        const { outcome } = this.applyHydrate(o);
-        if (outcome === "tooNew") return "tooNew";
-        ensureMonth(this.state, this.state.currentMonth);
-        this.save();
-        this.notify();
-        return "ok";
-      }
-      if (rec.people || rec.rooms) {
-        this.applyV1(rec);
-        this.save();
-        this.notify();
-        return "v1";
-      }
+  importPayload(o: unknown): "ok" | "tooNew" | "unrecognised" {
+    if (o && typeof o === "object" && (o as { app?: unknown }).app === APP_ID) {
+      const { outcome } = this.applyHydrate(o);
+      if (outcome === "tooNew") return "tooNew";
+      if (outcome === false) return "unrecognised";
+      ensureMonth(this.state, this.state.currentMonth);
+      this.save();
+      this.notify();
+      return "ok";
     }
     return "unrecognised";
   }
@@ -220,12 +242,9 @@ export class HouseholdStore {
     this.notify();
   }
 
-  loadPreset(snapshot: HouseholdState["presets"][number]): void {
-    if (snapshot.snapshot) applySnapshot(this.state, snapshot.snapshot);
-    else if (snapshot.legacy && typeof snapshot.legacy === "object") {
-      this.applyV1(snapshot.legacy as Record<string, unknown>);
-    }
-    this.state.activePresetName = snapshot.name;
+  loadPreset(preset: HouseholdState["presets"][number]): void {
+    applySnapshot(this.state, preset.snapshot);
+    this.state.activePresetName = preset.name;
     normalise(this.state);
     this.save();
     this.notify();
@@ -237,9 +256,8 @@ export class HouseholdStore {
     if (i >= 0) {
       const existing = this.state.presets[i];
       if (existing) existing.snapshot = snapshotCurrent(this.state);
-      if (existing) existing.legacy = null;
     } else {
-      this.state.presets.push({ name: t, snapshot: snapshotCurrent(this.state), legacy: null });
+      this.state.presets.push({ name: t, snapshot: snapshotCurrent(this.state) });
     }
     this.state.activePresetName = t;
     this.save();
@@ -251,11 +269,33 @@ export class HouseholdStore {
     this.notify();
   }
 
+  async recordSettle(entry: LedgerEntry): Promise<void> {
+    if (this.adapter.settle) {
+      await this.adapter.settle(entry);
+      const fresh = await this.adapter.load();
+      if (fresh) this.applyHydrate(fresh);
+      this.notify();
+      return;
+    }
+    this.mutate(() => {
+      this.state.ledger.push(entry);
+    });
+  }
+
+  async undoSettle(id: string): Promise<void> {
+    if (this.adapter.undoSettle) {
+      await this.adapter.undoSettle(id);
+      const fresh = await this.adapter.load();
+      if (fresh) this.applyHydrate(fresh);
+      this.notify();
+      return;
+    }
+    this.mutate(() => {
+      this.state.ledger = this.state.ledger.filter((e) => e.id !== id);
+    });
+  }
+
   envelope(): DataEnvelope {
     return serializeEnvelope(this.state);
   }
-}
-
-export function readLegacyV1(): Record<string, unknown> | null {
-  return readV1();
 }

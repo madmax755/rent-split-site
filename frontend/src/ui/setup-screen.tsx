@@ -6,8 +6,10 @@ import { uid } from "../domain/ids";
 import { lastRoomOf, sortedMonthKeys } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import { useHousehold } from "../store/household-context";
+import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
 import { Icon } from "./icon";
+import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
 type SetupScreenProps = {
@@ -15,16 +17,17 @@ type SetupScreenProps = {
 };
 
 export function SetupScreen(props: SetupScreenProps) {
-  const { store, state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const ordered = state.people.slice().sort((a, c) => (a.archived ? 1 : 0) - (c.archived ? 1 : 0));
   const live = state.people.filter((p) => !p.archived);
   const arch = state.people.length - live.length;
   const { total } = weightedAreas(state);
-  const totalArea = state.rooms.reduce((s, r) => s + (+r.w || 0) * (+r.l || 0), 0) + (+state.catchall || 0);
+  const totalArea =
+    state.rooms.reduce((s, r) => s + (+r.w || 0) * (+r.l || 0), 0) + (+state.catchall || 0);
   const monthly = state.bills.reduce((s, b) => s + (+b.est || 0), 0);
 
   return (
-    <div className={`screen${state.activeTab === "setup" ? " active" : ""}`} data-screen="setup">
+    <div className={screenClass("setup", activeTab)} data-screen="setup">
       <Section
         id="people"
         title="People"
@@ -132,7 +135,11 @@ export function SetupScreen(props: SetupScreenProps) {
                         normalise(store.state);
                       });
                     } else {
-                      if (!confirm(`Remove ${person.name}? They are in no locked month, so this deletes them outright.`))
+                      if (
+                        !confirm(
+                          `Remove ${person.name}? They are in no locked month, so this deletes them outright.`,
+                        )
+                      )
                         return;
                       store.mutate(() => {
                         store.state.people = store.state.people.filter((x) => x.id !== p.id);
@@ -144,9 +151,16 @@ export function SetupScreen(props: SetupScreenProps) {
                         normalise(store.state);
                       });
                     }
+                    void store.adapter.disablePersonLogin?.(p.id);
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
                     <path d="M6 6l12 12M6 18L18 6" />
                   </svg>
                 </button>
@@ -174,12 +188,18 @@ export function SetupScreen(props: SetupScreenProps) {
           ＋ Add someone
         </button>
         <div className="helper">
-          A person is just a name. <b>When they are here, and which bedroom they are in, is recorded entirely on the
-          Who's here tab</b>, month by month — there are no move-in or move-out dates to keep in step with it. Removing
-          someone who appears in a locked month archives them instead, so past months and any balance they are owed both
-          survive.
+          A person is just a name.{" "}
+          <b>
+            When they are here, and which bedroom they are in, is recorded entirely on the Who's
+            here tab
+          </b>
+          , month by month — there are no move-in or move-out dates to keep in step with it.
+          Removing someone who appears in a locked month archives them instead, so past months and
+          any balance they are owed both survive.
         </div>
       </Section>
+
+      <AccessSection onToggleSection={props.onToggleSection} />
 
       <Section
         id="property"
@@ -197,13 +217,19 @@ export function SetupScreen(props: SetupScreenProps) {
         }
       >
         <div className="helper" style={{ marginTop: 0, marginBottom: 12 }}>
-          Rent, currency and the hallway allowance live on the <b>Settings</b> tab, so there is only ever one place to
-          change them.
+          Rent, currency and the hallway allowance live on the <b>Settings</b> tab, so there is only
+          ever one place to change them.
         </div>
         <div className="row-h" style={{ marginBottom: 10 }}>
           <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(totalArea)}</b> m² · weighted{" "}
-            <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtNum(total)}</b> m² ·{" "}
+            <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+              {fmtNum(totalArea)}
+            </b>{" "}
+            m² · weighted{" "}
+            <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+              {fmtNum(total)}
+            </b>{" "}
+            m² ·{" "}
             <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
               {total > 0 ? money(state.currency, Math.round(state.rent * 100) / total) : "—"}
             </b>{" "}
@@ -213,7 +239,9 @@ export function SetupScreen(props: SetupScreenProps) {
         {state.rooms.map((room) => {
           const area = (+room.w || 0) * (+room.l || 0);
           const weighted = area * (typeof room.weight === "number" ? room.weight : 1);
-          const holders = state.people.filter((p) => !p.archived && lastRoomOf(state, p.id) === room.id).map((p) => p.name);
+          const holders = state.people
+            .filter((p) => !p.archived && lastRoomOf(state, p.id) === room.id)
+            .map((p) => p.name);
           return (
             <div className="room-card" key={room.id}>
               <div className="room-top">
@@ -250,11 +278,15 @@ export function SetupScreen(props: SetupScreenProps) {
                     className="btn-icon"
                     title="Remove"
                     onClick={() => {
-                      const lockedR = sortedMonthKeys(state).filter((k) => state.months[k]?.collected).length;
+                      const lockedR = sortedMonthKeys(state).filter(
+                        (k) => state.months[k]?.collected,
+                      ).length;
                       if (
                         !confirm(
                           `Remove ${room.name}? Rent is redistributed across the remaining rooms from now on.` +
-                            (lockedR ? ` The ${plural(lockedR, "locked month")} keep the layout they were charged on.` : ""),
+                            (lockedR
+                              ? ` The ${plural(lockedR, "locked month")} keep the layout they were charged on.`
+                              : ""),
                         )
                       )
                         return;
@@ -264,7 +296,13 @@ export function SetupScreen(props: SetupScreenProps) {
                       });
                     }}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    >
                       <path d="M6 6l12 12M6 18L18 6" />
                     </svg>
                   </button>
@@ -338,7 +376,9 @@ export function SetupScreen(props: SetupScreenProps) {
                 ) : holders.length ? (
                   `Held by ${holders.join(" and ")}.`
                 ) : (
-                  <span style={{ color: "var(--orange)" }}>Nobody holds this room — its rent gets spread across everyone.</span>
+                  <span style={{ color: "var(--orange)" }}>
+                    Nobody holds this room — its rent gets spread across everyone.
+                  </span>
                 )}
               </div>
             </div>
@@ -348,16 +388,24 @@ export function SetupScreen(props: SetupScreenProps) {
           className="btn-add"
           onClick={() => {
             store.mutate(() => {
-              store.state.rooms.push({ id: uid("rm"), name: "New room", w: 3, l: 3, weight: 1, communal: false });
+              store.state.rooms.push({
+                id: uid("rm"),
+                name: "New room",
+                w: 3,
+                l: 3,
+                weight: 1,
+                communal: false,
+              });
             });
           }}
         >
           ＋ Add a room
         </button>
         <div className="helper">
-          <b>Weight</b> scales how much a room counts toward rent — a bathroom at 0.5× is treated as half its floor
-          area, because a square metre of bathroom isn't worth a square metre of bedroom. <b>Private</b> rooms are paid
-          for by whoever is liable for them; <b>shared</b> rooms are split among everyone liable that day.
+          <b>Weight</b> scales how much a room counts toward rent — a bathroom at 0.5× is treated as
+          half its floor area, because a square metre of bathroom isn't worth a square metre of
+          bedroom. <b>Private</b> rooms are paid for by whoever is liable for them; <b>shared</b>{" "}
+          rooms are split among everyone liable that day.
         </div>
       </Section>
 
@@ -415,7 +463,9 @@ export function SetupScreen(props: SetupScreenProps) {
                     className="btn-icon"
                     title="Remove"
                     onClick={() => {
-                      const locked = sortedMonthKeys(state).filter((k) => state.months[k]?.collected);
+                      const locked = sortedMonthKeys(state).filter(
+                        (k) => state.months[k]?.collected,
+                      );
                       const msg = locked.length
                         ? `Remove ${b.name}? It stops appearing in new and unlocked months. The ${plural(locked.length, "month")} you have already locked keep it exactly as it was charged.`
                         : `Remove ${b.name}? Its figures come out of every month on record.`;
@@ -428,16 +478,22 @@ export function SetupScreen(props: SetupScreenProps) {
                       });
                     }}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    >
                       <path d="M6 6l12 12M6 18L18 6" />
                     </svg>
                   </button>
                 ) : null}
               </div>
               <div className="helper" style={{ marginTop: 0 }}>
-                The <b>usual amount</b> is only the starting figure for months you haven't filled in yet. Change it
-                whenever the price goes up — a renewal, an inflation rise, a new tariff — and months already on record
-                keep the figures they were given.
+                The <b>usual amount</b> is only the starting figure for months you haven't filled in
+                yet. Change it whenever the price goes up — a renewal, an inflation rise, a new
+                tariff — and months already on record keep the figures they were given.
               </div>
               <div className="dim-label" style={{ marginTop: 8, marginBottom: 6 }}>
                 Who pays into it{restricted ? "" : " — everyone"}
@@ -457,8 +513,13 @@ export function SetupScreen(props: SetupScreenProps) {
                               const bill = store.state.bills.find((x) => x.id === b.id);
                               if (!bill) return;
                               const all = store.state.people.map((person) => person.id);
-                              let cur = Array.isArray(bill.payers) && bill.payers.length ? bill.payers.slice() : all.slice();
-                              cur = e.target.checked ? [...new Set([...cur, p.id])] : cur.filter((x) => x !== p.id);
+                              let cur =
+                                Array.isArray(bill.payers) && bill.payers.length
+                                  ? bill.payers.slice()
+                                  : all.slice();
+                              cur = e.target.checked
+                                ? [...new Set([...cur, p.id])]
+                                : cur.filter((x) => x !== p.id);
                               bill.payers = cur.length === all.length ? null : cur;
                             });
                           }}
@@ -486,9 +547,10 @@ export function SetupScreen(props: SetupScreenProps) {
           ＋ Add a bill
         </button>
         <div className="helper">
-          Every bill splits the same way: across the days each person was in the house that month. Nothing here is locked
-          in — <b>every amount stays editable, every month</b> — and the realised figure on the <b>This month</b> tab
-          always overrides the estimate once the real bill arrives.
+          Every bill splits the same way: across the days each person was in the house that month.
+          Nothing here is locked in — <b>every amount stays editable, every month</b> — and the
+          realised figure on the <b>This month</b> tab always overrides the estimate once the real
+          bill arrives.
         </div>
       </Section>
     </div>

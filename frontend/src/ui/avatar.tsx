@@ -13,7 +13,12 @@ export function Avatar(props: AvatarProps) {
     return (
       <div
         className="avatar"
-        style={{ background: "var(--muted-2)", width: size, height: size, fontSize: Math.round(size * 0.4) }}
+        style={{
+          background: "var(--muted-2)",
+          width: size,
+          height: size,
+          fontSize: Math.round(size * 0.4),
+        }}
       >
         ?
       </div>

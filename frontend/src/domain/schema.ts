@@ -1,11 +1,7 @@
-import type { HouseholdState } from "./types";
-
 export const APP_ID = "rent-split" as const;
 export const SCHEMA = 4;
 export const STORAGE_KEY = "rent-split";
 export const BACKUP_KEY = "rent-split.previous";
-export const LEGACY_KEYS = ["rent-split-v2"];
-export const V1_KEYS = ["rent-split-apple-v1", "rent-split-thomas-more-v5"];
 
 type MigrationFn = (d: Record<string, unknown>) => Record<string, unknown>;
 
@@ -27,7 +23,8 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
     bills.forEach((b) => {
       if (b && typeof b === "object") delete (b as Record<string, unknown>).kind;
     });
-    const months = d.months && typeof d.months === "object" ? (d.months as Record<string, unknown>) : {};
+    const months =
+      d.months && typeof d.months === "object" ? (d.months as Record<string, unknown>) : {};
     Object.values(months).forEach((M) => {
       if (!M || typeof M !== "object") return;
       const rec = M as Record<string, unknown>;
@@ -72,30 +69,20 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
 
 export type UnwrapResult =
   | { tooNew: true; schema: number }
-  | { v1: Record<string, unknown> }
   | { data: Record<string, unknown>; schema: number; migrated: boolean }
   | null;
 
 export function unwrap(o: unknown): UnwrapResult {
   if (!o || typeof o !== "object") return null;
   const rec = o as Record<string, unknown>;
-  let schema: number;
-  let data: Record<string, unknown>;
-  if (rec.app === APP_ID && typeof rec.schema === "number") {
-    schema = rec.schema;
-    data = (rec.data && typeof rec.data === "object" ? rec.data : {}) as Record<string, unknown>;
-  } else if (rec.months || (rec.v === 2 && rec.people)) {
-    schema = 2;
-    data = rec;
-  } else if (rec.people || rec.rooms) {
-    return { v1: rec };
-  } else {
-    return null;
-  }
+  if (rec.app !== APP_ID || typeof rec.schema !== "number") return null;
+  const schema = rec.schema;
+  let data = (rec.data && typeof rec.data === "object" ? rec.data : {}) as Record<string, unknown>;
   if (schema > SCHEMA) return { tooNew: true, schema };
+  let n = schema;
   const fromSchema = schema;
-  while (schema < SCHEMA) {
-    const step = MIGRATIONS[schema];
+  while (n < SCHEMA) {
+    const step = MIGRATIONS[n];
     if (step) {
       try {
         data = step(data) || data;
@@ -103,7 +90,7 @@ export function unwrap(o: unknown): UnwrapResult {
         /* keep going */
       }
     }
-    schema += 1;
+    n += 1;
   }
-  return { data, schema, migrated: schema !== fromSchema };
+  return { data, schema: n, migrated: n !== fromSchema };
 }

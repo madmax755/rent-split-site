@@ -1,12 +1,30 @@
 import { LS } from "./browser-storage";
-import { BACKUP_KEY, LEGACY_KEYS, STORAGE_KEY, V1_KEYS } from "../domain/schema";
-import type { DataEnvelope } from "../domain/types";
-import type { HealthResponse, PutDataResponse, StoredDocument } from "../lib/api-types";
+import { BACKUP_KEY, STORAGE_KEY } from "../domain/schema";
+import type { DataEnvelope, LedgerEntry } from "../domain/types";
+import type {
+  AccountRole,
+  CreateAccountRequest,
+  HealthResponse,
+  LoginResponse,
+  PatchAccountRequest,
+  PublicAccount,
+  PutDataResponse,
+  SessionInfo,
+  SettleRequest,
+  StoredDocument,
+} from "../lib/api-types";
 
 export class NeedAuthError extends Error {
   readonly kind = "needAuth" as const;
   constructor() {
     super("Not signed in");
+  }
+}
+
+export class ForbiddenError extends Error {
+  readonly kind = "forbidden" as const;
+  constructor(message = "Not allowed") {
+    super(message);
   }
 }
 
@@ -26,8 +44,17 @@ export type StorageAdapter = {
   describe(): string;
   currentRev?: () => Promise<number | null>;
   knownRev?: () => number | null;
-  login?: (password: string) => Promise<boolean>;
+  setRole?: (role: AccountRole) => void;
+  login?: (username: string, password: string) => Promise<SessionInfo | null>;
   logout?: () => Promise<void>;
+  me?: () => Promise<SessionInfo | null>;
+  listAccounts?: () => Promise<PublicAccount[]>;
+  createAccount?: (body: CreateAccountRequest) => Promise<PublicAccount>;
+  patchAccount?: (id: string, body: PatchAccountRequest) => Promise<PublicAccount>;
+  deleteAccount?: (id: string) => Promise<void>;
+  settle?: (entry: LedgerEntry) => Promise<void>;
+  undoSettle?: (id: string) => Promise<void>;
+  disablePersonLogin?: (personId: string) => Promise<void>;
 };
 
 export function localAdapter(): StorageAdapter {
@@ -35,13 +62,11 @@ export function localAdapter(): StorageAdapter {
     name: "local",
     shared: false,
     async load() {
-      for (const k of [STORAGE_KEY, ...LEGACY_KEYS]) {
-        try {
-          const raw = LS.get(k);
-          if (raw) return JSON.parse(raw) as unknown;
-        } catch {
-          /* skip */
-        }
+      try {
+        const raw = LS.get(STORAGE_KEY);
+        if (raw) return JSON.parse(raw) as unknown;
+      } catch {
+        /* skip */
       }
       return null;
     },
@@ -60,75 +85,49 @@ export function localAdapter(): StorageAdapter {
   };
 }
 
-type ArtifactApi = { publish: (html: string) => Promise<void> };
-
-export function artifactAdapter(api: ArtifactApi): StorageAdapter {
-  let template: string | null = null;
-  async function getTemplate(): Promise<string> {
-    if (template) return template;
-    const res = await fetch(location.href, { cache: "no-store" });
-    template = await res.text();
-    return template;
+async function readError(r: Response): Promise<string> {
+  try {
+    const j = (await r.json()) as { error?: string };
+    if (j && typeof j.error === "string") return j.error;
+  } catch {
+    /* ignore */
   }
-  return {
-    name: "artifact",
-    shared: true,
-    async load() {
-      const el = document.getElementById("seed-data");
-      if (!el || !el.textContent?.trim()) return null;
-      try {
-        return JSON.parse(el.textContent) as unknown;
-      } catch {
-        return null;
-      }
-    },
-    async save(data) {
-      const src = await getTemplate();
-      const json = JSON.stringify(data).replace(/<\//g, "<\\/");
-      const open = '<script id="seed-data" type="application/json">';
-      const i = src.indexOf(open);
-      if (i < 0) {
-        throw new Error("The page source doesn't look right, so nothing was published. Export a backup instead.");
-      }
-      const close = "</" + "script>";
-      const j = src.indexOf(close, i);
-      const next = src.slice(0, i + open.length) + json + src.slice(j);
-      template = next;
-      await api.publish(next);
-    },
-    describe() {
-      return "Shared. Everyone with the link sees what you save here, and their page updates to match. Saves are last-one-wins, so keep data entry to one person.";
-    },
-  };
+  return "Server returned " + r.status;
 }
 
 export function httpAdapter(base: string): StorageAdapter {
   let rev: number | null = null;
+  let role: AccountRole = "admin";
   const url = (path: string) => base.replace(/\/$/, "") + path;
   async function req(path: string, opts?: RequestInit): Promise<Response> {
     const r = await fetch(url(path), { credentials: "same-origin", ...opts });
     if (r.status === 401) throw new NeedAuthError();
+    if (r.status === 403) throw new ForbiddenError(await readError(r));
     return r;
   }
   return {
     name: "server",
     shared: true,
     autoPush: true,
+    setRole(next) {
+      role = next;
+    },
     async load() {
-      const r = await req("/api/data");
-      if (!r.ok) throw new Error("Server returned " + r.status);
+      const r = await req(role === "tenant" ? "/api/mine" : "/api/data");
+      if (!r.ok) throw new Error(await readError(r));
       const j = (await r.json()) as StoredDocument;
       rev = j.rev;
       return j.payload;
     },
     async save(data, force) {
+      if (role === "tenant") return;
       const r = await req("/api/data", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rev, payload: data, force: !!force }),
       });
       if (r.status === 409) throw new ConflictError();
-      if (!r.ok) throw new Error("Server returned " + r.status);
+      if (!r.ok) throw new Error(await readError(r));
       const j = (await r.json()) as PutDataResponse;
       rev = j.rev;
     },
@@ -145,14 +144,17 @@ export function httpAdapter(base: string): StorageAdapter {
     knownRev() {
       return rev;
     },
-    async login(password) {
+    async login(username, password) {
       const r = await fetch(url("/api/login"), {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
-      return r.ok;
+      if (!r.ok) return null;
+      const j = (await r.json()) as LoginResponse;
+      role = j.session.role;
+      return j.session;
     },
     async logout() {
       try {
@@ -161,56 +163,110 @@ export function httpAdapter(base: string): StorageAdapter {
         /* ignore */
       }
     },
+    async me() {
+      const r = await req("/api/me");
+      if (!r.ok) return null;
+      return (await r.json()) as SessionInfo;
+    },
+    async listAccounts() {
+      const r = await req("/api/accounts");
+      if (!r.ok) throw new Error(await readError(r));
+      const j = (await r.json()) as { accounts: PublicAccount[] };
+      return j.accounts;
+    },
+    async createAccount(body) {
+      const r = await req("/api/accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(await readError(r));
+      return (await r.json()) as PublicAccount;
+    },
+    async patchAccount(id, body) {
+      const r = await req("/api/accounts/" + encodeURIComponent(id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(await readError(r));
+      return (await r.json()) as PublicAccount;
+    },
+    async deleteAccount(id) {
+      const r = await req("/api/accounts/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!r.ok) throw new Error(await readError(r));
+    },
+    async settle(entry) {
+      const body: SettleRequest = {
+        id: entry.id,
+        personId: entry.personId,
+        amount: entry.amount,
+        date: entry.date,
+        note: entry.note,
+        monthKey: entry.monthKey,
+        rev: rev ?? undefined,
+      };
+      const r = await req("/api/settle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (r.status === 409) throw new ConflictError();
+      if (!r.ok) throw new Error(await readError(r));
+      const j = (await r.json()) as PutDataResponse;
+      rev = j.rev;
+    },
+    async undoSettle(id) {
+      const r = await req("/api/ledger/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!r.ok) throw new Error(await readError(r));
+      const j = (await r.json()) as PutDataResponse;
+      rev = j.rev;
+    },
+    async disablePersonLogin(personId) {
+      const r = await req("/api/accounts/disable-person", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personId }),
+      });
+      if (!r.ok) throw new Error(await readError(r));
+    },
     describe() {
-      return "Stored on your own server. Everyone who opens the site sees the same data, and changes are saved automatically. A copy is kept in this browser in case the server is unreachable.";
+      return "Stored on your own server. Everyone who opens the site sees the same household; tenants only see their own dashboard. Changes are saved automatically.";
     },
   };
 }
 
-declare global {
-  interface Window {
-    claude?: { use: (name: string) => Promise<unknown> };
-  }
-}
+export const LOCAL_SESSION: SessionInfo = {
+  accountId: "local",
+  username: "local",
+  role: "admin",
+  personId: null,
+  personName: null,
+};
 
-export async function pickAdapter(): Promise<{ adapter: StorageAdapter; needAuth: boolean }> {
+export async function pickAdapter(): Promise<{
+  adapter: StorageAdapter;
+  needAuth: boolean;
+  session: SessionInfo | null;
+}> {
   if (location.protocol === "http:" || location.protocol === "https:") {
     try {
       const r = await fetch("/api/health", { credentials: "same-origin" });
       if (r.ok) {
         const h = (await r.json()) as HealthResponse;
         if (h && h.app === "rent-split") {
-          return { adapter: httpAdapter(""), needAuth: !h.authed && !!h.authRequired };
+          const adapter = httpAdapter("");
+          if (h.session) adapter.setRole?.(h.session.role);
+          return {
+            adapter,
+            needAuth: !h.authed && !!h.authRequired,
+            session: h.session,
+          };
         }
       }
     } catch {
       /* no server */
     }
   }
-  try {
-    if (window.claude && typeof window.claude.use === "function") {
-      const api = await window.claude.use("artifact");
-      if (api && typeof (api as ArtifactApi).publish === "function") {
-        return { adapter: artifactAdapter(api as ArtifactApi), needAuth: false };
-      }
-    }
-  } catch {
-    /* local */
-  }
-  return { adapter: localAdapter(), needAuth: false };
-}
-
-export function readV1(): Record<string, unknown> | null {
-  for (const k of V1_KEYS) {
-    try {
-      const raw = LS.get(k);
-      if (raw) {
-        const o = JSON.parse(raw) as Record<string, unknown>;
-        if (o && (o.people || o.rooms)) return o;
-      }
-    } catch {
-      /* skip */
-    }
-  }
-  return null;
+  return { adapter: localAdapter(), needAuth: false, session: LOCAL_SESSION };
 }

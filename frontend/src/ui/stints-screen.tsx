@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { daysInMonth, dayDate, monthLabel } from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
@@ -10,6 +9,7 @@ import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { Icon } from "./icon";
 import { goMonth } from "./month-screen";
+import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
 type StintsScreenProps = {
@@ -17,7 +17,7 @@ type StintsScreenProps = {
 };
 
 export function StintsScreen(props: StintsScreenProps) {
-  const { store, state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
@@ -50,7 +50,7 @@ export function StintsScreen(props: StintsScreenProps) {
   }
 
   return (
-    <div className={`screen${state.activeTab === "stints" ? " active" : ""}`} data-screen="stints">
+    <div className={screenClass("stints", activeTab)} data-screen="stints">
       <div className="monthbar">
         <button className="iconbtn" title="Previous month" onClick={() => goMonth(store, -1)}>
           <Icon strokeWidth={2.5}>
@@ -111,7 +111,12 @@ export function StintsScreen(props: StintsScreenProps) {
                             if (occ.includes(p.id) && occ.length > 1) sharing = true;
                           });
                         }
-                        return <div key={i} className={`tl-cell ${isHere ? "here" : ""}${sharing ? " share" : ""}`} />;
+                        return (
+                          <div
+                            key={i}
+                            className={`tl-cell ${isHere ? "here" : ""}${sharing ? " share" : ""}`}
+                          />
+                        );
                       })}
                     </div>
                   </div>
@@ -123,11 +128,19 @@ export function StintsScreen(props: StintsScreenProps) {
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", paddingLeft: 116, marginTop: 5 }}>
+                <div
+                  style={{ fontSize: 11.5, color: "var(--muted)", paddingLeft: 116, marginTop: 5 }}
+                >
                   people in the house each day
                 </div>
                 {state.rooms.some((r) => !r.communal) ? (
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px solid var(--hairline)" }}>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: "0.5px solid var(--hairline)",
+                    }}
+                  >
                     <div
                       style={{
                         fontSize: 11.5,
@@ -151,7 +164,10 @@ export function StintsScreen(props: StintsScreenProps) {
                             style={{ "--seg": g ? "var(--red)" : "var(--green)" } as CSSProperties}
                           >
                             <div className="tl-who">
-                              <span className="nm" style={{ color: g ? "var(--red)" : "var(--muted)" }}>
+                              <span
+                                className="nm"
+                                style={{ color: g ? "var(--red)" : "var(--muted)" }}
+                              >
                                 {room.name}
                               </span>
                             </div>
@@ -175,8 +191,8 @@ export function StintsScreen(props: StintsScreenProps) {
               </>
             ) : (
               <div className="empty">
-                Nobody is down for {monthLabel(key)} yet. Use <b>Add a stint</b> below, or reset from the roster on the
-                This month tab.
+                Nobody is down for {monthLabel(key)} yet. Use <b>Add a stint</b> below, or reset
+                from the roster on the This month tab.
               </div>
             )}
           </div>
@@ -218,7 +234,10 @@ export function StintsScreen(props: StintsScreenProps) {
             const p = personById(state, s.personId);
             return (
               <div className="stint-row" key={s.id}>
-                <span className="swatch" style={{ background: p ? personColor(state, p.id) : "var(--muted)" }} />
+                <span
+                  className="swatch"
+                  style={{ background: p ? personColor(state, p.id) : "var(--muted)" }}
+                />
                 <select
                   style={{ width: "auto", minWidth: 104 }}
                   value={s.personId}
@@ -280,7 +299,13 @@ export function StintsScreen(props: StintsScreenProps) {
                     </option>
                   ))}
                 </select>
-                <span style={{ fontSize: 12, color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
                   {plural(s.to - s.from + 1, "day")}
                 </span>
                 <div className="spacer" />
@@ -302,10 +327,18 @@ export function StintsScreen(props: StintsScreenProps) {
                       cur.to = mid;
                       stints.splice(stints.indexOf(cur) + 1, 0, copy);
                     });
-                    store.announce("Split in two — adjust the dates, or delete the half they weren't here for.");
+                    store.announce(
+                      "Split in two — adjust the dates, or delete the half they weren't here for.",
+                    );
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                  >
                     <path d="M12 3v18" />
                     <path d="M5 8h4M15 8h4" />
                   </svg>
@@ -320,7 +353,13 @@ export function StintsScreen(props: StintsScreenProps) {
                     });
                   }}
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
                     <path d="M6 6l12 12M6 18L18 6" />
                   </svg>
                 </button>
@@ -391,15 +430,16 @@ export function StintsScreen(props: StintsScreenProps) {
         <div className="stack" style={{ marginBottom: 10 }}>
           {gaps.map((g) => (
             <div key={g.roomId} className="badge warn" style={{ display: "inline-block" }}>
-              <b>{g.name}</b> empty on {g.days.length === D ? "every day" : "day " + rangeText(g.days)}
+              <b>{g.name}</b> empty on{" "}
+              {g.days.length === D ? "every day" : "day " + rangeText(g.days)}
             </div>
           ))}
         </div>
         <div className="helper">
-          A stint is a block of days someone is in the house, in one bedroom — and it is the <b>only</b> place dates
-          live. Rent and every bill are shared out across these days. Two people on one bedroom over the same days split
-          it between them, day by day. Each new month starts as a copy of the month before, so in a normal month there
-          is nothing to change.
+          A stint is a block of days someone is in the house, in one bedroom — and it is the{" "}
+          <b>only</b> place dates live. Rent and every bill are shared out across these days. Two
+          people on one bedroom over the same days split it between them, day by day. Each new month
+          starts as a copy of the month before, so in a normal month there is nothing to change.
         </div>
       </Section>
     </div>

@@ -8,6 +8,7 @@ import { useHousehold } from "../store/household-context";
 import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { Avatar } from "./avatar";
 import { Icon } from "./icon";
+import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
 export type SettingsScreenProps = {
@@ -20,7 +21,6 @@ export type SettingsScreenProps = {
   setImportText: (v: string) => void;
   onExport: () => void;
   onImport: () => void;
-  onMigrate: () => void;
   onReset: () => void;
   onPush: () => void;
   onLogout: () => void;
@@ -31,7 +31,7 @@ function isCurrency(v: string): v is CurrencySymbol {
 }
 
 export function SettingsScreen(props: SettingsScreenProps) {
-  const { store, state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const key = state.currentMonth;
   const c = computeMonth(state, key, "eff");
   const D = daysInMonth(key);
@@ -43,11 +43,15 @@ export function SettingsScreen(props: SettingsScreenProps) {
   const hallPct = total > 0 ? ((ca / total) * 100).toFixed(1) + "%" : "—";
 
   return (
-    <div className={`screen${state.activeTab === "settings" ? " active" : ""}`} data-screen="settings">
+    <div className={screenClass("settings", activeTab)} data-screen="settings">
       <Section
         id="setaway"
         title="How costs are split"
-        meta={gaps.length ? `${plural(gaps.length, "bedroom")} left empty` : "one rule, everyone the same"}
+        meta={
+          gaps.length
+            ? `${plural(gaps.length, "bedroom")} left empty`
+            : "one rule, everyone the same"
+        }
         iconBg="var(--p5)"
         open={!!state.sectionsOpen.setaway}
         onToggle={() => props.onToggleSection("setaway")}
@@ -62,27 +66,30 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <b>There is one rule, and it applies to everybody.</b>
           </p>
           <p>
-            You pay for the days you are in the house, and nothing for the days you are not. There are no tenants and no
-            visitors, no settings per person, no exemptions — just the days on your stints.
+            You pay for the days you are in the house, and nothing for the days you are not. There
+            are no tenants and no visitors, no settings per person, no exemptions — just the days on
+            your stints.
           </p>
           <p style={{ marginBottom: 0 }}>
-            <b>Rent</b> follows the bedroom you are in and its share of the floor area. <b>Every bill</b> — energy,
-            water, Wi-Fi, insurance, council tax — is shared across the days each person was here that month.
+            <b>Rent</b> follows the bedroom you are in and its share of the floor area.{" "}
+            <b>Every bill</b> — energy, water, Wi-Fi, insurance, council tax — is shared across the
+            days each person was here that month.
           </p>
         </div>
         <div className="callout good">
           <p style={{ marginBottom: 0 }}>
-            <b>Example.</b> A 30-day month, £200 energy. Ach, Joe and Alice are here all 30 days; Max is here for 10.
-            That is 100 person-days, so Max pays 10/100 = £20 and the other three pay 30/100 = £60 each. The same
-            fractions apply to every other bill.
+            <b>Example.</b> A 30-day month, £200 energy. Ach, Joe and Alice are here all 30 days;
+            Max is here for 10. That is 100 person-days, so Max pays 10/100 = £20 and the other
+            three pay 30/100 = £60 each. The same fractions apply to every other bill.
           </p>
         </div>
         <div className="callout warn">
           <p style={{ marginBottom: 0 }}>
-            <b>Every bedroom must have somebody in it, every day.</b> A bedroom is rented whether or not anyone sleeps in
-            it, so leaving one unoccupied means its rent has nowhere to go — it gets spread across everyone and a warning
-            appears on <b>This month</b> and <b>Who's here</b>. If somebody is away but still paying for their room,
-            leave their stint running: that is what a stint means.
+            <b>Every bedroom must have somebody in it, every day.</b> A bedroom is rented whether or
+            not anyone sleeps in it, so leaving one unoccupied means its rent has nowhere to go — it
+            gets spread across everyone and a warning appears on <b>This month</b> and{" "}
+            <b>Who's here</b>. If somebody is away but still paying for their room, leave their
+            stint running: that is what a stint means.
           </p>
         </div>
         <div className="dim-label" style={{ marginBottom: 7 }}>
@@ -96,7 +103,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
               <div
                 className="list-row"
                 key={p.id}
-                style={{ background: "var(--card-2)", borderRadius: "var(--radius)", padding: "10px 13px", marginBottom: 7 }}
+                style={{
+                  background: "var(--card-2)",
+                  borderRadius: "var(--radius)",
+                  padding: "10px 13px",
+                  marginBottom: 7,
+                }}
               >
                 <Avatar state={state} person={p} size={26} />
                 <div className="grow" style={{ minWidth: 0 }}>
@@ -105,7 +117,9 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     {d} of {D} days · {pct.toFixed(1)}% of every bill
                   </div>
                 </div>
-                <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{money(state.currency, c.totals[p.id] || 0)}</div>
+                <div style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>
+                  {money(state.currency, c.totals[p.id] || 0)}
+                </div>
               </div>
             );
           })
@@ -176,16 +190,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </div>
         <div className="callout">
           <p style={{ marginBottom: 0 }}>
-            <b>What the standing rent does.</b> It is the figure every <em>new</em> month starts from. Months already on
-            record keep whatever they were given, so raising it after a rent review changes future months without
-            rewriting your history. To change one month only, edit the rent on the <b>This month</b> tab instead.
+            <b>What the standing rent does.</b> It is the figure every <em>new</em> month starts
+            from. Months already on record keep whatever they were given, so raising it after a rent
+            review changes future months without rewriting your history. To change one month only,
+            edit the rent on the <b>This month</b> tab instead.
           </p>
         </div>
         <div className="callout good">
           <p style={{ marginBottom: 0 }}>
-            <b>Rounding.</b> Every split is worked out in pence and handed out largest-remainder first, so the shares
-            always add back to the exact bill. On a £200 bill across three people you get £66.67, £66.67 and £66.66 —
-            never three £66.66s with a penny missing.
+            <b>Rounding.</b> Every split is worked out in pence and handed out largest-remainder
+            first, so the shares always add back to the exact bill. On a £200 bill across three
+            people you get £66.67, £66.67 and £66.66 — never three £66.66s with a penny missing.
           </p>
         </div>
       </Section>
@@ -248,13 +263,14 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </div>
         <div className="callout">
           <p>
-            <b>What a weight means.</b> A room's floor area is multiplied by its weight before rent is shared out. A
-            weight of 1× counts every square metre in full; 0.5× counts it as half.
+            <b>What a weight means.</b> A room's floor area is multiplied by its weight before rent
+            is shared out. A weight of 1× counts every square metre in full; 0.5× counts it as half.
           </p>
           <p style={{ marginBottom: 0 }}>
-            <b>Example.</b> The hallway is {fmtNum(+state.catchall || 0)} m². At {fmtNum(state.catchallWeight, 2)}× it
-            enters the calculation as {fmtNum(ca)} m², so it accounts for {hallPct} of the rent instead of double that.
-            Bathrooms are weighted the same way, on the Household tab — you pass through them, you don't live in them.
+            <b>Example.</b> The hallway is {fmtNum(+state.catchall || 0)} m². At{" "}
+            {fmtNum(state.catchallWeight, 2)}× it enters the calculation as {fmtNum(ca)} m², so it
+            accounts for {hallPct} of the rent instead of double that. Bathrooms are weighted the
+            same way, on the Household tab — you pass through them, you don't live in them.
           </p>
         </div>
         <div className="helper">
@@ -324,8 +340,9 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </div>
         </div>
         <div className="helper">
-          <b>Auto</b> follows your device's light/dark setting. <b>Compact</b> shrinks the type a step, which helps when
-          a month has a lot of stints. These are per-browser and are not shared with anyone else.
+          <b>Auto</b> follows your device's light/dark setting. <b>Compact</b> shrinks the type a
+          step, which helps when a month has a lot of stints. These are per-browser and are not
+          shared with anyone else.
         </div>
       </Section>
 
@@ -367,7 +384,9 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       : "Everything is shared"}
               </button>
               {store.dirty ? (
-                <span style={{ fontSize: 12.5, color: "var(--orange)", fontWeight: 600 }}>unsaved changes</span>
+                <span style={{ fontSize: 12.5, color: "var(--orange)", fontWeight: 600 }}>
+                  unsaved changes
+                </span>
               ) : null}
               {a.logout ? (
                 <>
@@ -388,23 +407,22 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </div>
         <div className="callout good" style={{ marginBottom: 12 }}>
           <p>
-            <b>Your data survives changes to this page.</b> Nothing you enter is stored inside the HTML. It is saved
-            separately under one fixed key, <code>{STORAGE_KEY}</code>, in a self-describing envelope:
+            <b>Your data survives app updates.</b> Nothing you enter is stored in the page itself.
+            It is saved separately under one fixed key, <code>{STORAGE_KEY}</code>, in a
+            self-describing envelope:
           </p>
           <p style={{ marginBottom: 6 }}>
-            <code>
-              {`{ app: "rent-split", schema: ${SCHEMA}, savedAt: …, data: { … } }`}
-            </code>
+            <code>{`{ app: "rent-split", schema: ${SCHEMA}, savedAt: …, data: { … } }`}</code>
           </p>
           <p>
-            So you can restyle this page, split it into components, move it to your own domain and redeploy — a newer
-            build reads the same key, sees the format number, and upgrades old saves step by step. Editing the HTML never
-            orphans your months.
+            A newer build reads the same key, sees the format number, and upgrades old saves step by
+            step.
           </p>
           <p style={{ marginBottom: 0 }}>
-            <b>The one thing that does break it:</b> browser storage belongs to the address it was saved at. Moving from
-            a local file to <code>yourdomain.com</code> is a different address, so export a backup first and import it
-            once on the new site. Same story for a new browser or device.
+            <b>The one thing that does break it:</b> browser storage belongs to the address it was
+            saved at. Moving from a local file to <code>yourdomain.com</code> is a different
+            address, so export a backup first and import it once on the new site. Same story for a
+            new browser or device.
           </p>
         </div>
         <div className="rowwrap" style={{ marginBottom: 12 }}>
@@ -414,15 +432,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
           <button className="btn-ghost btn" onClick={() => props.setShowImport(!props.showImport)}>
             Import / restore
           </button>
-          <button className="btn-ghost btn" onClick={() => props.onMigrate()}>
-            Pull data from the old version
-          </button>
         </div>
         {props.showImport ? (
           <div>
             <textarea
               className="paste"
-              placeholder="Paste a backup here — either an export from this app, or the old version's data."
+              placeholder="Paste a backup export from this app."
               value={props.importText}
               onChange={(e) => props.setImportText(e.target.value)}
             />
@@ -437,12 +452,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </div>
         ) : null}
         <div className="helper">
-          Browser storage can be cleared by the browser without warning. Export a backup occasionally — it is a single
-          text file containing every month, every stint and every balance.
+          Browser storage can be cleared by the browser without warning. Export a backup
+          occasionally — it is a single text file containing every month, every stint and every
+          balance.
         </div>
         <div className="row-h" style={{ marginTop: 14 }}>
           <div className="spacer" />
-          <button className="btn-ghost btn btn-sm" style={{ color: "var(--red)" }} onClick={() => props.onReset()}>
+          <button
+            className="btn-ghost btn btn-sm"
+            style={{ color: "var(--red)" }}
+            onClick={() => props.onReset()}
+          >
             Reset everything to defaults
           </button>
         </div>

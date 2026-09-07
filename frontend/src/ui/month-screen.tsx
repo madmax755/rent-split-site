@@ -2,7 +2,6 @@ import { addMonths, daysInMonth, monthLabel } from "../domain/dates";
 import {
   bedroomGaps,
   captureConfig,
-  chargedFor,
   computeMonth,
   computeMonthInner,
   monthAllActual,
@@ -11,38 +10,17 @@ import {
   monthSummaryText,
   weightedAreas,
 } from "../domain/engine";
-import { fmtNum, money, money0, personById, personName, plural, rangeText, signedMoney } from "../domain/format";
+import { fmtNum, money, money0, personName, plural, rangeText, signedMoney } from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, seedStints } from "../domain/months";
 import type { HouseholdState, MonthCompute, MonthLine, MonthRecord } from "../domain/types";
+import { copyText } from "../lib/copy-text";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
-import { Avatar } from "./avatar";
 import { Icon } from "./icon";
+import { PersonStatementCard } from "./person-statement";
+import { screenClass } from "./screen-class";
 import { Kpi, Section } from "./section";
-
-async function copyText(txt: string, toast: (m: string) => void): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(txt);
-    toast("Copied.");
-    return;
-  } catch {
-    /* fallback */
-  }
-  const ta = document.createElement("textarea");
-  ta.value = txt;
-  ta.style.position = "fixed";
-  ta.style.opacity = "0";
-  document.body.appendChild(ta);
-  ta.select();
-  try {
-    document.execCommand("copy");
-    toast("Copied.");
-  } catch {
-    toast("Couldn't copy — select the text manually.");
-  }
-  document.body.removeChild(ta);
-}
 
 function lineOf(M: MonthRecord, id: string, isOneOff: boolean): MonthLine | undefined {
   return isOneOff ? (M.oneOffs || []).find((x) => x.id === id) : M.lines[id];
@@ -53,7 +31,7 @@ type MonthScreenProps = {
 };
 
 export function MonthScreen(props: MonthScreenProps) {
-  const { store, state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
@@ -62,11 +40,20 @@ export function MonthScreen(props: MonthScreenProps) {
   const totalNights = Object.values(c.counts.liableDays).reduce((s, v) => s + v, 0);
   const liableIds = state.people.filter((p) => (c.counts.liableDays[p.id] || 0) > 0);
   const sub = `${D} days · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`;
-  const pending = state.bills.length + (M.oneOffs || []).length - c.lines.filter((l) => l.isActual).length;
-  const statusLabel = { projected: "Projected", collecting: "Awaiting real bills", reconciled: "Reconciled" }[status];
+  const pending =
+    state.bills.length + (M.oneOffs || []).length - c.lines.filter((l) => l.isActual).length;
+  const statusLabel = {
+    projected: "Projected",
+    collecting: "Awaiting real bills",
+    reconciled: "Reconciled",
+  }[status];
 
-  const warns: Array<{ html: boolean; text: string }> = c.warn.map((w) => ({ html: false, text: w }));
-  if (!liableIds.length) warns.push({ html: false, text: "Nobody is down as living here this month." });
+  const warns: Array<{ html: boolean; text: string }> = c.warn.map((w) => ({
+    html: false,
+    text: w,
+  }));
+  if (!liableIds.length)
+    warns.push({ html: false, text: "Nobody is down as living here this month." });
   bedroomGaps(state, key).forEach((g) => {
     warns.push({
       html: true,
@@ -91,7 +78,7 @@ export function MonthScreen(props: MonthScreenProps) {
   const stmtSum = ids.reduce((s, id) => s + (c.totals[id] || 0), 0);
 
   return (
-    <div className={`screen${state.activeTab === "month" ? " active" : ""}`} data-screen="month">
+    <div className={screenClass("month", activeTab)} data-screen="month">
       <div className="monthbar">
         <button className="iconbtn" title="Previous month" onClick={() => goMonth(store, -1)}>
           <Icon strokeWidth={2.5}>
@@ -125,7 +112,12 @@ export function MonthScreen(props: MonthScreenProps) {
       <div className="stack" style={{ marginBottom: 12 }}>
         {warns.map((w, i) =>
           w.html ? (
-            <div key={i} className="badge warn" style={{ display: "inline-block" }} dangerouslySetInnerHTML={{ __html: w.text }} />
+            <div
+              key={i}
+              className="badge warn"
+              style={{ display: "inline-block" }}
+              dangerouslySetInnerHTML={{ __html: w.text }}
+            />
           ) : (
             <div key={i} className="badge warn" style={{ display: "inline-block" }}>
               {w.text}
@@ -148,7 +140,13 @@ export function MonthScreen(props: MonthScreenProps) {
         <Kpi
           label="Bills"
           value={money0(state.currency, c.billsTotalPence)}
-          sub={monthAllActual(state, M) ? "all realised" : monthHasActuals(M) ? "partly realised" : "still estimated"}
+          sub={
+            monthAllActual(state, M)
+              ? "all realised"
+              : monthHasActuals(M)
+                ? "partly realised"
+                : "still estimated"
+          }
         />
         <Kpi
           label="Cost per person-day"
@@ -178,7 +176,10 @@ export function MonthScreen(props: MonthScreenProps) {
           <span>Difference</span>
         </div>
         <div>
-          <div className="bg-row" style={{ background: "var(--card-2)", boxShadow: "inset 0 0 0 1px var(--hairline)" }}>
+          <div
+            className="bg-row"
+            style={{ background: "var(--card-2)", boxShadow: "inset 0 0 0 1px var(--hairline)" }}
+          >
             <div className="bg-name">Rent</div>
             <div className="bg-num">
               <div className="minilabel">Agreed</div>
@@ -200,17 +201,35 @@ export function MonthScreen(props: MonthScreenProps) {
             </div>
             <div className="bg-num">
               <div className="minilabel">&nbsp;</div>
-              <div style={{ fontSize: 12.5, color: "var(--muted)", paddingTop: 8, textAlign: "right" }}>
+              <div
+                style={{ fontSize: 12.5, color: "var(--muted)", paddingTop: 8, textAlign: "right" }}
+              >
                 {fmtNum(weightedAreas(state).total, 1)} m² weighted
               </div>
             </div>
             <div className="bg-delta none">fixed</div>
           </div>
           {state.bills.map((b) => (
-            <BillRow key={b.id} M={M} monthKey={key} store={store} state={state} def={b} line={M.lines[b.id] ?? { est: b.est ?? 0, act: null }} oneOff={false} />
+            <BillRow
+              key={b.id}
+              monthKey={key}
+              store={store}
+              state={state}
+              def={b}
+              line={M.lines[b.id] ?? { est: b.est ?? 0, act: null }}
+              oneOff={false}
+            />
           ))}
           {(M.oneOffs || []).map((x) => (
-            <BillRow key={x.id} M={M} monthKey={key} store={store} state={state} def={x} line={x} oneOff />
+            <BillRow
+              key={x.id}
+              monthKey={key}
+              store={store}
+              state={state}
+              def={x}
+              line={x}
+              oneOff
+            />
           ))}
         </div>
         <div className="rowwrap" style={{ marginTop: 10 }}>
@@ -221,7 +240,13 @@ export function MonthScreen(props: MonthScreenProps) {
               store.mutate(() => {
                 const month = ensureMonth(store.state, key);
                 month.oneOffs = month.oneOffs || [];
-                month.oneOffs.push({ id: uid("oo"), name: "One-off charge", est: 0, act: null, payers: null });
+                month.oneOffs.push({
+                  id: uid("oo"),
+                  name: "One-off charge",
+                  est: 0,
+                  act: null,
+                  payers: null,
+                });
               });
             }}
           >
@@ -253,16 +278,18 @@ export function MonthScreen(props: MonthScreenProps) {
                   }
                 });
               });
-              store.announce(`${plural(n, "estimate")} pulled from ${monthLabel(addMonths(key, -1))}.`);
+              store.announce(
+                `${plural(n, "estimate")} pulled from ${monthLabel(addMonths(key, -1))}.`,
+              );
             }}
           >
             Estimates from last month
           </button>
         </div>
         <div className="helper">
-          Type the <b>estimate</b> (what the direct debit takes) when the month starts, and the <b>realised</b> figure when the
-          real bill lands. Everything splits on the realised figure once it exists, and the difference is trued up on the
-          Balances tab.
+          Type the <b>estimate</b> (what the direct debit takes) when the month starts, and the{" "}
+          <b>realised</b> figure when the real bill lands. Everything splits on the realised figure
+          once it exists, and the difference is trued up on the Balances tab.
         </div>
       </Section>
 
@@ -339,7 +366,9 @@ export function MonthScreen(props: MonthScreenProps) {
                   m.charged = computeMonthInner(store.state, key, "est", m).totals;
                   m.collected = true;
                   m.chargedAt = new Date().toISOString().slice(0, 10);
-                  store.announce("Locked — this month's rent, rooms, bills and people are now frozen.");
+                  store.announce(
+                    "Locked — this month's rent, rooms, bills and people are now frozen.",
+                  );
                 } else {
                   m.collected = false;
                   m.charged = null;
@@ -355,9 +384,9 @@ export function MonthScreen(props: MonthScreenProps) {
         <div className="helper">
           {M.collected ? (
             <>
-              Locked{M.chargedAt ? ` on ${M.chargedAt}` : ""}. Everyone was asked for the amounts shown in each
-              person's breakdown under <b>Asked for at the time</b>. Any difference against the realised bills is sitting
-              on the Balances tab.
+              Locked{M.chargedAt ? ` on ${M.chargedAt}` : ""}. Everyone was asked for the amounts
+              shown in each person's breakdown under <b>Asked for at the time</b>. Any difference
+              against the realised bills is sitting on the Balances tab.
             </>
           ) : (
             "Locking records what everyone was actually asked for. Once the real bills land, the difference between the two is trued up automatically on the Balances tab. Until you lock, the figures just move with the estimates."
@@ -379,8 +408,8 @@ export function MonthScreen(props: MonthScreenProps) {
         }
       >
         <div className="helper" style={{ marginTop: 0, marginBottom: 10 }}>
-          This month's rent is the first row of <b>What it cost</b> above. It overrides the standing rent from Settings
-          for this month only.
+          This month's rent is the first row of <b>What it cost</b> above. It overrides the standing
+          rent from Settings for this month only.
         </div>
         <textarea
           className="paste"
@@ -415,7 +444,12 @@ export function MonthScreen(props: MonthScreenProps) {
             className="btn-ghost btn btn-sm"
             style={{ color: "var(--red)" }}
             onClick={() => {
-              if (!confirm(`Delete ${monthLabel(key)} entirely? Its bills, stints and true-ups all go.`)) return;
+              if (
+                !confirm(
+                  `Delete ${monthLabel(key)} entirely? Its bills, stints and true-ups all go.`,
+                )
+              )
+                return;
               store.mutate(() => {
                 delete store.state.months[key];
                 ensureMonth(store.state, key);
@@ -431,7 +465,10 @@ export function MonthScreen(props: MonthScreenProps) {
 }
 
 function escapeHtml(s: string): string {
-  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
+  return String(s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+  );
 }
 
 function goMonth(store: HouseholdStore, delta: number): void {
@@ -446,7 +483,6 @@ export { goMonth };
 type BillRowProps = {
   store: HouseholdStore;
   state: HouseholdState;
-  M: MonthRecord;
   monthKey: string;
   def: { id: string; name: string };
   line: MonthLine;
@@ -454,12 +490,13 @@ type BillRowProps = {
 };
 
 function BillRow(props: BillRowProps) {
-  const { store, state, M, def, line, oneOff } = props;
+  const { store, state, def, line, oneOff } = props;
   const estP = Math.round((+line.est || 0) * 100);
   const actP = typeof line.act === "number" ? Math.round(line.act * 100) : null;
   const delta = actP === null ? null : actP - estP;
   const dCls = delta === null ? "none" : delta > 0 ? "up" : delta < 0 ? "down" : "none";
-  const dTxt = delta === null ? "not in yet" : delta === 0 ? "spot on" : signedMoney(state.currency, delta);
+  const dTxt =
+    delta === null ? "not in yet" : delta === 0 ? "spot on" : signedMoney(state.currency, delta);
   return (
     <div className={`bg-row${oneOff ? " oneoff" : ""}`}>
       <div className="bg-name">
@@ -470,7 +507,9 @@ function BillRow(props: BillRowProps) {
             style={{ fontWeight: 600, fontSize: 14.5, maxWidth: 190 }}
             onChange={(e) => {
               store.mutate(() => {
-                const x = (ensureMonth(store.state, props.monthKey).oneOffs || []).find((o) => o.id === def.id);
+                const x = (ensureMonth(store.state, props.monthKey).oneOffs || []).find(
+                  (o) => o.id === def.id,
+                );
                 if (x) x.name = e.target.value;
               });
             }}
@@ -489,7 +528,13 @@ function BillRow(props: BillRowProps) {
               });
             }}
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            >
               <path d="M6 6l12 12M6 18L18 6" />
             </svg>
           </button>
@@ -559,150 +604,27 @@ function Statements(props: {
       </div>
     );
   }
-  const charged = M.collected ? chargedFor(state, monthKey) : null;
-  const D = daysInMonth(monthKey);
-  const roomName = (id: string) => state.rooms.find((r) => r.id === id)?.name || "—";
-  const sharedNames = state.rooms.filter((r) => r.communal).map((r) => r.name);
-
   return (
     <>
-      {ids.map((id) => {
-        const p = personById(state, id);
-        if (!p) return null;
-        const open = !!state.openStatements[id];
-        const liable = c.counts.liableDays[id] || 0;
-        const nights = liable;
-        const total = c.totals[id] || 0;
-        const roomsUsed: Record<string, number> = {};
-        let sharedDays = 0;
-        c.counts.days.forEach((day) => {
-          Object.keys(day.rooms).forEach((rid) => {
-            const occ = day.rooms[rid] ?? [];
-            if (!occ.includes(id)) return;
-            roomsUsed[rid] = (roomsUsed[rid] || 0) + 1;
-            if (occ.length > 1) sharedDays += 1;
-          });
-        });
-        const roomTxt =
-          Object.keys(roomsUsed)
-            .map((rid) => `${roomName(rid)}${(roomsUsed[rid] ?? 0) < liable ? ` (${roomsUsed[rid]}d)` : ""}`)
-            .join(", ") || "no room";
-        const perNight = nights ? total / nights : 0;
-        const was = charged ? charged[id] || 0 : 0;
-        const diff = total - was;
-        return (
-          <div key={id} className={`stmt-card${open ? " open" : ""}`}>
-            <div
-              className="stmt-head"
-              onClick={() => {
-                store.mutate(
-                  () => {
-                    store.state.openStatements[id] = !store.state.openStatements[id];
-                  },
-                  { persist: false },
-                );
-              }}
-            >
-              <Avatar state={state} person={p} size={34} />
-              <div className="grow" style={{ minWidth: 0 }}>
-                <div className="stmt-name">
-                  {p.name}
-                  {p.isPayer ? (
-                    <span className="badge ok" style={{ marginLeft: 4 }}>
-                      pays the bills
-                    </span>
-                  ) : null}
-                </div>
-                <div className="stmt-sub">
-                  here {liable} of {D} days{perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
-                </div>
-              </div>
-              <div className="stmt-amt">
-                <b>{money(state.currency, total)}</b>
-                <span>{monthAllActual(state, M) ? "realised" : "estimated"}</span>
-              </div>
-              <svg
-                className="chev"
-                style={{ transform: `rotate(${open ? 90 : 0}deg)`, width: 18, height: 18, color: "var(--muted-2)" }}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 6l6 6-6 6" />
-              </svg>
-            </div>
-            <div className="stmt-body">
-              <div className="lineitem">
-                <span className="li-name">Bedroom</span>
-                <span className="li-how">
-                  {roomTxt}
-                  {sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here {liable}/{D} days
-                </span>
-                <span className="li-amt">{money(state.currency, c.bedroom[id] || 0)}</span>
-              </div>
-              <div className="lineitem">
-                <span className="li-name">Shared space</span>
-                <span className="li-how">
-                  {sharedNames.join(", ")}
-                  {state.catchall > 0 ? ", hallway" : ""} · split with everyone here each day
-                </span>
-                <span className="li-amt">{money(state.currency, c.shared[id] || 0)}</span>
-              </div>
-              {c.lines.map((l) => {
-                const u = l.units[id] || 0;
-                const how =
-                  u === 0
-                    ? l.how[id] === "not a payer"
-                      ? "not a payer on this bill"
-                      : "not here this month"
-                    : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days`;
-                return (
-                  <div className="lineitem sub" key={l.id}>
-                    <span className="li-name">
-                      {l.name}
-                      {l.isActual ? null : (
-                        <span style={{ color: "var(--muted-2)", fontWeight: 500 }}> (est)</span>
-                      )}
-                    </span>
-                    <span className="li-how">{how}</span>
-                    <span className="li-amt">{money(state.currency, l.shares[id] || 0)}</span>
-                  </div>
-                );
-              })}
-              <div className="lineitem tot">
-                <span className="li-name">Total for {monthLabel(monthKey)}</span>
-                <span className="li-how" />
-                <span className="li-amt">{money(state.currency, total)}</span>
-              </div>
-              {charged ? (
-                <>
-                  <div className="lineitem">
-                    <span className="li-name">Asked for at the time</span>
-                    <span className="li-how">collected on the estimates</span>
-                    <span className="li-amt">{money(state.currency, was)}</span>
-                  </div>
-                  {monthHasActuals(M) ? (
-                    <div className={`lineitem ${diff > 0 ? "debit" : diff < 0 ? "credit" : ""}`}>
-                      <span className="li-name">
-                        {diff > 0 ? "Underpaid — owes" : diff < 0 ? "Overpaid — refund due" : "Settled exactly"}
-                      </span>
-                      <span className="li-how">
-                        difference between the real bills and what was collected · carried to Balances
-                      </span>
-                      <span className="li-amt">{signedMoney(state.currency, diff)}</span>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          </div>
-        );
-      })}
+      {ids.map((id) => (
+        <PersonStatementCard
+          key={id}
+          state={state}
+          personId={id}
+          monthKey={monthKey}
+          M={M}
+          c={c}
+          open={!!state.openStatements[id]}
+          onToggle={() => {
+            store.mutate(
+              () => {
+                store.state.openStatements[id] = !store.state.openStatements[id];
+              },
+              { persist: false },
+            );
+          }}
+        />
+      ))}
     </>
   );
 }
-
-export { goMonth, toastVia };

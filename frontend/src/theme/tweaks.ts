@@ -40,11 +40,6 @@ export function loadTweaks(): Tweaks {
 
 export function saveTweaks(tweaks: Tweaks): void {
   LS.set("rs-tweaks", JSON.stringify(tweaks));
-  try {
-    window.parent.postMessage({ type: "__edit_mode_set_keys", edits: tweaks }, "*");
-  } catch {
-    /* ignore */
-  }
 }
 
 export function resolvedTheme(tweaks: Tweaks): "light" | "dark" {
@@ -59,7 +54,8 @@ export function applyTheme(tweaks: Tweaks): void {
   const t = resolvedTheme(tweaks);
   root.setAttribute("data-theme", t);
   const isDark = t === "dark";
-  const entry = ACCENTS.find((a) => a.v === tweaks.accent || a.dark === tweaks.accent) ?? ACCENTS[0];
+  const entry =
+    ACCENTS.find((a) => a.v === tweaks.accent || a.dark === tweaks.accent) ?? ACCENTS[0];
   const accentVal = isDark ? entry.dark : entry.v;
   root.style.setProperty("--accent", accentVal);
   root.style.setProperty("--accent-soft", hexToRgba(accentVal, isDark ? 0.18 : 0.1));

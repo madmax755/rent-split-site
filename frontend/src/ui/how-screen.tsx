@@ -5,6 +5,7 @@ import { fmtNum, money, payer, personById, plural } from "../domain/format";
 import { ensureMonth, lastRoomOf } from "../domain/months";
 import type { CheckResult } from "../domain/types";
 import { useHousehold } from "../store/household-context";
+import { screenClass } from "./screen-class";
 
 const TOC: Array<{ id: string; label: string }> = [
   { id: "what", label: "What this is" },
@@ -18,13 +19,12 @@ const TOC: Array<{ id: string; label: string }> = [
   { id: "example", label: "A worked example" },
   { id: "decisions", label: "The decisions behind this" },
   { id: "faq", label: "Questions people ask" },
-  { id: "check", label: "Check the maths" },
 ];
 
 type CheckView = { kind: "idle" } | { kind: "done"; results: CheckResult[] };
 
 export function HowScreen() {
-  const { state } = useHousehold();
+  const { store, state, activeTab } = useHousehold();
   const [check, setCheck] = useState<CheckView>({ kind: "idle" });
   const key = state.currentMonth;
   const D = daysInMonth(key);
@@ -39,22 +39,25 @@ export function HowScreen() {
   const exId = (charged.find((p) => !p.isPayer) || charged[0])?.id;
 
   return (
-    <div className={`screen${state.activeTab === "how" ? " active" : ""}`} data-screen="how">
+    <div className={screenClass("how", activeTab)} data-screen="how">
       <div className="hero" style={{ padding: 20 }}>
         <p className="hero-title" style={{ marginBottom: 6 }}>
           How this works
         </p>
         <div className="prose" style={{ fontSize: 15 }}>
           <p style={{ margin: 0, color: "var(--text-2)" }}>
-            Everything below is generated from the settings this app is actually using right now, so it can't drift out
-            of date. If someone questions a number, this page is the answer.
+            Everything below is generated from the settings this app is actually using right now, so
+            it can't drift out of date. If someone questions a number, this page is the answer.
           </p>
         </div>
       </div>
       <div className="section open" data-section="howbody" style={{ padding: 0 }}>
         <div className="section-body" style={{ display: "block", padding: 20 }}>
           <div className="toc">
-            {TOC.map((s) => (
+            {(store.isAdmin()
+              ? [...TOC, { id: "check", label: "Check the maths" }]
+              : TOC
+            ).map((s) => (
               <a key={s.id} href={`#how-${s.id}`}>
                 {s.label}
               </a>
@@ -63,17 +66,21 @@ export function HowScreen() {
           <div className="prose">
             <h2 id="how-what">What this is</h2>
             <p>
-              A house is rented as one thing but lived in by several people, in different rooms, for different amounts of
-              time. This app turns that into a number per person per month. It works in <b>calendar months</b>, one at a
-              time, using the bills that <em>actually</em> arrived rather than what anyone guessed at the start.
+              A house is rented as one thing but lived in by several people, in different rooms, for
+              different amounts of time. This app turns that into a number per person per month. It
+              works in <b>calendar months</b>, one at a time, using the bills that <em>actually</em>{" "}
+              arrived rather than what anyone guessed at the start.
             </p>
             <p>
-              Two people can disagree about what is fair. They cannot really disagree about what the rules are, once the
-              rules are written down. That is what this page is for.
+              Two people can disagree about what is fair. They cannot really disagree about what the
+              rules are, once the rules are written down. That is what this page is for.
             </p>
 
             <h2 id="how-days">The one thing everything rests on</h2>
-            <p>Everything rests on two different questions, asked separately about every single day of the month:</p>
+            <p>
+              Everything rests on two different questions, asked separately about every single day
+              of the month:
+            </p>
             <ul>
               <li>
                 <b>Which days were you in the house?</b> This decides your share of every bill.
@@ -83,41 +90,46 @@ export function HowScreen() {
               </li>
             </ul>
             <p>
-              Both come from the same place — your <b>stints</b> on the <b>Who's here</b> tab. A stint is a block of days
-              in one bedroom. There is nowhere else that dates are recorded, so there is nothing that can fall out of
-              step.
+              Both come from the same place — your <b>stints</b> on the <b>Who's here</b> tab. A
+              stint is a block of days in one bedroom. There is nowhere else that dates are
+              recorded, so there is nothing that can fall out of step.
             </p>
             <div className="callout">
               <p>
-                <b>Everyone is treated identically.</b> There are no tenants and no visitors, no per-person settings, no
-                exemptions. Somebody staying five days is simply a person with a five-day stint, and they pay five days'
-                worth of everything — rent, energy, council tax, all of it.
+                <b>Everyone is treated identically.</b> There are no tenants and no visitors, no
+                per-person settings, no exemptions. Somebody staying five days is simply a person
+                with a five-day stint, and they pay five days' worth of everything — rent, energy,
+                council tax, all of it.
               </p>
               <p style={{ marginBottom: 0 }}>
-                <b>A stint means "paying", not "physically present".</b> If you are away for a fortnight but still keeping
-                your room and still on the bills, your stint runs through it — that is the normal case, and it is how
-                three people who live here all year are recorded. Shorten a stint only when someone genuinely stops paying
-                for those days.
+                <b>A stint means "paying", not "physically present".</b> If you are away for a
+                fortnight but still keeping your room and still on the bills, your stint runs
+                through it — that is the normal case, and it is how three people who live here all
+                year are recorded. Shorten a stint only when someone genuinely stops paying for
+                those days.
               </p>
             </div>
             <div className="callout warn">
               <p style={{ marginBottom: 0 }}>
-                <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a bedroom whether or not
-                anybody is in it. If one is left empty, its rent has nowhere to go: it gets spread across everyone and a
-                warning appears on <b>This month</b> and <b>Who's here</b>, with the exact days listed. The{" "}
-                <em>Bedroom cover</em> strip under the timeline shows this at a glance.
+                <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
+                bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere
+                to go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
+                <b>Who's here</b>, with the exact days listed. The <em>Bedroom cover</em> strip
+                under the timeline shows this at a glance.
               </p>
             </div>
 
             <h2 id="how-rent">How rent is worked out</h2>
             <p>
-              Rent is split by <b>weighted floor area</b>, not by headcount. A bigger room costs more, which is why the
-              person in the {largest} pays more than the person in the smallest one.
+              Rent is split by <b>weighted floor area</b>, not by headcount. A bigger room costs
+              more, which is why the person in the {largest} pays more than the person in the
+              smallest one.
             </p>
             <p>
-              Each room's floor area is multiplied by a <b>weight</b>. Bathrooms are set to {fmtNum(bathWeight, 2)}×
-              because a square metre of bathroom isn't worth a square metre of bedroom, and the hallway is at{" "}
-              {fmtNum(state.catchallWeight, 2)}× for the same reason. That gives every room a share of the total:
+              Each room's floor area is multiplied by a <b>weight</b>. Bathrooms are set to{" "}
+              {fmtNum(bathWeight, 2)}× because a square metre of bathroom isn't worth a square metre
+              of bedroom, and the hallway is at {fmtNum(state.catchallWeight, 2)}× for the same
+              reason. That gives every room a share of the total:
             </p>
             <div className="htable-wrap" style={{ marginBottom: 14 }}>
               <table className="htable">
@@ -148,7 +160,9 @@ export function HowScreen() {
                         <td>{fmtNum(r.weight, 2)}×</td>
                         <td>{fmtNum(r.wa)} m²</td>
                         <td>{total ? ((r.wa / total) * 100).toFixed(1) : "0.0"}%</td>
-                        <td style={{ textAlign: "left" }}>{r.communal ? "everyone liable" : names.length ? names.join(", ") : "—"}</td>
+                        <td style={{ textAlign: "left" }}>
+                          {r.communal ? "everyone liable" : names.length ? names.join(", ") : "—"}
+                        </td>
                       </tr>
                     );
                   })}
@@ -178,65 +192,77 @@ export function HowScreen() {
               </table>
             </div>
             <p>
-              The month's rent of <b>{money(state.currency, c.rentPence)}</b> is divided across those shares, then divided
-              again by the {D} days in the month. That gives every room a <b>daily cost</b>. Then, for each day:
+              The month's rent of <b>{money(state.currency, c.rentPence)}</b> is divided across
+              those shares, then divided again by the {D} days in the month. That gives every room a{" "}
+              <b>daily cost</b>. Then, for each day:
             </p>
             <ul>
               <li>
-                A <b>private</b> room's daily cost is split equally between whoever is liable for it that day — normally
-                one person.
+                A <b>private</b> room's daily cost is split equally between whoever is liable for it
+                that day — normally one person.
               </li>
               <li>
-                A <b>shared</b> room's daily cost, and the hallway's, is split equally between everyone liable that day.
+                A <b>shared</b> room's daily cost, and the hallway's, is split equally between
+                everyone liable that day.
               </li>
             </ul>
             <p>
-              Add up all thirty-or-so days and you have each person's rent. Because every room is charged out in full
-              every single day, the rent always adds back to exactly {money(state.currency, c.rentPence)}.
+              Add up all thirty-or-so days and you have each person's rent. Because every room is
+              charged out in full every single day, the rent always adds back to exactly{" "}
+              {money(state.currency, c.rentPence)}.
             </p>
 
             <h2 id="how-away">Being away, and sharing a room</h2>
             <p>
-              Your rent changes when <b>somebody else is in your bedroom</b> — that is the main thing the day-by-day
-              model buys you.
+              Your rent changes when <b>somebody else is in your bedroom</b> — that is the main
+              thing the day-by-day model buys you.
             </p>
             <p>
-              If a second person is in a bedroom on a given day, that day's cost for that room is split{" "}
-              <b>equally between the two of them</b>. A visitor staying 10 nights of a 30-day month in someone's room
-              therefore picks up 10 × ½ = 5 days' worth — about <b>16.7%</b> of that room for the month — and the person
-              whose room it is pays the other 83.3%. Nobody pays for the room twice, and the room never goes unpaid.
+              If a second person is in a bedroom on a given day, that day's cost for that room is
+              split <b>equally between the two of them</b>. A visitor staying 10 nights of a 30-day
+              month in someone's room therefore picks up 10 × ½ = 5 days' worth — about <b>16.7%</b>{" "}
+              of that room for the month — and the person whose room it is pays the other 83.3%.
+              Nobody pays for the room twice, and the room never goes unpaid.
             </p>
             <div className="callout good">
               <p>
-                This is why a visitor makes the month <em>cheaper</em> for everyone else rather than more expensive: they
-                take on a slice of a bedroom, a slice of the shared space for the days they are liable, and a slice of the
-                usage bills for the nights they are here.
+                This is why a visitor makes the month <em>cheaper</em> for everyone else rather than
+                more expensive: they take on a slice of a bedroom, a slice of the shared space for
+                the days they are liable, and a slice of the usage bills for the nights they are
+                here.
               </p>
             </div>
 
             <h2 id="how-flow">The decisions, as a flowchart</h2>
-            <p>Three diagrams cover the whole app. Rent and bills are decided separately, and a month moves through a fixed lifecycle.</p>
+            <p>
+              Three diagrams cover the whole app. Rent and bills are decided separately, and a month
+              moves through a fixed lifecycle.
+            </p>
             <h3>1 · How rent is decided — for one room, on one day</h3>
             <RentFlow />
             <p className="flow-cap">
-              Run this for every room and every day, add it up, and you have each person's rent. The only thing that
-              changes anyone's rent is who is in which bedroom, on which days.
+              Run this for every room and every day, add it up, and you have each person's rent. The
+              only thing that changes anyone's rent is who is in which bedroom, on which days.
             </p>
             <h3>2 · How a bill is decided — for one bill, for one person</h3>
             <BillFlow />
             <p className="flow-cap">
-              That is the entire rule. There is no second kind of bill and no second kind of person — the only input is
-              how many days each person was here.
+              That is the entire rule. There is no second kind of bill and no second kind of person
+              — the only input is how many days each person was here.
             </p>
             <h3>3 · What happens to a month</h3>
             <MonthFlow />
             <p className="flow-cap">
-              A month's own figure always describes that month alone. Differences never quietly move next month's number
-              — they sit on the Balances tab until somebody settles them, in full or in part.
+              A month's own figure always describes that month alone. Differences never quietly move
+              next month's number — they sit on the Balances tab until somebody settles them, in
+              full or in part.
             </p>
 
             <h2 id="how-bills">How each bill splits</h2>
-            <p>Every bill is one of two kinds, and that is the only thing you have to decide about it:</p>
+            <p>
+              Every bill is one of two kinds, and that is the only thing you have to decide about
+              it:
+            </p>
             <div className="htable-wrap" style={{ marginBottom: 14 }}>
               <table className="htable">
                 <thead>
@@ -254,15 +280,17 @@ export function HowScreen() {
                         {state.currency}
                         {(+b.est || 0).toLocaleString()}
                       </td>
-                      <td style={{ textAlign: "left" }}>Split across the days each person was here</td>
+                      <td style={{ textAlign: "left" }}>
+                        Split across the days each person was here
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <p>
-              Every bill splits the same way: <b>your days divided by everyone's days</b>. Energy is worked out exactly
-              like council tax. The current bills are:
+              Every bill splits the same way: <b>your days divided by everyone's days</b>. Energy is
+              worked out exactly like council tax. The current bills are:
             </p>
             <div className="htable-wrap" style={{ marginBottom: 14 }}>
               <table className="htable">
@@ -310,62 +338,67 @@ export function HowScreen() {
 
             <h2 id="how-trueup">Estimates, real bills and true-ups</h2>
             <p>
-              Bills are paid by direct debit at an estimated amount, and the real figure only shows up later. So every
-              line in a month has two boxes: an <b>estimate</b> and a <b>realised</b> figure.
+              Bills are paid by direct debit at an estimated amount, and the real figure only shows
+              up later. So every line in a month has two boxes: an <b>estimate</b> and a{" "}
+              <b>realised</b> figure.
             </p>
             <ol>
               <li>
-                At the start of the month you enter the estimates — usually just what the direct debit takes. Each new
-                month starts with last month's realised figures already filled in, so most of the time there's nothing to
-                type.
+                At the start of the month you enter the estimates — usually just what the direct
+                debit takes. Each new month starts with last month's realised figures already filled
+                in, so most of the time there's nothing to type.
               </li>
               <li>
-                Everyone pays against that. Press <b>Lock these as the amounts collected</b> and the app records exactly
-                what each person was asked for.
+                Everyone pays against that. Press <b>Lock these as the amounts collected</b> and the
+                app records exactly what each person was asked for.
               </li>
               <li>
-                When the real bills arrive you type them into the <b>realised</b> column. Every split is instantly
-                recomputed on the real numbers.
+                When the real bills arrive you type them into the <b>realised</b> column. Every
+                split is instantly recomputed on the real numbers.
               </li>
               <li>
-                The difference between what someone was asked for and what their share really was becomes a <b>true-up</b>
-                , and it lands on their balance.
+                The difference between what someone was asked for and what their share really was
+                becomes a <b>true-up</b>, and it lands on their balance.
               </li>
             </ol>
             <div className="callout good">
               <p style={{ marginBottom: 0 }}>
-                <b>Prices go up.</b> Nothing about a bill is fixed in stone — the <b>usual amount</b> on the Household
-                tab is only the figure a fresh month starts from, and every month's estimate and realised figure are
-                editable at any time. When the energy tariff or the council tax rises, change the usual amount and future
+                <b>Prices go up.</b> Nothing about a bill is fixed in stone — the{" "}
+                <b>usual amount</b> on the Household tab is only the figure a fresh month starts
+                from, and every month's estimate and realised figure are editable at any time. When
+                the energy tariff or the council tax rises, change the usual amount and future
                 months follow; months already recorded keep the numbers they were actually charged.
               </p>
             </div>
             <div className="callout warn">
               <p>
-                Nothing is silently changed. A month's own figure always reflects that month alone; the difference sits
-                visibly on the Balances tab until it is settled. If a realised figure was typed in wrong and you correct
-                it, the true-up simply recomputes — there is no double-counting, because the true-up is derived from the
-                numbers rather than stored as an event.
+                Nothing is silently changed. A month's own figure always reflects that month alone;
+                the difference sits visibly on the Balances tab until it is settled. If a realised
+                figure was typed in wrong and you correct it, the true-up simply recomputes — there
+                is no double-counting, because the true-up is derived from the numbers rather than
+                stored as an event.
               </p>
             </div>
 
             <h2 id="how-balances">Who owes whom</h2>
             <p>
-              <b>{pay.name}</b> pays the landlord and every provider, and everyone settles with {pay.name}. That means
-              there is never a chain of debts to untangle — every balance is between one person and {pay.name}, and it is
-              either owed in or owed out.
+              <b>{pay.name}</b> pays the landlord and every provider, and everyone settles with{" "}
+              {pay.name}. That means there is never a chain of debts to untangle — every balance is
+              between one person and {pay.name}, and it is either owed in or owed out.
             </p>
             <p>
-              A negative balance means an over-payment: the person paid more than their share turned out to be, and is
-              owed a refund. This keeps working for people who have <b>moved out</b> — they stay on the Balances tab with
-              whatever they are owed until it is paid, even though they no longer appear in any month.
+              A negative balance means an over-payment: the person paid more than their share turned
+              out to be, and is owed a refund. This keeps working for people who have{" "}
+              <b>moved out</b> — they stay on the Balances tab with whatever they are owed until it
+              is paid, even though they no longer appear in any month.
             </p>
             <p>
-              Pressing <b>Settle…</b> asks how much actually changed hands. Accept the suggested figure to clear the
-              balance in full, or type a smaller amount to record a <b>partial payment</b> — the remainder stays
-              outstanding, ready to settle again later. Every payment, full or partial, is listed under{" "}
-              <em>Every adjustment</em> exactly as recorded, and any of them can be undone (which puts the balance back to
-              what it was before).
+              Pressing <b>Settle…</b> asks how much actually changed hands. Accept the suggested
+              figure to clear the balance in full, or type a smaller amount to record a{" "}
+              <b>partial payment</b> — the remainder stays outstanding, ready to settle again later.
+              Every payment, full or partial, is listed under <em>Every adjustment</em> exactly as
+              recorded, and any of them can be undone (which puts the balance back to what it was
+              before).
             </p>
 
             <h2 id="how-example">A worked example</h2>
@@ -392,126 +425,145 @@ export function HowScreen() {
               />
             ) : (
               <p>
-                No-one is charged anything this month yet, so there is nothing to work through. Add a stint on{" "}
-                <b>Who's here</b> and this section fills itself in.
+                No-one is charged anything this month yet, so there is nothing to work through. Add
+                a stint on <b>Who's here</b> and this section fills itself in.
               </p>
             )}
 
             <h2 id="how-decisions">The decisions behind this</h2>
-            <p>Some of these are judgement calls rather than facts. They are written down so that everyone is arguing about the same thing:</p>
+            <p>
+              Some of these are judgement calls rather than facts. They are written down so that
+              everyone is arguing about the same thing:
+            </p>
             <ul>
               <li>
-                <b>Rent is by weighted area, not per head.</b> Rooms are not the same size and it would be strange to
-                pretend otherwise.
+                <b>Rent is by weighted area, not per head.</b> Rooms are not the same size and it
+                would be strange to pretend otherwise.
               </li>
               <li>
-                <b>Bathrooms and hallways are weighted below 1×.</b> They are shared and you don't live in them; counting
-                them at full area would overstate them.
+                <b>Bathrooms and hallways are weighted below 1×.</b> They are shared and you don't
+                live in them; counting them at full area would overstate them.
               </li>
               <li>
-                <b>Rent follows liability, not presence.</b> Explained above — the room is yours whether or not you are in
-                it.
+                <b>Rent follows liability, not presence.</b> Explained above — the room is yours
+                whether or not you are in it.
               </li>
               <li>
-                <b>Shared space also follows liability.</b> Your things are still in the kitchen and the lounge, and the
-                space is still reserved for you.
+                <b>Shared space also follows liability.</b> Your things are still in the kitchen and
+                the lounge, and the space is still reserved for you.
               </li>
               <li>
-                <b>Bills split by days, not by usage.</b> Metering who used which kilowatt is impossible and arguing about
-                it is worse. Days in the house is the one number nobody disputes.
+                <b>Bills split by days, not by usage.</b> Metering who used which kilowatt is
+                impossible and arguing about it is worse. Days in the house is the one number nobody
+                disputes.
               </li>
               <li>
-                <b>One kind of person.</b> A housemate and a friend staying a fortnight are the same thing to the maths —
-                a name with some days. Categories only ever created arguments about which category someone was in.
+                <b>One kind of person.</b> A housemate and a friend staying a fortnight are the same
+                thing to the maths — a name with some days. Categories only ever created arguments
+                about which category someone was in.
               </li>
               <li>
-                <b>Dates live in exactly one place.</b> Stints. Anything else would need keeping in step, and eventually
-                wouldn't be.
+                <b>Dates live in exactly one place.</b> Stints. Anything else would need keeping in
+                step, and eventually wouldn't be.
               </li>
               <li>
-                <b>A stint means paying, not present.</b> Being away doesn't reduce your share; ending your stint does.
+                <b>A stint means paying, not present.</b> Being away doesn't reduce your share;
+                ending your stint does.
               </li>
               <li>
-                <b>Every bedroom must be occupied every day.</b> The rent is charged for it either way, so an empty room
-                is money with nowhere to go.
+                <b>Every bedroom must be occupied every day.</b> The rent is charged for it either
+                way, so an empty room is money with nowhere to go.
               </li>
               <li>
-                <b>A shared bedroom splits equally, day by day.</b> Not by total person-days, which would over-charge a
-                short visit.
+                <b>A shared bedroom splits equally, day by day.</b> Not by total person-days, which
+                would over-charge a short visit.
               </li>
               <li>
-                <b>Everything reconciles to the penny.</b> Shares are rounded so they add back to the exact bill, rather
-                than leaving stray pennies with nobody.
+                <b>Everything reconciles to the penny.</b> Shares are rounded so they add back to
+                the exact bill, rather than leaving stray pennies with nobody.
               </li>
               <li>
-                <b>Real bills beat estimates.</b> A month is only finished when the realised figures are in.
+                <b>Real bills beat estimates.</b> A month is only finished when the realised figures
+                are in.
               </li>
             </ul>
 
             <h2 id="how-faq">Questions people ask</h2>
             <h3>I was away for three weeks. Why is my share the same?</h3>
             <p>
-              Because your stint still covers those days, which is correct if you kept your room and stayed on the bills.
-              The room was yours, the broadband ran, the council tax was identical. If you genuinely stopped paying for
-              that period, shorten the stint — but then somebody else has to be in that bedroom for those days.
+              Because your stint still covers those days, which is correct if you kept your room and
+              stayed on the bills. The room was yours, the broadband ran, the council tax was
+              identical. If you genuinely stopped paying for that period, shorten the stint — but
+              then somebody else has to be in that bedroom for those days.
             </p>
             <h3>So when does my share actually go down?</h3>
             <p>
-              When your stint is shorter, or when somebody else is in your bedroom for some of it. Those are the only two
-              levers, and both live on the Who's here tab.
+              When your stint is shorter, or when somebody else is in your bedroom for some of it.
+              Those are the only two levers, and both live on the Who's here tab.
             </p>
             <h3>Someone stayed in my room for a week. Why did my rent go down?</h3>
-            <p>They took on half of that room's cost for each day they were in it. That comes off your share, not anyone else's.</p>
+            <p>
+              They took on half of that room's cost for each day they were in it. That comes off
+              your share, not anyone else's.
+            </p>
             <h3>Why is my energy share not exactly a quarter?</h3>
             <p>
-              Because somebody was here for a different number of days than you. With four people here the whole month it
-              is exactly a quarter; add a five-day guest and everybody's share moves a little.
+              Because somebody was here for a different number of days than you. With four people
+              here the whole month it is exactly a quarter; add a five-day guest and everybody's
+              share moves a little.
             </p>
             <h3>The bill went up this year. Do I have to rebuild anything?</h3>
             <p>
-              No. Change the usual amount on the Household tab and future months start from it. Every month's figures stay
-              editable, and past months keep what they were actually charged.
+              No. Change the usual amount on the Household tab and future months start from it.
+              Every month's figures stay editable, and past months keep what they were actually
+              charged.
             </p>
             <h3>The number changed after I'd already paid. Why?</h3>
             <p>
-              The real bill came in different from the direct-debit estimate. The month's figure was recomputed on the
-              real number, and the difference is on your balance — either you owe a little more or you are due a refund.
+              The real bill came in different from the direct-debit estimate. The month's figure was
+              recomputed on the real number, and the difference is on your balance — either you owe
+              a little more or you are due a refund.
             </p>
             <h3>I've moved out and I'm owed money. Will it get lost?</h3>
             <p>No. Balances survive leaving. You stay on the Balances tab until you are paid.</p>
             <h3>Can I see how a number was reached?</h3>
             <p>
-              Yes — tap your name on the <b>This month</b> tab. Every line shows the amount, the basis it was split on,
-              and how many nights or liable-days you were counted for.
+              Yes — tap your name on the <b>This month</b> tab. Every line shows the amount, the
+              basis it was split on, and how many nights or liable-days you were counted for.
             </p>
             <h3>Somebody is moving out. What do I do?</h3>
             <p>
-              End their stint on the day they go, and extend or add someone else's stint so their bedroom still has an
-              occupant. Nothing else — there is no move-out date to set. Next month copies this one, so they simply won't
-              appear.
+              End their stint on the day they go, and extend or add someone else's stint so their
+              bedroom still has an occupant. Nothing else — there is no move-out date to set. Next
+              month copies this one, so they simply won't appear.
             </p>
             <h3>Do I have to set this up every month?</h3>
             <p>
-              No. A new month starts as a copy of the previous one, with full-month stints extended to fit. In a month
-              where nothing changed there is nothing at all to do except type the bills in.
+              No. A new month starts as a copy of the previous one, with full-month stints extended
+              to fit. In a month where nothing changed there is nothing at all to do except type the
+              bills in.
             </p>
 
-            <h2 id="how-check">Check the maths</h2>
-            <p>
-              This runs every stored month and verifies that the split adds back to the bill exactly — that the rent
-              shares total the rent, that each bill's shares total that bill, and that nothing has fallen down a rounding
-              crack.
-            </p>
-            <button
-              className="btn"
-              onClick={() => {
-                ensureMonth(state, key);
-                setCheck({ kind: "done", results: runChecks(state) });
-              }}
-            >
-              Run the check
-            </button>
-            {check.kind === "done" ? <CheckOut results={check.results} /> : null}
+            {store.isAdmin() ? (
+              <>
+                <h2 id="how-check">Check the maths</h2>
+                <p>
+                  This runs every stored month and verifies that the split adds back to the bill exactly
+                  — that the rent shares total the rent, that each bill's shares total that bill, and
+                  that nothing has fallen down a rounding crack.
+                </p>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    ensureMonth(state, key);
+                    setCheck({ kind: "done", results: runChecks(state) });
+                  }}
+                >
+                  Run the check
+                </button>
+                {check.kind === "done" ? <CheckOut results={check.results} /> : null}
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -544,8 +596,8 @@ function ExampleBlock(props: {
   return (
     <>
       <p>
-        Take <b>{props.name}</b> in {props.month}. The month has {props.days} days. They were liable for {props.liable} of
-        them and slept here on {props.nights} nights.
+        Take <b>{props.name}</b> in {props.month}. The month has {props.days} days. They were liable
+        for {props.liable} of them and slept here on {props.nights} nights.
       </p>
       <div className="worked">
         <table>
@@ -564,9 +616,10 @@ function ExampleBlock(props: {
         </table>
       </div>
       <p>
-        Add up that last column for everyone and you get {money(props.currency, props.grand)} — exactly the{" "}
-        {money(props.currency, props.rentPence)} of rent plus {money(props.currency, props.billsTotalPence)} of bills the
-        household owes. Not a penny more or less.
+        Add up that last column for everyone and you get {money(props.currency, props.grand)} —
+        exactly the {money(props.currency, props.rentPence)} of rent plus{" "}
+        {money(props.currency, props.billsTotalPence)} of bills the household owes. Not a penny more
+        or less.
       </p>
     </>
   );
@@ -613,7 +666,12 @@ function CheckOut(props: { results: CheckResult[] }) {
 function RentFlow() {
   return (
     <div className="flow">
-      <svg viewBox="0 0 900 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flowchart of how rent is decided for one room on one day">
+      <svg
+        viewBox="0 0 900 470"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="Flowchart of how rent is decided for one room on one day"
+      >
         <defs>
           <marker id="fa" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
             <path d="M0 0 L7 3.2 L0 6.4 z" fill="var(--muted-2)" />
@@ -696,7 +754,12 @@ function RentFlow() {
 function BillFlow() {
   return (
     <div className="flow">
-      <svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flowchart of how one bill is divided">
+      <svg
+        viewBox="0 0 900 250"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="Flowchart of how one bill is divided"
+      >
         <rect className="n-box" x="250" y="12" width="280" height="40" rx="10" />
         <text className="t" x="390" y="37" textAnchor="middle">
           One bill, one person
@@ -736,7 +799,12 @@ function BillFlow() {
 function MonthFlow() {
   return (
     <div className="flow">
-      <svg viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flowchart of the monthly estimate, lock, realise and true-up cycle">
+      <svg
+        viewBox="0 0 900 330"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="Flowchart of the monthly estimate, lock, realise and true-up cycle"
+      >
         <rect className="n-box" x="20" y="20" width="200" height="52" rx="10" />
         <text className="t" x="120" y="41" textAnchor="middle">
           Estimates entered

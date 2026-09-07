@@ -35,7 +35,11 @@ export function captureConfig(state: HouseholdState): MonthConfig {
   };
 }
 
-export function withMonthConfig<T>(state: HouseholdState, M: MonthRecord | undefined, fn: () => T): T {
+export function withMonthConfig<T>(
+  state: HouseholdState,
+  M: MonthRecord | undefined,
+  fn: () => T,
+): T {
   if (!M || !M.config) return fn();
   const saved: Partial<HouseholdState> = {};
   CONFIG_FIELDS.forEach((k) => {
@@ -101,11 +105,15 @@ export function weightedAreas(state: HouseholdState): {
     ...r,
     wa: (+r.w || 0) * (+r.l || 0) * (typeof r.weight === "number" ? r.weight : 1),
   }));
-  const ca = (+state.catchall || 0) * (typeof state.catchallWeight === "number" ? state.catchallWeight : 1);
+  const ca =
+    (+state.catchall || 0) * (typeof state.catchallWeight === "number" ? state.catchallWeight : 1);
   return { rooms, ca, total: rooms.reduce((s, r) => s + r.wa, 0) + ca };
 }
 
-export function distribute(weights: Record<string, number>, totalPence: number): Record<string, number> {
+export function distribute(
+  weights: Record<string, number>,
+  totalPence: number,
+): Record<string, number> {
   const out: Record<string, number> = {};
   Object.keys(weights).forEach((id) => {
     out[id] = 0;
@@ -166,7 +174,12 @@ export function computeRent(
   const anyLiable = Object.keys(seen);
 
   if (total <= 0) {
-    return { bedroom: {}, shared: {}, raw: {}, warn: ["No floor area has been entered, so rent cannot be allocated."] };
+    return {
+      bedroom: {},
+      shared: {},
+      raw: {},
+      warn: ["No floor area has been entered, so rent cannot be allocated."],
+    };
   }
   if (!anyLiable.length) {
     return {
@@ -196,7 +209,7 @@ export function computeRent(
       });
     });
     if (ca > 0) {
-      const each = (rentPence * (ca / total) / D) / liable.length;
+      const each = (rentPence * (ca / total)) / D / liable.length;
       liable.forEach((id) => {
         rawShare[id] = (rawShare[id] || 0) + each;
       });
@@ -294,7 +307,10 @@ export function monthAllActual(state: HouseholdState, M: MonthRecord | undefined
   return lines.length > 0 && lines.every((l) => l && typeof l.act === "number");
 }
 
-export function monthStatus(state: HouseholdState, key: string): "projected" | "collecting" | "reconciled" {
+export function monthStatus(
+  state: HouseholdState,
+  key: string,
+): "projected" | "collecting" | "reconciled" {
   const M = state.months[key];
   if (!M) return "projected";
   if (monthAllActual(state, M)) return "reconciled";
@@ -459,7 +475,9 @@ export function computeBalances(state: HouseholdState): {
   });
 
   items.sort(
-    (a, b) => (b.monthKey || "").localeCompare(a.monthKey || "") || (b.date || "").localeCompare(a.date || ""),
+    (a, b) =>
+      (b.monthKey || "").localeCompare(a.monthKey || "") ||
+      (b.date || "").localeCompare(a.date || ""),
   );
   return { bal, items, known: [...known] };
 }
@@ -471,17 +489,23 @@ export function runChecks(state: HouseholdState): CheckResult[] {
     const rentSum = Object.values(c.rentShare).reduce((s, v) => s + v, 0);
     const problems: string[] = [];
     if (rentSum !== c.rentPence) {
-      problems.push(`rent shares add to ${money(state.currency, rentSum)}, not ${money(state.currency, c.rentPence)}`);
+      problems.push(
+        `rent shares add to ${money(state.currency, rentSum)}, not ${money(state.currency, c.rentPence)}`,
+      );
     }
     c.lines.forEach((l) => {
       const s = Object.values(l.shares).reduce((a, v) => a + v, 0);
       if (s !== l.amount) {
-        problems.push(`${l.name} shares add to ${money(state.currency, s)}, not ${money(state.currency, l.amount)}`);
+        problems.push(
+          `${l.name} shares add to ${money(state.currency, s)}, not ${money(state.currency, l.amount)}`,
+        );
       }
     });
     Object.keys(c.rentShare).forEach((id) => {
       if ((c.bedroom[id] || 0) + (c.shared[id] || 0) !== c.rentShare[id]) {
-        problems.push(`${personName(state, id)}'s bedroom and shared parts don't add to their rent`);
+        problems.push(
+          `${personName(state, id)}'s bedroom and shared parts don't add to their rent`,
+        );
       }
     });
     results.push({ key: k, ok: problems.length === 0, problems, warn: c.warn });
@@ -497,7 +521,9 @@ export function monthSummaryText(state: HouseholdState, key: string): string {
   lines.push(`${monthLabel(key)} — rent & bills`);
   lines.push("");
   lines.push(`Rent ${money(state.currency, c.rentPence)}`);
-  c.lines.forEach((l) => lines.push(`${l.name} ${money(state.currency, l.amount)}${l.isActual ? "" : " (estimate)"}`));
+  c.lines.forEach((l) =>
+    lines.push(`${l.name} ${money(state.currency, l.amount)}${l.isActual ? "" : " (estimate)"}`),
+  );
   lines.push(`Total ${money(state.currency, c.grand)}`);
   lines.push("");
   state.people.forEach((p) => {

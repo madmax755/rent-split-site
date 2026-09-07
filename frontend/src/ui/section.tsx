@@ -30,7 +30,10 @@ type SectionProps = {
 
 export function Section(props: SectionProps) {
   return (
-    <div className={`section${props.open ? " open" : ""}`} style={props.padded === false ? { padding: 0 } : undefined}>
+    <div
+      className={`section${props.open ? " open" : ""}`}
+      style={props.padded === false ? { padding: 0 } : undefined}
+    >
       <div className="section-head" onClick={props.onToggle}>
         <div className="section-icon" style={{ background: props.iconBg }}>
           {props.icon}
@@ -49,7 +52,10 @@ export function Section(props: SectionProps) {
           <path d="M9 6l6 6-6 6" />
         </svg>
       </div>
-      <div className="section-body" style={props.padded === false ? { display: "block", padding: 20 } : undefined}>
+      <div
+        className="section-body"
+        style={props.padded === false ? { display: "block", padding: 20 } : undefined}
+      >
         {props.children}
       </div>
     </div>

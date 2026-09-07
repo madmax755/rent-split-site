@@ -14,8 +14,18 @@ export function useStore(): HouseholdStore {
   return store;
 }
 
-export function useHousehold(): { store: HouseholdStore; state: HouseholdState; version: number } {
+export function useHousehold(): {
+  store: HouseholdStore;
+  state: HouseholdState;
+  version: number;
+  activeTab: HouseholdState["activeTab"];
+} {
   const store = useStore();
-  const version = useSyncExternalStore(store.subscribe, () => store.version, () => store.version);
-  return { store, state: store.state, version };
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  return {
+    store,
+    state: store.state,
+    version: snap.version,
+    activeTab: store.state.activeTab,
+  };
 }

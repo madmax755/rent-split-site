@@ -23,14 +23,6 @@ export const DEFAULT_ROOMS: Room[] = [
   { id: "lounge", name: "Lounge", w: 4.78, l: 4.26, weight: 1.0, communal: true },
 ];
 
-export const V1_ROOM_RENAMES: Record<string, string> = { reception: "lounge" };
-export const V1_ROOM_NAMES: Record<string, string> = {
-  bed1: "Master Bedroom",
-  bed2: "2nd Bedroom",
-  bed3: "3rd Bedroom",
-  lounge: "Lounge",
-};
-
 export const DEFAULT_PEOPLE: Person[] = [
   { id: "p1", name: "Ach", isPayer: true, archived: false },
   { id: "p2", name: "Joe", isPayer: false, archived: false },
@@ -66,7 +58,9 @@ export const DEFAULT_SECTIONS_OPEN: Record<string, boolean> = {
   balhist: false,
   hpeople: true,
   hbills: true,
+  tenanthome: true,
   people: true,
+  access: true,
   property: false,
   bills: false,
   data: false,
@@ -79,7 +73,6 @@ export const DEFAULT_SECTIONS_OPEN: Record<string, boolean> = {
 
 export function freshHousehold(): HouseholdState {
   return {
-    v: 2,
     currency: "£",
     rent: DEFAULT_RENT,
     catchall: DEFAULT_CATCHALL,
