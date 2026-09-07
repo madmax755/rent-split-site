@@ -97,13 +97,38 @@ bun install --cwd frontend
 # ~/.local/share/uv/python, which ProtectHome=true then hides from rent-split (203/EXEC).
 uv sync --directory server --frozen --python /usr/bin/python3
 
-log "Building frontend"
-bun run --cwd frontend build
+# Vite empties outDir at the start of a build. Keep the last good tree so a
+# failed compile cannot 404 the live site.
+DIST_BACKUP=""
+if [[ -f frontend/dist/index.html ]]; then
+  DIST_BACKUP="$(mktemp -d /tmp/rent-split-dist.XXXXXX)"
+  cp -a frontend/dist/. "${DIST_BACKUP}/"
+fi
+restore_dist() {
+  if [[ -n "${DIST_BACKUP}" && -f "${DIST_BACKUP}/index.html" ]]; then
+    log "Restoring previous frontend/dist"
+    rm -rf frontend/dist
+    mkdir -p frontend/dist
+    cp -a "${DIST_BACKUP}/." frontend/dist/
+  fi
+}
 
+log "Building frontend"
+if ! bun run --cwd frontend build; then
+  restore_dist
+  log "Frontend build failed"
+  exit 1
+fi
 if [[ ! -f frontend/dist/index.html ]]; then
+  restore_dist
   log "Build failed — frontend/dist/index.html missing"
   exit 1
 fi
+rm -rf "${DIST_BACKUP}"
+
+# nginx (www-data) must traverse the deploy dir and read dist, but not data/.
+sudo chmod 2771 "${DEPLOY_DIR}"
+sudo chmod -R a+rX "${DEPLOY_DIR}/frontend/dist"
 
 log "Refreshing systemd unit"
 sudo cp deploy/rent-split.service /etc/systemd/system/rent-split.service
@@ -118,6 +143,13 @@ log "Restarting rent-split.service"
 sudo systemctl restart rent-split
 sleep 1
 sudo systemctl --no-pager --full status rent-split
+
+if [[ -f /etc/nginx/sites-enabled/tms.maxkendall.com || -f deploy/tms.maxkendall.com.conf ]]; then
+  log "Refreshing nginx site"
+  sudo cp deploy/tms.maxkendall.com.conf /etc/nginx/sites-enabled/tms.maxkendall.com
+  sudo nginx -t
+  sudo systemctl reload nginx
+fi
 
 log "Health check"
 curl -fsS "http://127.0.0.1:${PORT:-8080}/api/health"

@@ -41,7 +41,7 @@ bun run build
 bun start
 ```
 
-The server serves `frontend/dist` and `/api/*`. Put nginx in front with TLS (`deploy/nginx.conf.example`) and optionally run under systemd (`deploy/rent-split.service`).
+Locally, `bun start` serves `frontend/dist` and `/api/*` from one process. In production nginx serves the Vite build and reverse-proxies only `/api/*` to FastAPI (`deploy/nginx.conf.example`, `deploy/rent-split.service`).
 
 On first boot, if `data/` still has the old `rent-split.json` / `accounts.json` and the database is empty, they are imported. The JSON files are left in place.
 
@@ -52,7 +52,7 @@ Live install: systemd unit `rent-split.service`, app dir `/opt/rent-split-site`,
 GitHub Actions (`.github/workflows/deploy.yml`) on push to `main` (or manual dispatch):
 
 1. Self-hosted runner SSHs to `server1` as `max-kendall`
-2. Runs `deploy/remote-deploy.sh` — bootstrap/pull, frontend build, `uv sync`, refresh unit, `systemctl restart rent-split`
+2. Runs `deploy/remote-deploy.sh` — bootstrap/pull, frontend build, `uv sync`, refresh unit, `systemctl restart rent-split`, reload nginx (static `frontend/dist`, `/api/*` proxied)
 
 First run converts the old manual copy into a git checkout and keeps `data/` intact.
 

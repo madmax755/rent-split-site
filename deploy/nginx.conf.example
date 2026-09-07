@@ -1,15 +1,22 @@
-# nginx reverse proxy in front of the FastAPI server.
+# nginx in front of Rent Split.
 #
-# app.main serves the built frontend from frontend/dist AND the /api/*
-# endpoints from one process — nginx should proxy to that process's port,
-# not point at a static folder directly. Pointing nginx straight at dist
-# would bypass the password/session check on every /api/* request.
+# Serve the Vite build from disk. Reverse-proxy only /api/* to FastAPI.
+# Session cookies are Path=/ on the same host, so this split is fine.
+# Proxying the whole site through Python was leftover from the old Node
+# single-password wall; the login modal is public HTML now.
 #
 # Install (Debian/Ubuntu example):
 #   sudo cp nginx.conf.example /etc/nginx/sites-available/rent-split
 #   sudo ln -s /etc/nginx/sites-available/rent-split /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
 # Then get a certificate (e.g. `sudo certbot --nginx -d your-domain.example`).
+#
+# /opt/rent-split-site is 2771 so nginx can traverse to frontend/dist without
+# listing data/. After each frontend build, dist must be world-readable:
+#   chmod -R a+rX /opt/rent-split-site/frontend/dist
+#
+# Once this is live over https, set SECURE_COOKIE=1 in the server's
+# environment (see .env.example / rent-split.service).
 
 server {
     listen 80;
@@ -24,17 +31,28 @@ server {
     ssl_certificate     /etc/letsencrypt/live/your-domain.example/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/your-domain.example/privkey.pem;
 
-    location / {
+    root /opt/rent-split-site/frontend/dist;
+    index index.html;
+
+    location /api/ {
         proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         # Required: the API reads this for its login rate-limiter. Without
         # it every request looks like it comes from nginx's own IP.
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_http_version 1.1;
+        proxy_set_header X-Forwarded-Host $host;
+    }
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
     }
 }
-
-# Once this is live over https, set SECURE_COOKIE=1 in the server's
-# environment (see .env.example / rent-split.service) so the session
-# cookie gets the Secure flag.
