@@ -54,14 +54,13 @@ export function HowScreen() {
       <div className="section open" data-section="howbody" style={{ padding: 0 }}>
         <div className="section-body" style={{ display: "block", padding: 20 }}>
           <div className="toc">
-            {(store.isAdmin()
-              ? [...TOC, { id: "check", label: "Check the maths" }]
-              : TOC
-            ).map((s) => (
-              <a key={s.id} href={`#how-${s.id}`}>
-                {s.label}
-              </a>
-            ))}
+            {(store.isAdmin() ? [...TOC, { id: "check", label: "Check the maths" }] : TOC).map(
+              (s) => (
+                <a key={s.id} href={`#how-${s.id}`}>
+                  {s.label}
+                </a>
+              ),
+            )}
           </div>
           <div className="prose">
             <h2 id="how-what">What this is</h2>
@@ -548,9 +547,9 @@ export function HowScreen() {
               <>
                 <h2 id="how-check">Check the maths</h2>
                 <p>
-                  This runs every stored month and verifies that the split adds back to the bill exactly
-                  — that the rent shares total the rent, that each bill's shares total that bill, and
-                  that nothing has fallen down a rounding crack.
+                  This runs every stored month and verifies that the split adds back to the bill
+                  exactly — that the rent shares total the rent, that each bill's shares total that
+                  bill, and that nothing has fallen down a rounding crack.
                 </p>
                 <button
                   className="btn"

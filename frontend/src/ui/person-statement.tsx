@@ -37,8 +37,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
   const roomTxt =
     Object.keys(roomsUsed)
       .map(
-        (rid) =>
-          `${roomName(rid)}${(roomsUsed[rid] ?? 0) < liable ? ` (${roomsUsed[rid]}d)` : ""}`,
+        (rid) => `${roomName(rid)}${(roomsUsed[rid] ?? 0) < liable ? ` (${roomsUsed[rid]}d)` : ""}`,
       )
       .join(", ") || "no room";
   const perNight = nights ? total / nights : 0;
@@ -146,7 +145,11 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             {monthHasActuals(M) ? (
               <div className={`lineitem ${diff > 0 ? "debit" : diff < 0 ? "credit" : ""}`}>
                 <span className="li-name">
-                  {diff > 0 ? "Underpaid — owes" : diff < 0 ? "Overpaid — refund due" : "Settled exactly"}
+                  {diff > 0
+                    ? "Underpaid — owes"
+                    : diff < 0
+                      ? "Overpaid — refund due"
+                      : "Settled exactly"}
                 </span>
                 <span className="li-how">
                   difference between the real bills and what was collected · carried to Balances

@@ -10,7 +10,15 @@ import {
   monthSummaryText,
   weightedAreas,
 } from "../domain/engine";
-import { fmtNum, money, money0, personName, plural, rangeText, signedMoney } from "../domain/format";
+import {
+  fmtNum,
+  money,
+  money0,
+  personName,
+  plural,
+  rangeText,
+  signedMoney,
+} from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, seedStints } from "../domain/months";
 import type { HouseholdState, MonthCompute, MonthLine, MonthRecord } from "../domain/types";

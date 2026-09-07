@@ -9,7 +9,8 @@
 #   PORT=8080
 #   DATA_DIR=/opt/rent-split-site/data
 #   SECURE_COOKIE=1
-#   RENT_SPLIT_PASSWORD=...
+#   RENT_SPLIT_ADMIN_USER=asoni
+#   RENT_SPLIT_ADMIN_PASSWORD=...
 #   RENT_SPLIT_SECRET=...
 #
 # Logs: journalctl -u rent-split -f

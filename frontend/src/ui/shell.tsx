@@ -135,9 +135,7 @@ export function AppShell(props: AppShellProps) {
       );
     }
     return tab.id !== "home";
-  }).map((tab) =>
-    tenant && tab.id === "balances" ? { ...tab, label: "Settle" } : tab,
-  );
+  }).map((tab) => (tenant && tab.id === "balances" ? { ...tab, label: "Settle" } : tab));
 
   const M = ensureMonth(state, state.currentMonth);
   const needsBills = M.collected && !monthAllActual(state, M);
@@ -438,9 +436,7 @@ export function AppShell(props: AppShellProps) {
       <div className={`sheet-backdrop${props.loginOpen ? " open" : ""}`}>
         <div className="sheet" style={{ maxWidth: 380 }}>
           <div className="sheet-title">Rent Split</div>
-          <div className="sheet-sub">
-            Sign in with the username the household admin gave you.
-          </div>
+          <div className="sheet-sub">Sign in with the username the household admin gave you.</div>
           <form onSubmit={(e) => void submitLogin(e)} autoComplete="on">
             <div className="field" style={{ marginTop: 6 }}>
               <input

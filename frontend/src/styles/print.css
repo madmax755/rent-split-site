@@ -1,11 +1,40 @@
-
-  @media print {
-    .topbar, .tabs, #tweaks-toggle, #tweaks-panel, .toast, .btn, .btn-ghost, .btn-add, .btn-icon,
-    .screen:not(.active), [data-screen="stints"], [data-screen="setup"], [data-screen="settings"], [data-screen="how"],
-    [data-section="mnote"], .helper { display: none !important; }
-    body { background: #fff; color: #000; }
-    .section, .stmt-card, .kpi { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
-    .stmt-body { display: block !important; }
-    .section-body { display: block !important; }
-    .chev { display: none !important; }
+@media print {
+  .topbar,
+  .tabs,
+  #tweaks-toggle,
+  #tweaks-panel,
+  .toast,
+  .btn,
+  .btn-ghost,
+  .btn-add,
+  .btn-icon,
+  .screen:not(.active),
+  [data-screen="stints"],
+  [data-screen="setup"],
+  [data-screen="settings"],
+  [data-screen="how"],
+  [data-section="mnote"],
+  .helper {
+    display: none !important;
   }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .section,
+  .stmt-card,
+  .kpi {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+  .stmt-body {
+    display: block !important;
+  }
+  .section-body {
+    display: block !important;
+  }
+  .chev {
+    display: none !important;
+  }
+}

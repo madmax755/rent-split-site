@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { plural } from "../domain/format";
 import type { AccountRole, PublicAccount } from "../lib/api-types";
 import { useHousehold } from "../store/household-context";
 import { Icon } from "./icon";
@@ -22,13 +23,15 @@ export function AccessSection(props: AccessSectionProps) {
     if (!store.adapter.listAccounts) return;
     const list = await store.adapter.listAccounts();
     setAccounts(list);
+    setError("");
   }
 
   useEffect(() => {
+    if (store.needAuth || !store.adapter.listAccounts) return;
     void refresh().catch((e: unknown) => {
       setError(e instanceof Error ? e.message : "Couldn't load logins.");
     });
-  }, [store]);
+  }, [store, store.needAuth, store.session?.accountId]);
 
   async function onBecameTenant(): Promise<void> {
     const me = (await store.adapter.me?.()) ?? store.session;
@@ -48,10 +51,15 @@ export function AccessSection(props: AccessSectionProps) {
     <Section
       id="access"
       title="Who can sign in"
-      meta={`${accounts.filter((a) => a.enabled).length} logins`}
+      meta={plural(accounts.filter((a) => a.enabled).length, "login")}
       iconBg="var(--p5)"
       open={!!state.sectionsOpen.access}
-      onToggle={() => props.onToggleSection("access")}
+      onToggle={() => {
+        props.onToggleSection("access");
+        void refresh().catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : "Couldn't load logins.");
+        });
+      }}
       icon={
         <Icon>
           <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -165,21 +173,14 @@ export function AccessSection(props: AccessSectionProps) {
                   strokeWidth="2.5"
                   strokeLinecap="round"
                 >
-                  {account.enabled ? (
-                    <path d="M6 6l12 12M6 18L18 6" />
-                  ) : (
-                    <path d="M5 12h14" />
-                  )}
+                  {account.enabled ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M5 12h14" />}
                 </svg>
               </button>
             ) : null}
           </div>
         );
       })}
-      <div
-        className="bill-card"
-        style={{ marginTop: 12 }}
-      >
+      <div className="bill-card" style={{ marginTop: 12 }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Add a login</div>
         <div className="dim-grid">
           <div>

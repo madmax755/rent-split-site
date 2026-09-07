@@ -18,7 +18,9 @@ export function promptSettlement(opts: {
   if (!v) return { kind: "invalid", message: "Nothing to settle." };
   const owedNow = Math.abs(v);
   const direction =
-    v > 0 ? `${opts.personName} pays ${opts.payerName}` : `${opts.payerName} refunds ${opts.personName}`;
+    v > 0
+      ? `${opts.personName} pays ${opts.payerName}`
+      : `${opts.payerName} refunds ${opts.personName}`;
   const raw = prompt(
     `${direction} — how much changed hands?\n\n${money(opts.currency, owedNow)} is currently outstanding. Leave this as it is to settle in full, or enter a smaller amount to record a partial payment.`,
     (owedNow / 100).toFixed(2),

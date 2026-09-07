@@ -26,15 +26,23 @@ export function TenantHomeScreen(props: TenantHomeScreenProps) {
   const { bal } = computeBalances(state);
   const myBal = personId ? Math.round(bal[personId] || 0) : 0;
   const status = monthStatus(state, key);
-  const ask = personId ? (M.collected ? chargedFor(state, key)[personId] || 0 : c.totals[personId] || 0) : 0;
-  const statusLabel = { projected: "Projected", collecting: "Awaiting real bills", reconciled: "Reconciled" }[
-    status
-  ];
+  const ask = personId
+    ? M.collected
+      ? chargedFor(state, key)[personId] || 0
+      : c.totals[personId] || 0
+    : 0;
+  const statusLabel = {
+    projected: "Projected",
+    collecting: "Awaiting real bills",
+    reconciled: "Reconciled",
+  }[status];
 
   if (!personId || !me) {
     return (
       <div className={screenClass("home", activeTab)} data-screen="home">
-        <div className="empty">This login is not linked to a person yet. Ask the household admin.</div>
+        <div className="empty">
+          This login is not linked to a person yet. Ask the household admin.
+        </div>
       </div>
     );
   }
@@ -64,7 +72,13 @@ export function TenantHomeScreen(props: TenantHomeScreenProps) {
     <div className={screenClass("home", activeTab)} data-screen="home">
       <div className="kpis">
         <Kpi
-          label={myBal > 0 ? `You owe ${pay.name}` : myBal < 0 ? `${pay.name} owes you` : "Running balance"}
+          label={
+            myBal > 0
+              ? `You owe ${pay.name}`
+              : myBal < 0
+                ? `${pay.name} owes you`
+                : "Running balance"
+          }
           value={money0(state.currency, Math.abs(myBal))}
           sub={myBal === 0 ? "all square" : "true-ups not yet settled"}
         />
@@ -107,14 +121,7 @@ export function TenantHomeScreen(props: TenantHomeScreenProps) {
             </button>
           ) : null}
         </div>
-        <PersonStatementCard
-          state={state}
-          personId={personId}
-          monthKey={key}
-          M={M}
-          c={c}
-          open
-        />
+        <PersonStatementCard state={state} personId={personId} monthKey={key} M={M} c={c} open />
       </Section>
     </div>
   );
@@ -164,9 +171,7 @@ export function TenantHistoryScreen() {
   const personId = store.session?.personId;
   const keys = Object.keys(state.months).sort();
   if (!personId) {
-    return (
-      <div className={screenClass("history", activeTab)} data-screen="history" />
-    );
+    return <div className={screenClass("history", activeTab)} data-screen="history" />;
   }
   return (
     <div className={screenClass("history", activeTab)} data-screen="history">
@@ -224,10 +229,7 @@ export function TenantBalancesScreen() {
 
   if (!personId || !me) {
     return (
-      <div
-        className={screenClass("balances", activeTab)}
-        data-screen="balances"
-      >
+      <div className={screenClass("balances", activeTab)} data-screen="balances">
         <div className="empty">This login is not linked to a person yet.</div>
       </div>
     );
@@ -264,7 +266,9 @@ export function TenantBalancesScreen() {
     <div className={screenClass("balances", activeTab)} data-screen="balances">
       <div className="kpis">
         <Kpi
-          label={myBal > 0 ? `You owe ${pay.name}` : myBal < 0 ? `${pay.name} owes you` : "All square"}
+          label={
+            myBal > 0 ? `You owe ${pay.name}` : myBal < 0 ? `${pay.name} owes you` : "All square"
+          }
           value={money0(state.currency, Math.abs(myBal))}
           sub="running balance after true-ups"
         />
@@ -316,7 +320,8 @@ export function TenantBalancesScreen() {
                 className="btn-icon"
                 title="Undo this record"
                 onClick={() => {
-                  if (!confirm("Undo this record? The balance will go back to what it was.")) return;
+                  if (!confirm("Undo this record? The balance will go back to what it was."))
+                    return;
                   void store.undoSettle(x.id ?? "").then(() => store.announce("Undone."));
                 }}
               >

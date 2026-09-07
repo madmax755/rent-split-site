@@ -17,9 +17,7 @@ export function HistoryScreen(props: HistoryScreenProps) {
   const keys = sortedMonthKeys(state);
 
   if (!keys.length) {
-    return (
-      <div className={screenClass("history", activeTab)} data-screen="history" />
-    );
+    return <div className={screenClass("history", activeTab)} data-screen="history" />;
   }
 
   const cache: Record<string, MonthCompute> = {};

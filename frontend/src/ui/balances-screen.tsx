@@ -1,6 +1,14 @@
 import { monthLabel } from "../domain/dates";
 import { computeBalances, monthHasActuals } from "../domain/engine";
-import { money, money0, payer, personById, personColor, plural, signedMoney } from "../domain/format";
+import {
+  money,
+  money0,
+  payer,
+  personById,
+  personColor,
+  plural,
+  signedMoney,
+} from "../domain/format";
 import { promptSettlement } from "../domain/settle";
 import { sortedMonthKeys } from "../domain/months";
 import { useHousehold } from "../store/household-context";

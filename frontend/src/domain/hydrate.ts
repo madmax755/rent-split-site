@@ -1,7 +1,13 @@
 import { deep } from "./clone";
 import { normalise } from "./normalise";
 import { APP_ID, SCHEMA, unwrap } from "./schema";
-import { SNAPSHOT_FIELDS, type DataEnvelope, type HouseholdState, type Preset, type Snapshot } from "./types";
+import {
+  SNAPSHOT_FIELDS,
+  type DataEnvelope,
+  type HouseholdState,
+  type Preset,
+  type Snapshot,
+} from "./types";
 import { serializeData } from "./snapshot";
 
 export type HydrateOutcome = true | false | "tooNew";
