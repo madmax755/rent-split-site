@@ -37,6 +37,9 @@ fi
 
 cd "${DEPLOY_DIR}"
 
+# Repo is owned by rent-split; deploy runs as max-kendall (group member).
+git config --global --add safe.directory "${DEPLOY_DIR}" 2>/dev/null || true
+
 # --- bootstrap: turn a manual copy into a git checkout, keeping data/ ---
 if [[ ! -d .git ]]; then
   log "No git repo yet — bootstrapping from ${REPO_URL} (${REF})"
@@ -78,6 +81,7 @@ if [[ ! -w "${DEPLOY_DIR}" ]]; then
   sudo chmod -R g+rwX "${DEPLOY_DIR}"
 fi
 
+# Bootstrap already left the tree at REF; still re-sync so retries are idempotent.
 sync_to_ref
 
 log "Installing dependencies"
