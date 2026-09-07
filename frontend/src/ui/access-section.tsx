@@ -3,6 +3,7 @@ import { plural } from "../domain/format";
 import type { AccountRole, PublicAccount } from "../lib/api-types";
 import { useHousehold } from "../store/household-context";
 import { EmptyState, Panel } from "./kit";
+import { TextPromptDialog } from "./text-prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ export function AccessSection() {
   const [personId, setPersonId] = useState("");
   const [role, setRole] = useState<AccountRole>("tenant");
   const [error, setError] = useState("");
+  const [passwordResetFor, setPasswordResetFor] = useState<PublicAccount | null>(null);
   const canManage = !!store.adapter.listAccounts;
 
   async function refresh(): Promise<void> {
@@ -48,6 +50,7 @@ export function AccessSection() {
   const payerName = state.people.find((p) => p.isPayer)?.name ?? "the payer";
 
   return (
+    <>
     <Panel
       id="logins"
       title="Who can sign in"
@@ -97,25 +100,13 @@ export function AccessSection() {
                   Make admin
                 </Button>
               ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const next = prompt(`New password for ${account.username}?`);
-                  if (!next) return;
-                  void store.adapter
-                    .patchAccount?.(account.id, { password: next })
-                    .then(() => {
-                      store.announce("Password updated — they will need to sign in again.");
-                      return refresh();
-                    })
-                    .catch((e: unknown) =>
-                      setError(e instanceof Error ? e.message : "Couldn't set password."),
-                    );
-                }}
-              >
-                Reset password
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPasswordResetFor(account)}
+                >
+                  Reset password
+                </Button>
               <NativeSelect
                 value={account.personId ?? ""}
                 onChange={(e) => {
@@ -216,5 +207,34 @@ export function AccessSection() {
         </div>
       </div>
     </Panel>
+    <TextPromptDialog
+      request={
+        passwordResetFor
+          ? {
+              title: `Reset password for ${passwordResetFor.username}`,
+              description: "They will need to sign in again with the new password.",
+              label: "New password",
+              type: "password",
+              confirmLabel: "Update password",
+            }
+          : null
+      }
+      onClose={() => setPasswordResetFor(null)}
+      onConfirm={(next) => {
+        const account = passwordResetFor;
+        if (!account) return;
+        void store.adapter
+          .patchAccount?.(account.id, { password: next })
+          .then(() => {
+            store.announce("Password updated — they will need to sign in again.");
+            setPasswordResetFor(null);
+            return refresh();
+          })
+          .catch((e: unknown) =>
+            setError(e instanceof Error ? e.message : "Couldn't set password."),
+          );
+      }}
+    />
+    </>
   );
 }

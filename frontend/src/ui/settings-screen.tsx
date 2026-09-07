@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SCHEMA, STORAGE_KEY } from "../domain/schema";
 import { snapshotCurrent } from "../domain/snapshot";
 import { sortedMonthKeys } from "../domain/months";
@@ -5,6 +6,7 @@ import { plural } from "../domain/format";
 import { useHousehold } from "../store/household-context";
 import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { PageHeader, Panel, Screen } from "./kit";
+import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +29,7 @@ export type SettingsScreenProps = {
 export function SettingsScreen(props: SettingsScreenProps) {
   const { store, state, activeTab } = useHousehold();
   const a = store.adapter;
+  const [savingProperty, setSavingProperty] = useState(false);
 
   return (
     <Screen id="settings" active={activeTab === "settings"}>
@@ -179,23 +182,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
               })}
             </div>
           )}
-          <Button
-            className="mt-3"
-            variant="outline"
-            onClick={() => {
-              const name = prompt(
-                "Name for this property?",
-                `Property ${state.presets.length + 1}`,
-              );
-              if (!name || !name.trim()) return;
-              const t = name.trim();
-              if (state.presets.some((p) => p.name === t)) {
-                if (!confirm(`"${t}" already exists. Overwrite it?`)) return;
-              }
-              store.saveAsProperty(t);
-              store.announce("Saved.");
-            }}
-          >
+          <Button className="mt-3" variant="outline" onClick={() => setSavingProperty(true)}>
             Save current as new property
           </Button>
         </Panel>
@@ -274,6 +261,28 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </div>
         </Panel>
       </div>
+      <TextPromptDialog
+        request={
+          savingProperty
+            ? {
+                title: "Save as a property",
+                description: "A snapshot of the current household, rooms, bills and people.",
+                label: "Property name",
+                defaultValue: `Property ${state.presets.length + 1}`,
+                confirmLabel: "Save",
+              }
+            : null
+        }
+        onClose={() => setSavingProperty(false)}
+        onConfirm={(name) => {
+          if (state.presets.some((p) => p.name === name)) {
+            if (!confirm(`"${name}" already exists. Overwrite it?`)) return;
+          }
+          store.saveAsProperty(name);
+          setSavingProperty(false);
+          store.announce("Saved.");
+        }}
+      />
     </Screen>
   );
 }

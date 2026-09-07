@@ -102,11 +102,11 @@ export function HistoryScreen() {
                       )}
                     </TableCell>
                     {ids.map((id) => (
-                      <TableCell key={id} className="tabular text-right">
+                      <TableCell key={id} className="tabular-nums text-right">
                         {c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}
                       </TableCell>
                     ))}
-                    <TableCell className="tabular text-right font-semibold">
+                    <TableCell className="tabular-nums text-right font-semibold">
                       {money(state.currency, tot)}
                     </TableCell>
                   </TableRow>
@@ -115,14 +115,14 @@ export function HistoryScreen() {
               <TableRow>
                 <TableCell className="font-semibold">All months</TableCell>
                 {ids.map((id) => (
-                  <TableCell key={id} className="tabular text-right font-semibold">
+                  <TableCell key={id} className="tabular-nums text-right font-semibold">
                     {money(
                       state.currency,
                       keys.reduce((s, k) => s + (cache[k]?.totals[id] || 0), 0),
                     )}
                   </TableCell>
                 ))}
-                <TableCell className="tabular text-right font-semibold">
+                <TableCell className="tabular-nums text-right font-semibold">
                   {money(
                     state.currency,
                     keys.reduce(
@@ -156,7 +156,7 @@ export function HistoryScreen() {
                   <div key={b.id} className="rounded-xl bg-muted/50 p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="font-medium">{b.name}</div>
-                      <div className="tabular text-xs text-muted-foreground">
+                      <div className="tabular-nums text-xs text-muted-foreground">
                         {realisedVals.length
                           ? `avg ${state.currency}${avg.toFixed(2)} realised`
                           : "no realised figures yet"}

@@ -179,10 +179,10 @@ export function TenantHistoryScreen() {
                 }}
               >
                 <TableCell>{monthLabel(k)}</TableCell>
-                <TableCell className="tabular text-right">
+                <TableCell className="tabular-nums text-right">
                   {money(state.currency, c.totals[personId] || 0)}
                 </TableCell>
-                <TableCell className="tabular text-right">
+                <TableCell className="tabular-nums text-right">
                   {month.collected ? money(state.currency, asked) : "—"}
                 </TableCell>
               </TableRow>
@@ -261,7 +261,7 @@ export function TenantBalancesScreen() {
               </div>
               <div
                 className={cn(
-                  "tabular font-semibold",
+                  "tabular-nums font-semibold",
                   x.amount > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400",
                 )}
               >

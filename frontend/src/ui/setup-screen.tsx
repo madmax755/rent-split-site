@@ -13,8 +13,10 @@ import { CycleDayField } from "./cycle-day-field";
 import { MoneyInput, PageHeader, Panel, Screen } from "./kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function isCurrency(v: string): v is CurrencySymbol {
   return v === "£" || v === "$" || v === "€";
@@ -37,25 +39,30 @@ export function SetupScreen() {
         title="Household"
         description="People, rooms, bills and the standing rent — the house as it is set up, not this month's figures."
       />
-      <nav className="mb-5 flex flex-wrap gap-2 text-sm">
-        {[
-          ["#people", "People"],
-          ["#rooms", "Rooms"],
-          ["#bills", "Bills"],
-          ["#rent", "Rent"],
-          ["#logins", "Logins"],
-        ].map(([href, label]) => (
-          <a
-            key={href}
-            href={href}
-            className="rounded-full border bg-card px-3 py-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-
-      <div className="grid gap-5">
+      <Tabs defaultValue="people" className="gap-5">
+        <TabsList
+          variant="line"
+          className="h-auto w-full flex-wrap justify-start gap-1 rounded-none border-b bg-transparent p-0"
+        >
+          <TabsTrigger value="people" className="px-3">
+            People
+          </TabsTrigger>
+          <TabsTrigger value="rooms" className="px-3">
+            Rooms
+          </TabsTrigger>
+          <TabsTrigger value="bills" className="px-3">
+            Bills
+          </TabsTrigger>
+          <TabsTrigger value="rent" className="px-3">
+            Rent
+          </TabsTrigger>
+          {store.adapter.listAccounts ? (
+            <TabsTrigger value="logins" className="px-3">
+              Logins
+            </TabsTrigger>
+          ) : null}
+        </TabsList>
+        <TabsContent value="people">
         <Panel
           id="people"
           title="People"
@@ -203,7 +210,9 @@ export function SetupScreen() {
             Add someone
           </Button>
         </Panel>
+        </TabsContent>
 
+        <TabsContent value="rooms">
         <Panel
           id="rooms"
           title="Rooms"
@@ -229,20 +238,33 @@ export function SetupScreen() {
                       });
                     }}
                   />
-                  <Button
-                    size="sm"
-                    variant={room.communal ? "default" : "outline"}
-                    onClick={() => {
-                      store.mutate(() => {
-                        const r = store.state.rooms.find((x) => x.id === room.id);
-                        if (!r) return;
-                        r.communal = !r.communal;
-                      });
-                    }}
-                  >
-                    {room.communal ? "Shared" : "Private"}
-                  </Button>
-                  <span className="tabular text-xs text-muted-foreground">
+                  <ButtonGroup>
+                    <Button
+                      size="sm"
+                      variant={room.communal ? "outline" : "default"}
+                      onClick={() => {
+                        store.mutate(() => {
+                          const r = store.state.rooms.find((x) => x.id === room.id);
+                          if (r) r.communal = false;
+                        });
+                      }}
+                    >
+                      Private bedroom
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={room.communal ? "default" : "outline"}
+                      onClick={() => {
+                        store.mutate(() => {
+                          const r = store.state.rooms.find((x) => x.id === room.id);
+                          if (r) r.communal = true;
+                        });
+                      }}
+                    >
+                      Shared space
+                    </Button>
+                  </ButtonGroup>
+                  <span className="tabular-nums text-xs text-muted-foreground">
                     {fmtNum(area)} m² · weighted {fmtNum(weighted)} m²
                   </span>
                   {state.rooms.length > 1 ? (
@@ -343,7 +365,9 @@ export function SetupScreen() {
             are split among everyone liable that day.
           </p>
         </Panel>
+        </TabsContent>
 
+        <TabsContent value="bills">
         <Panel
           id="bills"
           title="Bills"
@@ -474,7 +498,9 @@ export function SetupScreen() {
             Add a bill
           </Button>
         </Panel>
+        </TabsContent>
 
+        <TabsContent value="rent">
         <Panel
           id="rent"
           title="Standing rent & shared space"
@@ -553,9 +579,14 @@ export function SetupScreen() {
             it enters the calculation as {fmtNum(ca)} m², so it accounts for {hallPct} of the rent.
           </p>
         </Panel>
+        </TabsContent>
 
-        <AccessSection />
-      </div>
+        {store.adapter.listAccounts ? (
+          <TabsContent value="logins" keepMounted>
+            <AccessSection />
+          </TabsContent>
+        ) : null}
+      </Tabs>
     </Screen>
   );
 }
@@ -575,7 +606,7 @@ function DimField(props: {
       <div className="flex items-center gap-1.5">
         <Input
           type="number"
-          className="tabular"
+          className="tabular-nums"
           step={props.step ?? 0.01}
           min={0}
           value={props.value}

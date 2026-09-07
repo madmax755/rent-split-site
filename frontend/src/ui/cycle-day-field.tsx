@@ -24,7 +24,7 @@ export function CycleDayField(props: CycleDayFieldProps) {
           type="number"
           min={1}
           max={31}
-          className="tabular"
+          className="tabular-nums"
           value={day}
           onChange={(e) => {
             const v = parseInt(e.target.value, 10);

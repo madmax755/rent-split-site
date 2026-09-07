@@ -158,7 +158,7 @@ export function MonthScreen() {
                   }}
                 />
               </div>
-              <div className="tabular text-right text-xs text-muted-foreground">
+              <div className="tabular-nums text-right text-xs text-muted-foreground">
                 {fmtNum(weightedAreas(state).total, 1)} m² weighted
               </div>
               <div className="text-right text-xs text-muted-foreground">fixed</div>
@@ -472,7 +472,7 @@ function BillRow(props: BillRowProps) {
         />
       </div>
       <div
-        className={`tabular text-right text-xs font-semibold ${
+        className={`tabular-nums text-right text-xs font-semibold ${
           delta === null || delta === 0
             ? "text-muted-foreground"
             : delta > 0

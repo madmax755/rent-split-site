@@ -73,7 +73,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             {p.name}
             {p.isPayer ? <Badge variant="secondary">pays the bills</Badge> : null}
           </div>
-          <div className="tabular text-xs text-muted-foreground">
+          <div className="tabular-nums text-xs text-muted-foreground">
             {calendar
               ? `here ${liable} of ${D} days`
               : `rent ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
@@ -81,7 +81,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
           </div>
         </div>
         <div className="text-right">
-          <div className="tabular font-heading text-lg font-semibold">
+          <div className="tabular-nums font-heading text-lg font-semibold">
             {money(state.currency, total)}
           </div>
           <div className="text-[11px] text-muted-foreground">
@@ -178,7 +178,7 @@ function Line(props: LineProps) {
       <span className="min-w-0 flex-1 text-xs text-muted-foreground">{props.how}</span>
       <span
         className={cn(
-          "tabular whitespace-nowrap font-medium",
+          "tabular-nums whitespace-nowrap font-medium",
           props.tone === "credit" && "text-emerald-600 dark:text-emerald-400",
           props.tone === "debit" && "text-destructive",
         )}

@@ -206,7 +206,7 @@ export function AppShell(props: AppShellProps) {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
-          <NavGroup title="This month" items={work} active={activeTab} alert={tabAlert} onGo={go} />
+          <NavGroup title="Work" items={work} active={activeTab} alert={tabAlert} onGo={go} />
           {house.length ? (
             <NavGroup
               title="The house"

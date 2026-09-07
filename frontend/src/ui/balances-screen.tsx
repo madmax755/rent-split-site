@@ -115,7 +115,7 @@ export function BalancesScreen() {
                     <div className="text-right">
                       <div
                         className={cn(
-                          "tabular text-lg font-semibold",
+                          "tabular-nums text-lg font-semibold",
                           v > 0 && "text-destructive",
                           v < 0 && "text-emerald-600 dark:text-emerald-400",
                           v === 0 && "text-muted-foreground",
@@ -188,7 +188,7 @@ export function BalancesScreen() {
                     </div>
                     <div
                       className={cn(
-                        "tabular font-semibold",
+                        "tabular-nums font-semibold",
                         x.amount > 0
                           ? "text-destructive"
                           : "text-emerald-600 dark:text-emerald-400",

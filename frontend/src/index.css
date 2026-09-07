@@ -134,10 +134,6 @@
 }
 
 @layer components {
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
-
   .prose-help {
     @apply text-[0.95rem] leading-relaxed text-foreground/85;
   }
@@ -194,7 +190,7 @@
     @apply w-full text-sm;
   }
   .worked td {
-    @apply tabular py-1;
+    @apply tabular-nums py-1;
   }
   .worked td:last-child {
     @apply text-right font-medium;
@@ -262,7 +258,7 @@
   }
   table.htable th,
   table.htable td {
-    @apply tabular border-b px-3 py-2 text-right whitespace-nowrap;
+    @apply tabular-nums border-b px-3 py-2 text-right whitespace-nowrap;
   }
   table.htable th:first-child,
   table.htable td:first-child {

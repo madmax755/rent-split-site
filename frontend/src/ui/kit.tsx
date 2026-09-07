@@ -58,7 +58,7 @@ export function MonthSwitcher() {
       </div>
       <input
         type="month"
-        className="h-7 rounded-lg border border-input bg-transparent px-2 text-xs tabular outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="h-7 rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         value={key}
         onChange={(e) => {
           if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
@@ -95,10 +95,10 @@ export function KpiCard(props: KpiCardProps) {
         <CardDescription className="text-[11px] font-semibold tracking-wider uppercase">
           {props.label}
         </CardDescription>
-        <CardTitle className="tabular font-heading text-2xl tracking-tight">
+        <CardTitle className="tabular-nums font-heading text-2xl tracking-tight">
           {props.value}
         </CardTitle>
-        {props.sub ? <p className="tabular text-xs text-muted-foreground">{props.sub}</p> : null}
+        {props.sub ? <p className="tabular-nums text-xs text-muted-foreground">{props.sub}</p> : null}
       </CardHeader>
     </Card>
   );
@@ -127,7 +127,7 @@ export function MoneyInput(props: MoneyInputProps) {
       </InputGroupAddon>
       <InputGroupInput
         type="number"
-        className="tabular"
+        className="tabular-nums"
         step={props.step ?? 0.01}
         min={props.min}
         disabled={props.disabled}

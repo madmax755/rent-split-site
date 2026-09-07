@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { cycleDayInMonth, daysInMonth, dayDate, monthLabel } from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
@@ -9,6 +9,7 @@ import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
+import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -17,6 +18,7 @@ export function StintsScreen() {
   const { store, state, activeTab } = useHousehold();
   const selfOnly = store.isTenant();
   const myId = store.linkedPersonId();
+  const [addingPerson, setAddingPerson] = useState(false);
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
@@ -92,7 +94,7 @@ export function StintsScreen() {
                   return (
                     <div
                       key={d}
-                      className={`tabular text-center text-[9px] ${wk ? "font-bold text-foreground" : "text-muted-foreground"}`}
+                      className={`tabular-nums text-center text-[9px] ${wk ? "font-bold text-foreground" : "text-muted-foreground"}`}
                     >
                       {d % 2 === 1 || D <= 20 ? d : "\u00a0"}
                     </div>
@@ -137,7 +139,7 @@ export function StintsScreen() {
                         ? "Rent period starts"
                         : undefined
                     }
-                    className={`flex h-5 items-center justify-center rounded-[3px] bg-muted text-[9px] font-bold tabular text-muted-foreground ${
+                    className={`flex h-5 items-center justify-center rounded-[3px] bg-muted text-[9px] font-bold tabular-nums text-muted-foreground ${
                       state.rentCycleStartDay !== 1 &&
                       day.d === cycleDayInMonth(key, state.rentCycleStartDay)
                         ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
@@ -258,7 +260,7 @@ export function StintsScreen() {
                     day
                     <Input
                       type="number"
-                      className="w-14 text-center tabular"
+                      className="w-14 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.from}
@@ -272,7 +274,7 @@ export function StintsScreen() {
                     →
                     <Input
                       type="number"
-                      className="w-14 text-center tabular"
+                      className="w-14 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.to}
@@ -300,7 +302,7 @@ export function StintsScreen() {
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
-                  <span className="tabular text-xs text-muted-foreground">
+                  <span className="tabular-nums text-xs text-muted-foreground">
                     {plural(s.to - s.from + 1, "day")}
                   </span>
                   <div className="flex-1" />
@@ -393,29 +395,7 @@ export function StintsScreen() {
                   store.announce(`That's the limit of ${MAX_PEOPLE} people.`);
                   return;
                 }
-                const name = prompt("Who is it?", "Someone new");
-                if (name === null) return;
-                commitStints(() => {
-                  const daysN = daysInMonth(key);
-                  const room = store.state.rooms.find((r) => !r.communal)?.id ?? "";
-                  const person = {
-                    id: uid("p"),
-                    name: name.trim() || "Someone new",
-                    isPayer: false,
-                    archived: false,
-                  };
-                  store.state.people.push(person);
-                  const mid = Math.max(1, Math.round(daysN / 3));
-                  ensureMonth(store.state, key).stints.push({
-                    id: uid("st"),
-                    personId: person.id,
-                    roomId: room,
-                    from: mid,
-                    to: Math.min(daysN, mid + 6),
-                  });
-                });
-                store.setTab("stints");
-                store.announce("Added — set their dates and which bedroom they're in.");
+                setAddingPerson(true);
               }}
             >
               Add someone new
@@ -423,6 +403,44 @@ export function StintsScreen() {
           )}
         </div>
       </Panel>
+      <TextPromptDialog
+        request={
+          addingPerson
+            ? {
+                title: "Add someone new",
+                description: "They will get a short stint this month so you can set the dates.",
+                label: "Name",
+                defaultValue: "Someone new",
+                confirmLabel: "Add",
+              }
+            : null
+        }
+        onClose={() => setAddingPerson(false)}
+        onConfirm={(name) => {
+          commitStints(() => {
+            const daysN = daysInMonth(key);
+            const room = store.state.rooms.find((r) => !r.communal)?.id ?? "";
+            const person = {
+              id: uid("p"),
+              name: name || "Someone new",
+              isPayer: false,
+              archived: false,
+            };
+            store.state.people.push(person);
+            const mid = Math.max(1, Math.round(daysN / 3));
+            ensureMonth(store.state, key).stints.push({
+              id: uid("st"),
+              personId: person.id,
+              roomId: room,
+              from: mid,
+              to: Math.min(daysN, mid + 6),
+            });
+          });
+          setAddingPerson(false);
+          store.setTab("stints");
+          store.announce("Added — set their dates and which bedroom they're in.");
+        }}
+      />
     </Screen>
   );
 }
