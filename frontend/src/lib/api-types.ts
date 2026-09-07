@@ -64,6 +64,19 @@ export type SettleRequest = {
   force?: boolean;
 };
 
+export type PutStintsRequest = {
+  monthKey: string;
+  stints: Array<{
+    id: string;
+    personId: string;
+    roomId: string;
+    from: number;
+    to: number;
+  }>;
+  rev?: number;
+  force?: boolean;
+};
+
 export type DataEnvelope = {
   app: "rent-split";
   schema: number;

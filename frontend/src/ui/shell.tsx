@@ -129,6 +129,7 @@ export function AppShell(props: AppShellProps) {
       return (
         tab.id === "home" ||
         tab.id === "month" ||
+        tab.id === "stints" ||
         tab.id === "history" ||
         tab.id === "balances" ||
         tab.id === "how"

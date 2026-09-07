@@ -164,6 +164,7 @@ function RentSplitApp(_props: RentSplitAppProps) {
         <>
           <TenantHomeScreen onToggleSection={toggleSection} />
           <TenantMonthScreen onToggleSection={toggleSection} />
+          <StintsScreen onToggleSection={toggleSection} />
           <TenantHistoryScreen />
           <TenantBalancesScreen />
           <HowScreen />
@@ -242,7 +243,7 @@ async function boot(store: HouseholdStore): Promise<void> {
   }
   ensureMonth(store.state, store.state.currentMonth);
   if (store.isTenant()) {
-    const allowed = new Set(["home", "month", "history", "balances", "how"]);
+    const allowed = new Set(["home", "month", "stints", "history", "balances", "how"]);
     if (!allowed.has(store.state.activeTab)) store.state.activeTab = "home";
   }
   if (!store.readOnly && !store.isTenant()) {

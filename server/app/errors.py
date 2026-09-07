@@ -30,6 +30,11 @@ class NoHouseholdError(Exception):
         super().__init__(message)
 
 
+class StintWriteError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class ApiError(Exception):
     def __init__(self, status: int, message: str, rev: int | None = None) -> None:
         self.status = status

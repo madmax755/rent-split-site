@@ -106,7 +106,8 @@ export function TenantHomeScreen(props: TenantHomeScreenProps) {
       >
         <p className="helper" style={{ marginTop: 0 }}>
           {pay.name} pays the landlord and the bills. You settle with them. This page is only your
-          numbers — tap a line on the statement if you want the working.
+          numbers — tap a line on the statement if you want the working. To mark when you were in or
+          out, use the <b>Who's here</b> tab.
         </p>
         <div className="row-h" style={{ gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           <button
@@ -114,6 +115,9 @@ export function TenantHomeScreen(props: TenantHomeScreenProps) {
             onClick={() => void copyText(paymentLine, (m) => store.announce(m))}
           >
             Copy payment line
+          </button>
+          <button className="btn-ghost btn" onClick={() => store.setTab("stints")}>
+            My dates…
           </button>
           {myBal !== 0 ? (
             <button className="btn-ghost btn" onClick={() => void settleMine()}>

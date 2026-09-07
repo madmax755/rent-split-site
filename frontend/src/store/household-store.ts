@@ -31,6 +31,8 @@ export class HouseholdStore {
 
   private listeners = new Set<() => void>();
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
+  private ownStintsTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingOwnStints = new Set<string>();
   private warned = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private toast: ToastFn = () => {};
@@ -77,6 +79,32 @@ export class HouseholdStore {
 
   isTenant(): boolean {
     return this.session?.role === "tenant";
+  }
+
+  linkedPersonId(): string | null {
+    return this.session?.personId ?? null;
+  }
+
+  queueOwnStintsSave(): void {
+    if (this.readOnly) return;
+    this.saveLocal();
+    if (!this.adapter.saveMyStints) return;
+    this.pendingOwnStints.add(this.state.currentMonth);
+    this.dirty = true;
+    this.notify();
+    if (this.ownStintsTimer) clearTimeout(this.ownStintsTimer);
+    this.ownStintsTimer = setTimeout(() => {
+      void this.pushOwnStints().catch(() => {});
+    }, 1200);
+  }
+
+  async flushOwnStints(): Promise<void> {
+    if (this.ownStintsTimer) {
+      clearTimeout(this.ownStintsTimer);
+      this.ownStintsTimer = null;
+    }
+    if (!this.pendingOwnStints.size || !this.adapter.saveMyStints) return;
+    await this.pushOwnStints();
   }
 
   async init(): Promise<void> {
@@ -178,6 +206,56 @@ export class HouseholdStore {
         if (fresh) {
           hydrate(this.state, fresh);
         }
+        this.dirty = false;
+      } else {
+        this.lastError = e instanceof Error ? e.message : "Could not reach the server.";
+      }
+      throw e;
+    } finally {
+      this.pushing = false;
+      this.notify();
+    }
+  }
+
+  async pushOwnStints(force = false): Promise<void> {
+    const saveMyStints = this.adapter.saveMyStints;
+    const personId = this.linkedPersonId();
+    if (!saveMyStints || !personId || this.pushing) return;
+    const months = [...this.pendingOwnStints];
+    if (!months.length) return;
+    this.pushing = true;
+    this.notify();
+    try {
+      for (const monthKey of months) {
+        const mine = (this.state.months[monthKey]?.stints || []).filter(
+          (s) => s.personId === personId,
+        );
+        await saveMyStints(monthKey, mine, force);
+        this.pendingOwnStints.delete(monthKey);
+      }
+      this.dirty = this.pendingOwnStints.size > 0;
+      this.lastError = "";
+      const fresh = await this.adapter.load();
+      if (fresh) this.applyHydrate(fresh);
+    } catch (e) {
+      if (e instanceof NeedAuthError) {
+        this.needAuth = true;
+        this.lastError = "Signed out.";
+      } else if (e instanceof ConflictError) {
+        this.lastError = "Someone else saved first.";
+        const keepMine = confirm(
+          "Somebody else saved changes while you were editing.\n\n" +
+            "OK  — keep my version and overwrite theirs\n" +
+            "Cancel — throw mine away and load theirs",
+        );
+        if (keepMine) {
+          this.pushing = false;
+          this.notify();
+          return this.pushOwnStints(true);
+        }
+        const fresh = await this.adapter.load();
+        if (fresh) this.applyHydrate(fresh);
+        this.pendingOwnStints.clear();
         this.dirty = false;
       } else {
         this.lastError = e instanceof Error ? e.message : "Could not reach the server.";

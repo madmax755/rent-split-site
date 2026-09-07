@@ -175,6 +175,15 @@ class SettleRequest(BaseModel):
     force: bool = False
 
 
+class PutStintsRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    monthKey: str = ""
+    stints: list[StintModel] = Field(default_factory=list)
+    rev: int | None = None
+    force: bool = False
+
+
 class DisablePersonRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 

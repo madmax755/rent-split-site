@@ -1,6 +1,6 @@
 import { LS } from "./browser-storage";
 import { BACKUP_KEY, STORAGE_KEY } from "../domain/schema";
-import type { DataEnvelope, LedgerEntry } from "../domain/types";
+import type { DataEnvelope, LedgerEntry, Stint } from "../domain/types";
 import type {
   AccountRole,
   CreateAccountRequest,
@@ -54,6 +54,7 @@ export type StorageAdapter = {
   deleteAccount?: (id: string) => Promise<void>;
   settle?: (entry: LedgerEntry) => Promise<void>;
   undoSettle?: (id: string) => Promise<void>;
+  saveMyStints?: (monthKey: string, stints: Stint[], force?: boolean) => Promise<void>;
   disablePersonLogin?: (personId: string) => Promise<void>;
 };
 
@@ -218,6 +219,17 @@ export function httpAdapter(base: string): StorageAdapter {
     },
     async undoSettle(id) {
       const r = await req("/api/ledger/" + encodeURIComponent(id), { method: "DELETE" });
+      if (!r.ok) throw new Error(await readError(r));
+      const j = (await r.json()) as PutDataResponse;
+      rev = j.rev;
+    },
+    async saveMyStints(monthKey, stints, force) {
+      const r = await req("/api/stints", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthKey, stints, rev: rev ?? undefined, force: !!force }),
+      });
+      if (r.status === 409) throw new ConflictError();
       if (!r.ok) throw new Error(await readError(r));
       const j = (await r.json()) as PutDataResponse;
       rev = j.rev;

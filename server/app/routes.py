@@ -35,6 +35,7 @@ from app.errors import (
     ApiError,
     ConflictError,
     NoHouseholdError,
+    StintWriteError,
 )
 from app.household import (
     append_ledger,
@@ -45,6 +46,7 @@ from app.household import (
     person_name,
     put_household,
     remove_ledger,
+    replace_person_stints,
     tenant_document,
 )
 from app.models import Account, utc_now_iso
@@ -55,6 +57,7 @@ from app.schemas import (
     LoginRequest,
     PatchAccountRequest,
     PutDataRequest,
+    PutStintsRequest,
     SessionInfo,
     SettleRequest,
 )
@@ -281,6 +284,38 @@ def settle(request: Request, db: Db, settings: Cfg, body: SettleRequest) -> JSON
             db.rollback()
             raise
     return json_ok(200, {"rev": doc.rev, "savedAt": doc.savedAt, "entry": entry.model_dump()})
+
+
+@router.put("/api/stints")
+def put_stints(request: Request, db: Db, settings: Cfg, body: PutStintsRequest) -> JSONResponse:
+    account = require_account(request, db, settings)
+    if not account.person_id:
+        return json_error(403, "This login is not linked to a person yet.")
+    person_id = account.person_id
+    for stint in body.stints:
+        if stint.personId != person_id:
+            return json_error(403, "You can only edit your own stints.")
+
+    def mutate(household: Any) -> None:
+        replace_person_stints(household, body.monthKey, person_id, body.stints)
+
+    with locked_write():
+        try:
+            doc = mutate_household(db, mutate, body.rev, body.force, settings)
+            db.commit()
+        except StintWriteError as err:
+            db.rollback()
+            return json_error(400, str(err))
+        except ConflictError as err:
+            db.rollback()
+            return json_error(409, "conflict", err.rev)
+        except NoHouseholdError as err:
+            db.rollback()
+            return json_error(400, str(err))
+        except Exception:
+            db.rollback()
+            raise
+    return json_ok(200, {"rev": doc.rev, "savedAt": doc.savedAt})
 
 
 @router.delete("/api/ledger/{entry_id}")

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import json
+import re
+import secrets
 import threading
+from calendar import monthrange
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import HOUSEHOLD_ID, MAX_BACKUPS, Settings, get_settings
-from app.errors import ConflictError, NoHouseholdError
+from app.errors import ConflictError, NoHouseholdError, StintWriteError
 from app.models import (
     Bill,
     BillPayer,
@@ -29,8 +32,13 @@ from app.schemas import (
     DataEnvelope,
     HouseholdData,
     LedgerEntryModel,
+    StintModel,
     StoredDocument,
 )
+
+MONTH_KEY_RE = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+MAX_OWN_STINTS = 62
+STINT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 _write_lock = threading.Lock()
 
@@ -453,6 +461,141 @@ def mutate_household(
     household.saved_at = utc_now_iso()
     session.flush()
     return assemble_document(household)
+
+
+def parse_month_key(key: str) -> tuple[int, int]:
+    match = MONTH_KEY_RE.match(key)
+    if match is None:
+        raise StintWriteError("Need a month like 2026-04.")
+    return int(match.group(1)), int(match.group(2))
+
+
+def days_in_month_key(key: str) -> int:
+    year, month = parse_month_key(key)
+    return monthrange(year, month)[1]
+
+
+def _month_by_key(household: Household, key: str) -> Month | None:
+    for month in household.months:
+        if month.key == key:
+            return month
+    return None
+
+
+def _previous_month(household: Household, key: str) -> Month | None:
+    earlier = sorted(month.key for month in household.months if month.key < key)
+    if not earlier:
+        return None
+    return _month_by_key(household, earlier[-1])
+
+
+def _new_stint_id() -> str:
+    return "st" + secrets.token_hex(8)
+
+
+def _ensure_month_for_own_stints(household: Household, key: str, person_id: str) -> Month:
+    existing = _month_by_key(household, key)
+    if existing is not None:
+        return existing
+    new_days = days_in_month_key(key)
+    prev = _previous_month(household, key)
+    month = Month(
+        key=key,
+        household_id=household.id,
+        rent=None,
+        collected=False,
+        charged_is_null=True,
+        charged_at="",
+        note="",
+        config=None,
+    )
+    household.months.append(month)
+    prev_lines = {line.bill_id: line for line in prev.lines} if prev is not None else {}
+    for bill in sorted(household.bills, key=lambda row: row.sort_index):
+        prev_line = prev_lines.get(bill.id)
+        est = float(prev_line.act) if prev_line is not None and prev_line.act is not None else float(bill.est)
+        month.lines.append(MonthLine(month_key=key, bill_id=bill.id, est=est, act=None))
+    if prev is not None:
+        prev_days = days_in_month_key(prev.key)
+        copies = [stint for stint in prev.stints if stint.person_id != person_id]
+        for index, stint in enumerate(sorted(copies, key=lambda row: row.sort_index)):
+            from_day = min(new_days, max(1, stint.from_day))
+            to_day = new_days if stint.to_day >= prev_days else min(new_days, stint.to_day)
+            to_day = max(from_day, to_day)
+            month.stints.append(
+                Stint(
+                    id=_new_stint_id(),
+                    month_key=key,
+                    person_id=stint.person_id,
+                    room_id=stint.room_id,
+                    from_day=from_day,
+                    to_day=to_day,
+                    sort_index=index,
+                )
+            )
+    return month
+
+
+def replace_person_stints(
+    household: Household, month_key: str, person_id: str, stints: list[StintModel]
+) -> None:
+    days = days_in_month_key(month_key)
+    if len(stints) > MAX_OWN_STINTS:
+        raise StintWriteError(f"That's more than {MAX_OWN_STINTS} stints.")
+    rooms = {room.id: room for room in household.rooms}
+    people = {person.id for person in household.people}
+    if person_id not in people:
+        raise StintWriteError("This login is not linked to a person in the household.")
+    seen_ids: set[str] = set()
+    for stint in stints:
+        if not STINT_ID_RE.match(stint.id):
+            raise StintWriteError("Each stint needs a short id.")
+        if stint.id in seen_ids:
+            raise StintWriteError("Two stints have the same id.")
+        seen_ids.add(stint.id)
+        if stint.personId != person_id:
+            raise StintWriteError("You can only edit your own stints.")
+        room = rooms.get(stint.roomId)
+        if room is None:
+            raise StintWriteError("Unknown bedroom.")
+        if room.communal:
+            raise StintWriteError("Stints have to be in a bedroom, not a shared room.")
+        if stint.from_day < 1 or stint.to < stint.from_day or stint.to > days:
+            raise StintWriteError(f"Days have to be between 1 and {days}.")
+    month = _ensure_month_for_own_stints(household, month_key, person_id)
+    occupied: dict[str, Stint] = {}
+    for other in household.months:
+        for row in other.stints:
+            occupied[row.id] = row
+    for stint in stints:
+        existing = occupied.get(stint.id)
+        if existing is not None and (existing.person_id != person_id or existing.month_key != month_key):
+            raise StintWriteError("That stint id is already in use.")
+    keep_ids = {stint.id for stint in stints}
+    existing_mine = {row.id: row for row in month.stints if row.person_id == person_id}
+    for row in list(month.stints):
+        if row.person_id == person_id and row.id not in keep_ids:
+            month.stints.remove(row)
+    next_index = max((row.sort_index for row in month.stints), default=-1) + 1
+    for offset, stint in enumerate(stints):
+        row = existing_mine.get(stint.id)
+        if row is not None:
+            row.room_id = stint.roomId
+            row.from_day = int(stint.from_day)
+            row.to_day = int(stint.to)
+            row.sort_index = next_index + offset
+            continue
+        month.stints.append(
+            Stint(
+                id=stint.id,
+                month_key=month_key,
+                person_id=person_id,
+                room_id=stint.roomId,
+                from_day=int(stint.from_day),
+                to_day=int(stint.to),
+                sort_index=next_index + offset,
+            )
+        )
 
 
 def append_ledger(household: Household, entry: LedgerEntryModel) -> LedgerEntry:

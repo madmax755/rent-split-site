@@ -1,4 +1,5 @@
-import { daysInMonth, dayDate, monthLabel } from "../domain/dates";
+import type { CSSProperties } from "react";
+import { cycleDayInMonth, daysInMonth, dayDate, monthLabel } from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
 import { personById, personColor, plural, rangeText } from "../domain/format";
@@ -18,6 +19,8 @@ type StintsScreenProps = {
 
 export function StintsScreen(props: StintsScreenProps) {
   const { store, state, activeTab } = useHousehold();
+  const selfOnly = store.isTenant();
+  const myId = store.linkedPersonId();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
@@ -38,15 +41,35 @@ export function StintsScreen(props: StintsScreenProps) {
     });
   }
 
+  function commitStints(fn: () => void): void {
+    store.mutate(fn, { persist: !selfOnly });
+    if (selfOnly) store.queueOwnStintsSave();
+  }
+
   function patchStint(id: string, patch: (s: Stint, stints: Stint[]) => void): void {
-    store.mutate(() => {
+    commitStints(() => {
       const month = ensureMonth(store.state, key);
       const stints = month.stints || [];
       const s = stints.find((x) => x.id === id);
       if (!s) return;
+      if (selfOnly && s.personId !== myId) return;
       patch(s, stints);
       clampAll(stints);
     });
+  }
+
+  function canEdit(stint: Stint): boolean {
+    return !selfOnly || stint.personId === myId;
+  }
+
+  if (selfOnly && !myId) {
+    return (
+      <div className={screenClass("stints", activeTab)} data-screen="stints">
+        <div className="empty">
+          This login is not linked to a person yet. Ask the household admin.
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -123,7 +146,21 @@ export function StintsScreen(props: StintsScreenProps) {
                 ))}
                 <div className="tl-hc" style={cols}>
                   {days.map((day) => (
-                    <div key={day.d} className="tl-hcell">
+                    <div
+                      key={day.d}
+                      className={
+                        state.rentCycleStartDay !== 1 &&
+                        day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                          ? "tl-hcell rent-start"
+                          : "tl-hcell"
+                      }
+                      title={
+                        state.rentCycleStartDay !== 1 &&
+                        day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                          ? "Rent period starts"
+                          : undefined
+                      }
+                    >
                       {day.liable.length}
                     </div>
                   ))}
@@ -232,27 +269,33 @@ export function StintsScreen(props: StintsScreenProps) {
         ) : (
           (M.stints || []).map((s) => {
             const p = personById(state, s.personId);
+            const editable = canEdit(s);
             return (
-              <div className="stint-row" key={s.id}>
+              <div className={`stint-row${editable ? "" : " opacity-70"}`} key={s.id}>
                 <span
                   className="swatch"
                   style={{ background: p ? personColor(state, p.id) : "var(--muted)" }}
                 />
-                <select
-                  style={{ width: "auto", minWidth: 104 }}
-                  value={s.personId}
-                  onChange={(e) => {
-                    patchStint(s.id, (st) => {
-                      st.personId = e.target.value;
-                    });
-                  }}
-                >
-                  {state.people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.name}
-                    </option>
-                  ))}
-                </select>
+                {selfOnly ? (
+                  <span style={{ minWidth: 104, fontWeight: 600 }}>{p?.name ?? "Unknown"}</span>
+                ) : (
+                  <select
+                    style={{ width: "auto", minWidth: 104 }}
+                    value={s.personId}
+                    disabled={!editable}
+                    onChange={(e) => {
+                      patchStint(s.id, (st) => {
+                        st.personId = e.target.value;
+                      });
+                    }}
+                  >
+                    {state.people.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <div className="field compact" style={{ width: "auto" }}>
                   <span className="prefix">day</span>
                   <input
@@ -261,6 +304,7 @@ export function StintsScreen(props: StintsScreenProps) {
                     min={1}
                     max={D}
                     value={s.from}
+                    disabled={!editable}
                     onChange={(e) => {
                       patchStint(s.id, (st) => {
                         st.from = Math.round(parseFloat(e.target.value) || 1);
@@ -276,6 +320,7 @@ export function StintsScreen(props: StintsScreenProps) {
                     min={1}
                     max={D}
                     value={s.to}
+                    disabled={!editable}
                     onChange={(e) => {
                       patchStint(s.id, (st) => {
                         st.to = Math.round(parseFloat(e.target.value) || D);
@@ -286,6 +331,7 @@ export function StintsScreen(props: StintsScreenProps) {
                 <select
                   style={{ width: "auto", minWidth: 120 }}
                   value={s.roomId}
+                  disabled={!editable}
                   onChange={(e) => {
                     patchStint(s.id, (st) => {
                       st.roomId = e.target.value;
@@ -309,60 +355,66 @@ export function StintsScreen(props: StintsScreenProps) {
                   {plural(s.to - s.from + 1, "day")}
                 </span>
                 <div className="spacer" />
-                <button
-                  className="btn-icon"
-                  title="Split this stint in two"
-                  onClick={() => {
-                    if (s.to - s.from < 1) {
-                      store.announce("A one-day stint can't be split.");
-                      return;
-                    }
-                    store.mutate(() => {
-                      const month = ensureMonth(store.state, key);
-                      const stints = month.stints || [];
-                      const cur = stints.find((x) => x.id === s.id);
-                      if (!cur) return;
-                      const mid = Math.floor((cur.from + cur.to) / 2);
-                      const copy: Stint = { ...cur, id: uid("st"), from: mid + 1, to: cur.to };
-                      cur.to = mid;
-                      stints.splice(stints.indexOf(cur) + 1, 0, copy);
-                    });
-                    store.announce(
-                      "Split in two — adjust the dates, or delete the half they weren't here for.",
-                    );
-                  }}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                  >
-                    <path d="M12 3v18" />
-                    <path d="M5 8h4M15 8h4" />
-                  </svg>
-                </button>
-                <button
-                  className="btn-icon"
-                  title="Remove"
-                  onClick={() => {
-                    store.mutate(() => {
-                      const month = ensureMonth(store.state, key);
-                      month.stints = (month.stints || []).filter((x) => x.id !== s.id);
-                    });
-                  }}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  >
-                    <path d="M6 6l12 12M6 18L18 6" />
-                  </svg>
-                </button>
+                {editable ? (
+                  <>
+                    <button
+                      className="btn-icon"
+                      title="Split this stint in two"
+                      onClick={() => {
+                        if (s.to - s.from < 1) {
+                          store.announce("A one-day stint can't be split.");
+                          return;
+                        }
+                        commitStints(() => {
+                          const month = ensureMonth(store.state, key);
+                          const stints = month.stints || [];
+                          const cur = stints.find((x) => x.id === s.id);
+                          if (!cur) return;
+                          const mid = Math.floor((cur.from + cur.to) / 2);
+                          const copy: Stint = { ...cur, id: uid("st"), from: mid + 1, to: cur.to };
+                          cur.to = mid;
+                          stints.splice(stints.indexOf(cur) + 1, 0, copy);
+                        });
+                        store.announce(
+                          selfOnly
+                            ? "Split in two — adjust the dates, or delete the half you weren't here for."
+                            : "Split in two — adjust the dates, or delete the half they weren't here for.",
+                        );
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      >
+                        <path d="M12 3v18" />
+                        <path d="M5 8h4M15 8h4" />
+                      </svg>
+                    </button>
+                    <button
+                      className="btn-icon"
+                      title="Remove"
+                      onClick={() => {
+                        commitStints(() => {
+                          const month = ensureMonth(store.state, key);
+                          month.stints = (month.stints || []).filter((x) => x.id !== s.id);
+                        });
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      >
+                        <path d="M6 6l12 12M6 18L18 6" />
+                      </svg>
+                    </button>
+                  </>
+                ) : null}
               </div>
             );
           })
@@ -372,12 +424,18 @@ export function StintsScreen(props: StintsScreenProps) {
             className="btn-add"
             style={{ width: "auto" }}
             onClick={() => {
-              const p = state.people.find((x) => !x.archived);
+              const p = selfOnly
+                ? state.people.find((x) => x.id === myId)
+                : state.people.find((x) => !x.archived);
               if (!p) {
-                store.announce("Add someone on the Setup tab first.");
+                store.announce(
+                  selfOnly
+                    ? "This login is not linked to a person yet."
+                    : "Add someone on the Setup tab first.",
+                );
                 return;
               }
-              store.mutate(() => {
+              commitStints(() => {
                 const month = ensureMonth(store.state, key);
                 month.stints.push({
                   id: uid("st"),
@@ -391,41 +449,43 @@ export function StintsScreen(props: StintsScreenProps) {
           >
             ＋ Add a stint
           </button>
-          <button
-            className="btn-add"
-            style={{ width: "auto" }}
-            onClick={() => {
-              if (state.people.filter((p) => !p.archived).length >= MAX_PEOPLE) {
-                store.announce(`That's the limit of ${MAX_PEOPLE} people.`);
-                return;
-              }
-              const name = prompt("Who is it?", "Someone new");
-              if (name === null) return;
-              store.mutate(() => {
-                const daysN = daysInMonth(key);
-                const room = store.state.rooms.find((r) => !r.communal)?.id ?? "";
-                const person = {
-                  id: uid("p"),
-                  name: name.trim() || "Someone new",
-                  isPayer: false,
-                  archived: false,
-                };
-                store.state.people.push(person);
-                const mid = Math.max(1, Math.round(daysN / 3));
-                ensureMonth(store.state, key).stints.push({
-                  id: uid("st"),
-                  personId: person.id,
-                  roomId: room,
-                  from: mid,
-                  to: Math.min(daysN, mid + 6),
+          {selfOnly ? null : (
+            <button
+              className="btn-add"
+              style={{ width: "auto" }}
+              onClick={() => {
+                if (state.people.filter((p) => !p.archived).length >= MAX_PEOPLE) {
+                  store.announce(`That's the limit of ${MAX_PEOPLE} people.`);
+                  return;
+                }
+                const name = prompt("Who is it?", "Someone new");
+                if (name === null) return;
+                commitStints(() => {
+                  const daysN = daysInMonth(key);
+                  const room = store.state.rooms.find((r) => !r.communal)?.id ?? "";
+                  const person = {
+                    id: uid("p"),
+                    name: name.trim() || "Someone new",
+                    isPayer: false,
+                    archived: false,
+                  };
+                  store.state.people.push(person);
+                  const mid = Math.max(1, Math.round(daysN / 3));
+                  ensureMonth(store.state, key).stints.push({
+                    id: uid("st"),
+                    personId: person.id,
+                    roomId: room,
+                    from: mid,
+                    to: Math.min(daysN, mid + 6),
+                  });
                 });
-              });
-              store.setTab("stints");
-              store.announce("Added — set their dates and which bedroom they're in.");
-            }}
-          >
-            ＋ Add someone new
-          </button>
+                store.setTab("stints");
+                store.announce("Added — set their dates and which bedroom they're in.");
+              }}
+            >
+              ＋ Add someone new
+            </button>
+          )}
         </div>
         <div className="stack" style={{ marginBottom: 10 }}>
           {gaps.map((g) => (
@@ -436,10 +496,21 @@ export function StintsScreen(props: StintsScreenProps) {
           ))}
         </div>
         <div className="helper">
-          A stint is a block of days someone is in the house, in one bedroom — and it is the{" "}
-          <b>only</b> place dates live. Rent and every bill are shared out across these days. Two
-          people on one bedroom over the same days split it between them, day by day. Each new month
-          starts as a copy of the month before, so in a normal month there is nothing to change.
+          {selfOnly ? (
+            <>
+              These dates are when you are <b>paying</b> — usually the same as being in the house.
+              Add a stint for a spell you are in; split one and delete the half you were out for.
+              Everyone else's dates are visible but only they (or an admin) can change them.
+            </>
+          ) : (
+            <>
+              A stint is a block of days someone is in the house, in one bedroom — and it is the{" "}
+              <b>only</b> place dates live. Rent and every bill are shared out across these days.
+              Two people on one bedroom over the same days split it between them, day by day. Each
+              new month starts as a copy of the month before, so in a normal month there is nothing
+              to change.
+            </>
+          )}
         </div>
       </Section>
     </div>
