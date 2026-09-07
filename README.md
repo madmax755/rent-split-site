@@ -40,6 +40,17 @@ bun start
 
 The server serves `frontend/dist` and `/api/*`. Put nginx in front with TLS (`deploy/nginx.conf.example`) and optionally run under systemd (`deploy/rent-split.service`).
 
+### Deploy to server1 (tms.maxkendall.com)
+
+Live install: systemd unit `rent-split.service`, app dir `/opt/rent-split-site`, credentials in `/etc/rent-split.env`.
+
+GitHub Actions (`.github/workflows/deploy.yml`) on push to `main` (or manual dispatch):
+
+1. Self-hosted runner SSHs to `server1` as `max-kendall`
+2. Runs `deploy/remote-deploy.sh` — bootstrap/pull, `bun run install:all && bun run build`, refresh unit, `systemctl restart rent-split`
+
+First run converts the old manual copy into a git checkout and keeps `data/` intact.
+
 Important env vars:
 
 - `RENT_SPLIT_PASSWORD` — shared household lock (unset = open)

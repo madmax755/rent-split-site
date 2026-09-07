@@ -1,45 +1,37 @@
-# systemd unit for running the server as a background service that
-# survives reboots and restarts itself if it crashes.
+# systemd unit for Rent Split on server1 (tms.maxkendall.com).
 #
-# Install:
-#   1. Edit the paths and environment values below for your server.
-#   2. sudo cp rent-split.service /etc/systemd/system/rent-split.service
-#   3. sudo systemctl daemon-reload
-#   4. sudo systemctl enable --now rent-split
+# Install / refresh:
+#   sudo cp deploy/rent-split.service /etc/systemd/system/rent-split.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now rent-split
 #
-# Logs:  journalctl -u rent-split -f
-# Data lives at DATA_DIR below — back that directory up.
+# Credentials live in a root-only env file (chmod 600), e.g.:
+#   PORT=8080
+#   DATA_DIR=/opt/rent-split-site/data
+#   SECURE_COOKIE=1
+#   RENT_SPLIT_PASSWORD=...
+#   RENT_SPLIT_SECRET=...
+#
+# Logs: journalctl -u rent-split -f
 
 [Unit]
-Description=Rent Split
+Description=Rent Split (tms.maxkendall.com)
 After=network.target
 
 [Service]
 Type=simple
-# Change this to wherever you copied the rent-split-site folder.
 WorkingDirectory=/opt/rent-split-site
-# Build the frontend first (`bun run build`), then start the API/static server.
 ExecStart=/usr/bin/node server/server.js
 Restart=on-failure
 RestartSec=3
 
-# Run as an unprivileged user you create for this, not root.
 User=rent-split
 Group=rent-split
 
-Environment=PORT=8080
-Environment=DATA_DIR=/opt/rent-split-site/data
+EnvironmentFile=/etc/rent-split.env
+# Built assets (override in the env file if you move them).
 Environment=PUBLIC_DIR=/opt/rent-split-site/frontend/dist
-Environment=SECURE_COOKIE=1
-# Put the real password and secret here, or better: put them in an
-# EnvironmentFile instead so they aren't sitting in a world-readable unit
-# file. Uncomment and point at a root-only file:
-# EnvironmentFile=/etc/rent-split.env
-Environment=RENT_SPLIT_PASSWORD=changeme
-Environment=RENT_SPLIT_SECRET=
 
-# Basic sandboxing — the process can't see or touch anything outside its
-# own working directory and /tmp.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

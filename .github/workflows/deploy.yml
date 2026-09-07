@@ -1,0 +1,42 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy (branch, tag, or SHA). Empty = this workflow's commit / main tip."
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-server1
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Add SSH host key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H server1 >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy over SSH
+        shell: bash
+        run: |
+          set -euo pipefail
+          REF='${{ inputs.ref }}'
+          if [[ -z "${REF}" ]]; then
+            REF='${{ github.sha }}'
+          fi
+          echo "Deploying ref: ${REF}"
+          chmod +x deploy/remote-deploy.sh
+          ssh server1 "REF='${REF}' bash -s" < deploy/remote-deploy.sh
