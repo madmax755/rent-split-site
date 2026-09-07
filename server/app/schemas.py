@@ -32,6 +32,7 @@ class BillModel(BaseModel):
     name: str
     est: float = 0
     payers: list[str] | None = None
+    cycleStartDay: int = Field(default=1, ge=1, le=31)
 
 
 class MonthLineModel(BaseModel):
@@ -100,6 +101,7 @@ class HouseholdData(BaseModel):
 
     currency: str = "£"
     rent: float = 0
+    rentCycleStartDay: int = Field(default=1, ge=1, le=31)
     catchall: float = 0
     catchallWeight: float = 0
     rooms: list[RoomModel] = Field(default_factory=list)

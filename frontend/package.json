@@ -9,6 +9,7 @@
     "preview": "vite preview --port 5173",
     "typecheck": "tsgo --noEmit",
     "lint": "tsgo --noEmit && oxlint --deny-warnings src",
+    "test": "bun test src",
     "format": "oxfmt -c ../.oxfmtrc.json ."
   },
   "dependencies": {

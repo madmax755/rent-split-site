@@ -1,7 +1,8 @@
-import { addMonths, daysInMonth, monthLabel } from "../domain/dates";
+import { addMonths, clampCycleDay, daysInMonth, monthLabel, periodLabel } from "../domain/dates";
 import {
   bedroomGaps,
   captureConfig,
+  chargesUseCalendarMonth,
   computeMonth,
   computeMonthInner,
   monthAllActual,
@@ -76,7 +77,7 @@ export function MonthScreen(props: MonthScreenProps) {
         .map((id) => personName(state, id));
       warns.push({
         html: true,
-        text: `Nobody who pays <b>${escapeHtml(l.name)}</b> was here this month, so the whole ${money(state.currency, l.amount)} went to ${escapeHtml(eligible.join(" and ") || "no-one")} anyway — check that's still right.`,
+        text: `Nobody who pays <b>${escapeHtml(l.name)}</b> was here ${l.cycleStartDay === 1 ? "this month" : `in ${escapeHtml(l.periodLabel)}`}, so the whole ${money(state.currency, l.amount)} went to ${escapeHtml(eligible.join(" and ") || "no-one")} anyway — check that's still right.`,
       });
     });
 
@@ -188,7 +189,10 @@ export function MonthScreen(props: MonthScreenProps) {
             className="bg-row"
             style={{ background: "var(--card-2)", boxShadow: "inset 0 0 0 1px var(--hairline)" }}
           >
-            <div className="bg-name">Rent</div>
+            <div className="bg-name">
+              <span>Rent</span>
+              <span className="period-range">{c.rentCounts.periodLabel}</span>
+            </div>
             <div className="bg-num">
               <div className="minilabel">Agreed</div>
               <div className="field compact">
@@ -298,6 +302,13 @@ export function MonthScreen(props: MonthScreenProps) {
           Type the <b>estimate</b> (what the direct debit takes) when the month starts, and the{" "}
           <b>realised</b> figure when the real bill lands. Everything splits on the realised figure
           once it exists, and the difference is trued up on the Balances tab.
+          {chargesUseCalendarMonth(state) ? null : (
+            <>
+              {" "}
+              Date ranges under each line are the days that charge covers — rent and bills need not
+              start on the same day.
+            </>
+          )}
         </div>
       </Section>
 
@@ -492,13 +503,15 @@ type BillRowProps = {
   store: HouseholdStore;
   state: HouseholdState;
   monthKey: string;
-  def: { id: string; name: string };
+  def: { id: string; name: string; cycleStartDay?: number };
   line: MonthLine;
   oneOff: boolean;
 };
 
 function BillRow(props: BillRowProps) {
   const { store, state, def, line, oneOff } = props;
+  const cycleDay = oneOff ? 1 : clampCycleDay(def.cycleStartDay ?? 1);
+  const range = periodLabel(props.monthKey, cycleDay);
   const estP = Math.round((+line.est || 0) * 100);
   const actP = typeof line.act === "number" ? Math.round(line.act * 100) : null;
   const delta = actP === null ? null : actP - estP;
@@ -547,6 +560,7 @@ function BillRow(props: BillRowProps) {
             </svg>
           </button>
         ) : null}
+        <span className="period-range">{range}</span>
       </div>
       <div className="bg-num">
         <div className="minilabel">Estimate</div>

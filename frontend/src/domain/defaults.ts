@@ -37,12 +37,14 @@ export const DEFAULT_ROOM_OF: Record<string, string> = {
   p4: "bed1",
 };
 
+export const DEFAULT_CYCLE_START_DAY = 1;
+
 export const DEFAULT_BILLS: Bill[] = [
-  { id: "energy", name: "Energy (gas & electric)", est: 195, payers: null },
-  { id: "water", name: "Water", est: 36, payers: null },
-  { id: "wifi", name: "Wi-Fi", est: 35, payers: null },
-  { id: "insurance", name: "Renters insurance", est: 15, payers: null },
-  { id: "counciltax", name: "Council tax", est: 200, payers: null },
+  { id: "energy", name: "Energy (gas & electric)", est: 195, payers: null, cycleStartDay: 1 },
+  { id: "water", name: "Water", est: 36, payers: null, cycleStartDay: 1 },
+  { id: "wifi", name: "Wi-Fi", est: 35, payers: null, cycleStartDay: 1 },
+  { id: "insurance", name: "Renters insurance", est: 15, payers: null, cycleStartDay: 1 },
+  { id: "counciltax", name: "Council tax", est: 200, payers: null, cycleStartDay: 1 },
 ];
 
 export const DEFAULT_RENT = 3500;
@@ -75,6 +77,7 @@ export function freshHousehold(): HouseholdState {
   return {
     currency: "£",
     rent: DEFAULT_RENT,
+    rentCycleStartDay: DEFAULT_CYCLE_START_DAY,
     catchall: DEFAULT_CATCHALL,
     catchallWeight: DEFAULT_CATCHALL_WEIGHT,
     rooms: DEFAULT_ROOMS.map((r) => ({ ...r })),

@@ -1,0 +1,58 @@
+import { describe, expect, test } from "bun:test";
+import {
+  clampCycleDay,
+  inclusivePeriodEnd,
+  iteratePeriodDays,
+  periodBounds,
+  periodLabel,
+} from "./dates";
+
+describe("cycle day helpers", () => {
+  test("clampCycleDay keeps 1–31", () => {
+    expect(clampCycleDay(1)).toBe(1);
+    expect(clampCycleDay(31)).toBe(31);
+    expect(clampCycleDay(0)).toBe(1);
+    expect(clampCycleDay(99)).toBe(31);
+    expect(clampCycleDay(Number.NaN)).toBe(1);
+  });
+
+  test("day 1 is the calendar month", () => {
+    const april = periodBounds("2026-04", 1);
+    expect(april.startKey).toBe("2026-04");
+    expect(april.startDay).toBe(1);
+    expect(april.endKey).toBe("2026-05");
+    expect(april.endDay).toBe(1);
+    expect(april.length).toBe(30);
+    expect(iteratePeriodDays(april)).toHaveLength(30);
+    expect(periodLabel("2026-04", 1)).toBe("1 Apr – 30 Apr");
+  });
+
+  test("day 8 runs 8 Apr – 7 May", () => {
+    const april = periodBounds("2026-04", 8);
+    expect(april.startDay).toBe(8);
+    expect(april.endDay).toBe(8);
+    expect(april.length).toBe(30);
+    const days = iteratePeriodDays(april);
+    expect(days[0]).toEqual({ key: "2026-04", d: 8 });
+    expect(days[days.length - 1]).toEqual({ key: "2026-05", d: 7 });
+    expect(periodLabel("2026-04", 8)).toBe("8 Apr – 7 May");
+  });
+
+  test("cycle day 31 in January and February has no gap or overlap", () => {
+    const jan = periodBounds("2026-01", 31);
+    const feb = periodBounds("2026-02", 31);
+    expect(jan.startDay).toBe(31);
+    expect(jan.endDay).toBe(28);
+    expect(jan.length).toBe(28);
+    expect(inclusivePeriodEnd(jan)).toEqual({ key: "2026-02", day: 27 });
+    expect(feb.startDay).toBe(28);
+    expect(feb.endDay).toBe(31);
+    expect(feb.length).toBe(31);
+    const janDays = iteratePeriodDays(jan);
+    const febDays = iteratePeriodDays(feb);
+    expect(janDays[janDays.length - 1]).toEqual({ key: "2026-02", d: 27 });
+    expect(febDays[0]).toEqual({ key: "2026-02", d: 28 });
+    const seen = new Set(janDays.concat(febDays).map((d) => `${d.key}-${d.d}`));
+    expect(seen.size).toBe(janDays.length + febDays.length);
+  });
+});

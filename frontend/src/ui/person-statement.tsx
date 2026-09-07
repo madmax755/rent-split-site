@@ -1,5 +1,10 @@
 import { daysInMonth, monthLabel } from "../domain/dates";
-import { chargedFor, monthAllActual, monthHasActuals } from "../domain/engine";
+import {
+  chargedFor,
+  chargesUseCalendarMonth,
+  monthAllActual,
+  monthHasActuals,
+} from "../domain/engine";
 import { money, personById, plural, signedMoney } from "../domain/format";
 import type { HouseholdState, MonthCompute, MonthRecord } from "../domain/types";
 import { Avatar } from "./avatar";
@@ -18,13 +23,17 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
   const { state, personId, monthKey, M, c, open } = props;
   const p = personById(state, personId);
   if (!p) return null;
-  const D = daysInMonth(monthKey);
-  const liable = c.counts.liableDays[personId] || 0;
+  const calendar = chargesUseCalendarMonth(state);
+  const D = calendar ? daysInMonth(monthKey) : c.rentCounts.periodLength;
+  const liable = calendar
+    ? c.counts.liableDays[personId] || 0
+    : c.rentCounts.liableDays[personId] || 0;
   const nights = liable;
   const total = c.totals[personId] || 0;
   const roomsUsed: Record<string, number> = {};
   let sharedDays = 0;
-  c.counts.days.forEach((day) => {
+  const occupancyDays = calendar ? c.counts.days : c.rentCounts.days;
+  occupancyDays.forEach((day) => {
     Object.keys(day.rooms).forEach((rid) => {
       const occ = day.rooms[rid] ?? [];
       if (!occ.includes(personId)) return;
@@ -64,7 +73,9 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             ) : null}
           </div>
           <div className="stmt-sub">
-            here {liable} of {D} days
+            {calendar
+              ? `here ${liable} of ${D} days`
+              : `rent ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
             {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
           </div>
         </div>
@@ -98,6 +109,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
           <span className="li-how">
             {roomTxt}
             {sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here {liable}/{D} days
+            {calendar ? "" : ` · ${c.rentCounts.periodLabel}`}
           </span>
           <span className="li-amt">{money(state.currency, c.bedroom[personId] || 0)}</span>
         </div>
@@ -116,7 +128,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
               ? l.how[personId] === "not a payer"
                 ? "not a payer on this bill"
                 : "not here this month"
-              : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days`;
+              : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days${l.cycleStartDay === 1 ? "" : ` · ${l.periodLabel}`}`;
           return (
             <div className="lineitem sub" key={l.id}>
               <span className="li-name">

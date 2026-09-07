@@ -6,11 +6,12 @@ from app.household import assemble_payload, load_household, put_household
 
 ENVELOPE: dict[str, Any] = {
     "app": "rent-split",
-    "schema": 4,
+    "schema": 5,
     "savedAt": "2026-04-01T12:00:00.000Z",
     "data": {
         "currency": "£",
         "rent": 3500,
+        "rentCycleStartDay": 8,
         "catchall": 14.3,
         "catchallWeight": 0.5,
         "rooms": [
@@ -22,8 +23,8 @@ ENVELOPE: dict[str, Any] = {
             {"id": "p2", "name": "Joe", "isPayer": False, "archived": False},
         ],
         "bills": [
-            {"id": "energy", "name": "Energy", "est": 195, "payers": None},
-            {"id": "wifi", "name": "Wi-Fi", "est": 35, "payers": ["p1"]},
+            {"id": "energy", "name": "Energy", "est": 195, "payers": None, "cycleStartDay": 1},
+            {"id": "wifi", "name": "Wi-Fi", "est": 35, "payers": ["p1"], "cycleStartDay": 15},
         ],
         "months": {
             "2026-03": {
@@ -131,8 +132,11 @@ def test_envelope_round_trip(db, settings) -> None:
     assert household is not None
     payload = assemble_payload(household)
     assert payload["app"] == "rent-split"
-    assert payload["schema"] == 4
+    assert payload["schema"] == 5
     assert payload["data"] == ENVELOPE["data"]
+    assert payload["data"]["rentCycleStartDay"] == 8
+    assert payload["data"]["bills"][0]["cycleStartDay"] == 1
+    assert payload["data"]["bills"][1]["cycleStartDay"] == 15
 
 
 def test_conflict_on_stale_rev(db, settings) -> None:
@@ -145,3 +149,33 @@ def test_conflict_on_stale_rev(db, settings) -> None:
         raise AssertionError("expected conflict")
     except ConflictError as err:
         assert err.rev == 1
+
+
+def test_schema_4_cycle_days_default(db, settings) -> None:
+    payload = {
+        "app": "rent-split",
+        "schema": 4,
+        "savedAt": "2026-04-01T12:00:00.000Z",
+        "data": {
+            "currency": "£",
+            "rent": 100,
+            "catchall": 0,
+            "catchallWeight": 0,
+            "rooms": [],
+            "people": [{"id": "p1", "name": "Ann", "isPayer": True, "archived": False}],
+            "bills": [{"id": "energy", "name": "Energy", "est": 10, "payers": None}],
+            "months": {},
+            "ledger": [],
+            "presets": [],
+            "activePresetName": None,
+            "currentMonth": "2026-04",
+            "sectionsOpen": {},
+        },
+    }
+    put_household(db, payload, expected_rev=0, force=True, settings=settings)
+    db.commit()
+    household = load_household(db)
+    assert household is not None
+    assembled = assemble_payload(household)
+    assert assembled["data"]["rentCycleStartDay"] == 1
+    assert assembled["data"]["bills"][0]["cycleStartDay"] == 1

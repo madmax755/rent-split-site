@@ -1410,6 +1410,13 @@ input[type="date"] {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
+.bg-name .period-range {
+  flex-basis: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
 .bg-delta {
   font-size: 12.5px;
   font-weight: 700;
@@ -1547,6 +1554,10 @@ input[type="date"] {
   font-weight: 700;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+.tl-hcell.rent-start {
+  color: var(--accent);
+  box-shadow: inset 0 2px 0 var(--accent);
 }
 .tl-legend {
   display: flex;

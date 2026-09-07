@@ -8,6 +8,7 @@ import { normalise } from "../domain/normalise";
 import { useHousehold } from "../store/household-context";
 import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
+import { CycleDayField } from "./cycle-day-field";
 import { Icon } from "./icon";
 import { screenClass } from "./screen-class";
 import { Section } from "./section";
@@ -495,6 +496,19 @@ export function SetupScreen(props: SetupScreenProps) {
                 yet. Change it whenever the price goes up — a renewal, an inflation rise, a new
                 tariff — and months already on record keep the figures they were given.
               </div>
+              <div className="dim-label" style={{ marginTop: 10, marginBottom: 6 }}>
+                Billing period starts on
+              </div>
+              <CycleDayField
+                value={b.cycleStartDay}
+                monthKey={state.currentMonth}
+                onChange={(day) => {
+                  store.mutate(() => {
+                    const bill = store.state.bills.find((x) => x.id === b.id);
+                    if (bill) bill.cycleStartDay = day;
+                  });
+                }}
+              />
               <div className="dim-label" style={{ marginTop: 8, marginBottom: 6 }}>
                 Who pays into it{restricted ? "" : " — everyone"}
               </div>
@@ -536,7 +550,13 @@ export function SetupScreen(props: SetupScreenProps) {
           className="btn-add"
           onClick={() => {
             store.mutate(() => {
-              const bill = { id: uid("bl"), name: "New bill", est: 0, payers: null };
+              const bill = {
+                id: uid("bl"),
+                name: "New bill",
+                est: 0,
+                payers: null,
+                cycleStartDay: 1,
+              };
               store.state.bills.push(bill);
               Object.values(store.state.months).forEach((M) => {
                 M.lines[bill.id] = { est: 0, act: null };
@@ -547,7 +567,8 @@ export function SetupScreen(props: SetupScreenProps) {
           ＋ Add a bill
         </button>
         <div className="helper">
-          Every bill splits the same way: across the days each person was in the house that month.
+          Every bill splits the same way: across the days each person was in the house during that
+          bill's period. The 1st is a calendar month; any other start day runs into the next month.
           Nothing here is locked in — <b>every amount stays editable, every month</b> — and the
           realised figure on the <b>This month</b> tab always overrides the estimate once the real
           bill arrives.

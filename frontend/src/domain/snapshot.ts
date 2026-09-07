@@ -3,6 +3,7 @@ import {
   DEFAULT_BILLS,
   DEFAULT_CATCHALL,
   DEFAULT_CATCHALL_WEIGHT,
+  DEFAULT_CYCLE_START_DAY,
   DEFAULT_PEOPLE,
   DEFAULT_RENT,
   DEFAULT_ROOMS,
@@ -26,6 +27,7 @@ export function applySnapshot(state: HouseholdState, snap: Snapshot): void {
 export function resetHousehold(state: HouseholdState): void {
   state.currency = "£";
   state.rent = DEFAULT_RENT;
+  state.rentCycleStartDay = DEFAULT_CYCLE_START_DAY;
   state.catchall = DEFAULT_CATCHALL;
   state.catchallWeight = DEFAULT_CATCHALL_WEIGHT;
   state.rooms = DEFAULT_ROOMS.map((r) => ({ ...r }));

@@ -1,11 +1,41 @@
 export const APP_ID = "rent-split" as const;
-export const SCHEMA = 4;
+export const SCHEMA = 5;
 export const STORAGE_KEY = "rent-split";
 export const BACKUP_KEY = "rent-split.previous";
 
 type MigrationFn = (d: Record<string, unknown>) => Record<string, unknown>;
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function fillCycleStartDay(rec: Record<string, unknown>, field: string): void {
+  if (typeof rec[field] !== "number") rec[field] = 1;
+}
+
 export const MIGRATIONS: Record<number, MigrationFn> = {
+  4: function (d) {
+    fillCycleStartDay(d, "rentCycleStartDay");
+    const bills = Array.isArray(d.bills) ? d.bills : [];
+    bills.forEach((b) => {
+      const rec = asRecord(b);
+      if (rec) fillCycleStartDay(rec, "cycleStartDay");
+    });
+    const months = asRecord(d.months) ?? {};
+    Object.values(months).forEach((M) => {
+      const rec = asRecord(M);
+      if (!rec) return;
+      const cfg = asRecord(rec.config);
+      if (!cfg) return;
+      fillCycleStartDay(cfg, "rentCycleStartDay");
+      const cfgBills = Array.isArray(cfg.bills) ? cfg.bills : [];
+      cfgBills.forEach((b) => {
+        const bill = asRecord(b);
+        if (bill) fillCycleStartDay(bill, "cycleStartDay");
+      });
+    });
+    return d;
+  },
   3: function (d) {
     const people = Array.isArray(d.people) ? d.people : [];
     people.forEach((p) => {

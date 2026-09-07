@@ -33,6 +33,7 @@ export type Bill = {
   name: string;
   est: number;
   payers: string[] | null;
+  cycleStartDay: number;
 };
 
 export type MonthLine = {
@@ -56,6 +57,7 @@ export type Stint = {
 
 export type MonthConfig = {
   rent: number;
+  rentCycleStartDay: number;
   rooms: Room[];
   catchall: number;
   catchallWeight: number;
@@ -89,6 +91,7 @@ export type LedgerEntry = {
 export const SNAPSHOT_FIELDS = [
   "currency",
   "rent",
+  "rentCycleStartDay",
   "catchall",
   "catchallWeight",
   "rooms",
@@ -103,6 +106,7 @@ export type SnapshotField = (typeof SNAPSHOT_FIELDS)[number];
 export type Snapshot = {
   currency: string;
   rent: number;
+  rentCycleStartDay: number;
   catchall: number;
   catchallWeight: number;
   rooms: Room[];
@@ -127,6 +131,7 @@ export type HouseholdState = Snapshot & {
 };
 
 export type DayModel = {
+  key: string;
   d: number;
   liable: string[];
   present: string[];
@@ -141,6 +146,14 @@ export type BedroomGap = {
 
 export type ComputeMode = "est" | "eff";
 
+export type PeriodCounts = {
+  liableDays: Record<string, number>;
+  days: DayModel[];
+  cycleStartDay: number;
+  periodLabel: string;
+  periodLength: number;
+};
+
 export type MonthLineResult = {
   id: string;
   name: string;
@@ -154,6 +167,9 @@ export type MonthLineResult = {
   isActual: boolean;
   est: number;
   act: number | null;
+  cycleStartDay: number;
+  periodLabel: string;
+  periodLength: number;
 };
 
 export type MonthCompute = {
@@ -164,6 +180,7 @@ export type MonthCompute = {
     liableDays: Record<string, number>;
     days: DayModel[];
   };
+  rentCounts: PeriodCounts;
   rentPence: number;
   rentAmount: number;
   bedroom: Record<string, number>;

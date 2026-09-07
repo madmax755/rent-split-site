@@ -110,6 +110,7 @@ def assemble_data(household: Household) -> dict[str, Any]:
             "name": b.name,
             "est": json_num(b.est),
             "payers": _payers_out(b.payers_restricted, list(b.payers)),
+            "cycleStartDay": b.cycle_start_day,
         }
         for b in sorted(household.bills, key=lambda x: x.sort_index)
     ]
@@ -174,6 +175,7 @@ def assemble_data(household: Household) -> dict[str, Any]:
     return {
         "currency": household.currency,
         "rent": json_num(household.rent),
+        "rentCycleStartDay": household.rent_cycle_start_day,
         "catchall": json_num(household.catchall),
         "catchallWeight": json_num(household.catchall_weight),
         "rooms": rooms,
@@ -258,6 +260,7 @@ def apply_envelope(session: Session, household: Household, envelope: DataEnvelop
     household.schema_version = envelope.schema_version
     household.currency = data.currency
     household.rent = float(data.rent)
+    household.rent_cycle_start_day = int(data.rentCycleStartDay)
     household.catchall = float(data.catchall)
     household.catchall_weight = float(data.catchallWeight)
     household.current_month = data.currentMonth
@@ -296,6 +299,7 @@ def apply_envelope(session: Session, household: Household, envelope: DataEnvelop
             household_id=household.id,
             name=bill.name,
             est=float(bill.est),
+            cycle_start_day=int(bill.cycleStartDay),
             payers_restricted=restricted,
             sort_index=index,
         )

@@ -7,6 +7,7 @@ import type { CurrencySymbol } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { Avatar } from "./avatar";
+import { CycleDayField } from "./cycle-day-field";
 import { Icon } from "./icon";
 import { screenClass } from "./screen-class";
 import { Section } from "./section";
@@ -71,9 +72,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
             your stints.
           </p>
           <p style={{ marginBottom: 0 }}>
-            <b>Rent</b> follows the bedroom you are in and its share of the floor area.{" "}
-            <b>Every bill</b> — energy, water, Wi-Fi, insurance, council tax — is shared across the
-            days each person was here that month.
+            <b>Rent</b> follows the bedroom you are in and its share of the floor area, over the
+            rent period. <b>Every bill</b> — energy, water, Wi-Fi, insurance, council tax — is
+            shared across the days each person was here in that bill's own period. Both default to
+            the calendar month.
           </p>
         </div>
         <div className="callout good">
@@ -187,6 +189,19 @@ export function SettingsScreen(props: SettingsScreenProps) {
               />
             </div>
           </div>
+          <div className="list-row" style={{ alignItems: "flex-start", paddingTop: 10 }}>
+            <span className="lbl">Rent period starts on</span>
+            <div className="grow" />
+            <CycleDayField
+              value={state.rentCycleStartDay}
+              monthKey={key}
+              onChange={(day) => {
+                store.mutate(() => {
+                  store.state.rentCycleStartDay = day;
+                });
+              }}
+            />
+          </div>
         </div>
         <div className="callout">
           <p style={{ marginBottom: 0 }}>
@@ -196,6 +211,15 @@ export function SettingsScreen(props: SettingsScreenProps) {
             edit the rent on the <b>This month</b> tab instead.
           </p>
         </div>
+        {state.rentCycleStartDay !== 1 ? (
+          <div className="callout">
+            <p style={{ marginBottom: 0 }}>
+              <b>The rent window can run into next month.</b> Who's here on those early days is
+              taken from next month's stints once that month exists; until then this month's stints
+              are copied forward. Editing next month can therefore change this month's rent split.
+            </p>
+          </div>
+        ) : null}
         <div className="callout good">
           <p style={{ marginBottom: 0 }}>
             <b>Rounding.</b> Every split is worked out in pence and handed out largest-remainder

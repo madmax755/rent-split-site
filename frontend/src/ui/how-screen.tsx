@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { daysInMonth, monthLabel } from "../domain/dates";
+import { daysInMonth, monthLabel, periodLabel } from "../domain/dates";
 import { computeMonth, runChecks, weightedAreas } from "../domain/engine";
 import { fmtNum, money, payer, personById, plural } from "../domain/format";
 import { ensureMonth, lastRoomOf } from "../domain/months";
@@ -67,8 +67,10 @@ export function HowScreen() {
             <p>
               A house is rented as one thing but lived in by several people, in different rooms, for
               different amounts of time. This app turns that into a number per person per month. It
-              works in <b>calendar months</b>, one at a time, using the bills that <em>actually</em>{" "}
-              arrived rather than what anyone guessed at the start.
+              files everything under <b>calendar months</b>, one at a time, using the bills that{" "}
+              <em>actually</em> arrived rather than what anyone guessed at the start. Rent and each
+              bill can cover a different day range — a tenancy on the 8th–8th, energy on the 1st–1st
+              — but they still live in the same month folder.
             </p>
             <p>
               Two people can disagree about what is fair. They cannot really disagree about what the
@@ -78,20 +80,23 @@ export function HowScreen() {
             <h2 id="how-days">The one thing everything rests on</h2>
             <p>
               Everything rests on two different questions, asked separately about every single day
-              of the month:
+              of a charge's period:
             </p>
             <ul>
               <li>
-                <b>Which days were you in the house?</b> This decides your share of every bill.
+                <b>Which days were you in the house?</b> This decides your share of every bill, over
+                that bill's period.
               </li>
               <li>
-                <b>Which bedroom were you in?</b> This decides your share of the rent.
+                <b>Which bedroom were you in?</b> This decides your share of the rent, over the rent
+                period.
               </li>
             </ul>
             <p>
-              Both come from the same place — your <b>stints</b> on the <b>Who's here</b> tab. A
-              stint is a block of days in one bedroom. There is nowhere else that dates are
-              recorded, so there is nothing that can fall out of step.
+              Occupancy comes from your <b>stints</b> on the <b>Who's here</b> tab. A stint is a
+              block of days in one bedroom in a calendar month. Rent and each bill can start on a
+              different day of the month; that only chooses which stint-days count towards that
+              charge. There is no second occupancy record, so nothing can fall out of step.
             </p>
             <div className="callout">
               <p>
@@ -192,8 +197,9 @@ export function HowScreen() {
             </div>
             <p>
               The month's rent of <b>{money(state.currency, c.rentPence)}</b> is divided across
-              those shares, then divided again by the {D} days in the month. That gives every room a{" "}
-              <b>daily cost</b>. Then, for each day:
+              those shares, then divided again by the {c.rentCounts.periodLength} days in the rent
+              period{c.rentCounts.cycleStartDay === 1 ? "" : ` (${c.rentCounts.periodLabel})`}. That
+              gives every room a <b>daily cost</b>. Then, for each day:
             </p>
             <ul>
               <li>
@@ -280,7 +286,7 @@ export function HowScreen() {
                         {(+b.est || 0).toLocaleString()}
                       </td>
                       <td style={{ textAlign: "left" }}>
-                        Split across the days each person was here
+                        Split across {periodLabel(key, b.cycleStartDay)}
                       </td>
                     </tr>
                   ))}
@@ -288,8 +294,8 @@ export function HowScreen() {
               </table>
             </div>
             <p>
-              Every bill splits the same way: <b>your days divided by everyone's days</b>. Energy is
-              worked out exactly like council tax. The current bills are:
+              Every bill splits the same way: <b>your days divided by everyone's days</b> in that
+              bill's period. Energy is worked out exactly like council tax. The current bills are:
             </p>
             <div className="htable-wrap" style={{ marginBottom: 14 }}>
               <table className="htable">

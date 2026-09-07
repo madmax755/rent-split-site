@@ -39,6 +39,19 @@ export function blankMonth(state: HouseholdState, key: string): MonthRecord {
   };
 }
 
+export function projectStintRange(
+  stint: Pick<Stint, "from" | "to">,
+  fromKey: string,
+  toKey: string,
+): { from: number; to: number } {
+  const fromD = daysInMonth(fromKey);
+  const toD = daysInMonth(toKey);
+  return {
+    from: Math.min(toD, stint.from),
+    to: stint.to >= fromD ? toD : Math.min(toD, stint.to),
+  };
+}
+
 export function seedStints(state: HouseholdState, key: string, fromScratch = false): void {
   const M = state.months[key];
   if (!M) return;
@@ -49,18 +62,18 @@ export function seedStints(state: HouseholdState, key: string, fromScratch = fal
   const prevKey = earlier.length ? earlier[earlier.length - 1] : null;
   const prev = prevKey ? state.months[prevKey] : null;
   if (prev && (prev.stints || []).length && prevKey) {
-    const prevD = daysInMonth(prevKey);
     M.stints = prev.stints
       .filter((st) => state.people.some((p) => p.id === st.personId && !p.archived))
-      .map(
-        (st): Stint => ({
+      .map((st): Stint => {
+        const range = projectStintRange(st, prevKey, key);
+        return {
           id: uid("st"),
           personId: st.personId,
           roomId: st.roomId,
-          from: Math.min(D, st.from),
-          to: st.to >= prevD ? D : Math.min(D, st.to),
-        }),
-      );
+          from: range.from,
+          to: range.to,
+        };
+      });
     if (M.stints.length) return;
   }
   M.stints = state.people

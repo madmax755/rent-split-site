@@ -11,6 +11,7 @@
     "lint": "bun run --cwd frontend lint",
     "typecheck": "bun run --cwd frontend typecheck",
     "test:server": "uv run --directory server pytest",
+    "test:frontend": "bun run --cwd frontend test",
     "format": "oxfmt -c .oxfmtrc.json frontend/src",
     "install:all": "bun install && bun install --cwd frontend && uv sync --directory server --extra dev"
   },

@@ -504,11 +504,11 @@ export function StintsScreen(props: StintsScreenProps) {
             </>
           ) : (
             <>
-              A stint is a block of days someone is in the house, in one bedroom — and it is the{" "}
-              <b>only</b> place dates live. Rent and every bill are shared out across these days.
-              Two people on one bedroom over the same days split it between them, day by day. Each
-              new month starts as a copy of the month before, so in a normal month there is nothing
-              to change.
+              A stint is a block of days someone is in the house, in one bedroom — occupancy lives
+              here and nowhere else. Rent and each bill pick a start day (the 1st is a calendar
+              month; the 8th is 8th–8th) and share out across those stint-days. Two people on one
+              bedroom over the same days split it between them, day by day. Each new month starts as
+              a copy of the month before, so in a normal month there is nothing to change.
             </>
           )}
         </div>

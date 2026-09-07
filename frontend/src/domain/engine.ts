@@ -1,6 +1,15 @@
-import { daysInMonth, monthLabel } from "./dates";
-import { money, payer, personName, plural, rangeText } from "./format";
-import { ensureMonth, sortedMonthKeys } from "./months";
+import {
+  addMonths,
+  clampCycleDay,
+  daySpanLabel,
+  daysInMonth,
+  iteratePeriodDays,
+  monthLabel,
+  periodBounds,
+  periodLabel,
+} from "./dates";
+import { money, payer, personName, plural } from "./format";
+import { ensureMonth, projectStintRange, sortedMonthKeys } from "./months";
 import { deep } from "./clone";
 import type {
   BedroomGap,
@@ -12,11 +21,14 @@ import type {
   MonthConfig,
   MonthLine,
   MonthRecord,
+  PeriodCounts,
   Person,
+  Stint,
 } from "./types";
 
 export const CONFIG_FIELDS = [
   "rent",
+  "rentCycleStartDay",
   "rooms",
   "catchall",
   "catchallWeight",
@@ -27,12 +39,18 @@ export const CONFIG_FIELDS = [
 export function captureConfig(state: HouseholdState): MonthConfig {
   return {
     rent: deep(state.rent),
+    rentCycleStartDay: state.rentCycleStartDay,
     rooms: deep(state.rooms),
     catchall: deep(state.catchall),
     catchallWeight: deep(state.catchallWeight),
     bills: deep(state.bills),
     people: deep(state.people),
   };
+}
+
+export function chargesUseCalendarMonth(state: HouseholdState): boolean {
+  if (clampCycleDay(state.rentCycleStartDay) !== 1) return false;
+  return state.bills.every((b) => clampCycleDay(b.cycleStartDay) === 1);
 }
 
 export function withMonthConfig<T>(
@@ -57,24 +75,81 @@ export function withMonthConfig<T>(
   }
 }
 
+function occupancyFromStints(
+  stints: Stint[],
+  d: number,
+): { liable: string[]; rooms: Record<string, string[]> } {
+  const liable: string[] = [];
+  const rooms: Record<string, string[]> = {};
+  stints.forEach((s) => {
+    if (d < s.from || d > s.to) return;
+    if (!liable.includes(s.personId)) liable.push(s.personId);
+    if (!rooms[s.roomId]) rooms[s.roomId] = [];
+    const occupants = rooms[s.roomId];
+    if (occupants && !occupants.includes(s.personId)) occupants.push(s.personId);
+  });
+  return { liable, rooms };
+}
+
+function stintsForMonth(state: HouseholdState, monthKey: string, labelledKey: string): Stint[] {
+  const existing = state.months[monthKey];
+  if (existing) return existing.stints || [];
+  if (monthKey !== addMonths(labelledKey, 1)) return [];
+  const src = state.months[labelledKey];
+  if (!src) return [];
+  return (src.stints || []).map((st) => {
+    const range = projectStintRange(st, labelledKey, monthKey);
+    return { ...st, from: range.from, to: range.to };
+  });
+}
+
 export function buildDayModel(state: HouseholdState, key: string): DayModel[] {
   const D = daysInMonth(key);
   const M = state.months[key];
   const days: DayModel[] = [];
   if (!M) return days;
   for (let d = 1; d <= D; d++) {
-    const liable: string[] = [];
-    const rooms: Record<string, string[]> = {};
-    (M.stints || []).forEach((s) => {
-      if (d < s.from || d > s.to) return;
-      if (!liable.includes(s.personId)) liable.push(s.personId);
-      if (!rooms[s.roomId]) rooms[s.roomId] = [];
-      const occupants = rooms[s.roomId];
-      if (occupants && !occupants.includes(s.personId)) occupants.push(s.personId);
-    });
-    days.push({ d, liable, present: liable, rooms });
+    const { liable, rooms } = occupancyFromStints(M.stints || [], d);
+    days.push({ key, d, liable, present: liable, rooms });
   }
   return days;
+}
+
+export function buildDayModelForPeriod(
+  state: HouseholdState,
+  labelledKey: string,
+  cycleDay: number,
+): DayModel[] {
+  const bounds = periodBounds(labelledKey, cycleDay);
+  return iteratePeriodDays(bounds).map(({ key, d }) => {
+    const { liable, rooms } = occupancyFromStints(stintsForMonth(state, key, labelledKey), d);
+    return { key, d, liable, present: liable, rooms };
+  });
+}
+
+export function periodCounts(
+  state: HouseholdState,
+  labelledKey: string,
+  cycleDay: number,
+): PeriodCounts {
+  const days = buildDayModelForPeriod(state, labelledKey, cycleDay);
+  const liableDays: Record<string, number> = {};
+  state.people.forEach((p) => {
+    liableDays[p.id] = 0;
+  });
+  days.forEach((day) =>
+    day.liable.forEach((id) => {
+      if (id in liableDays) liableDays[id] = (liableDays[id] ?? 0) + 1;
+    }),
+  );
+  const clamped = clampCycleDay(cycleDay);
+  return {
+    liableDays,
+    days,
+    cycleStartDay: clamped,
+    periodLabel: periodLabel(labelledKey, clamped),
+    periodLength: days.length,
+  };
 }
 
 export function bedroomGapsInner(state: HouseholdState, key: string): BedroomGap[] {
@@ -159,8 +234,11 @@ export function computeRent(
   raw: Record<string, number>;
   warn: string[];
 } {
-  const days = buildDayModel(state, key);
+  const cycleDay = clampCycleDay(state.rentCycleStartDay);
+  const days = buildDayModelForPeriod(state, key, cycleDay);
   const D = days.length;
+  const calendar = cycleDay === 1;
+  const scope = calendar ? "this month" : "this rent period";
   const { rooms, ca, total } = weightedAreas(state);
   const rawBed: Record<string, number> = {};
   const rawShare: Record<string, number> = {};
@@ -186,13 +264,15 @@ export function computeRent(
       bedroom: {},
       shared: {},
       raw: {},
-      warn: ["Nobody is down as being here this month — add a stint on the Who's here tab."],
+      warn: [`Nobody is down as being here ${scope} — add a stint on the Who's here tab.`],
     };
   }
 
-  const orphanDays: number[] = [];
+  const orphanDays: Array<{ key: string; d: number }> = [];
   days.forEach((day) => {
-    const liable = day.liable.length ? day.liable : (orphanDays.push(day.d), anyLiable);
+    const liable = day.liable.length
+      ? day.liable
+      : (orphanDays.push({ key: day.key, d: day.d }), anyLiable);
     rooms.forEach((room) => {
       if (room.wa <= 0) return;
       const daily = (rentPence * (room.wa / total)) / D;
@@ -218,7 +298,7 @@ export function computeRent(
 
   if (orphanDays.length) {
     warn.push(
-      `Nobody is down as being here on ${plural(orphanDays.length, "day")} (${rangeText(orphanDays)}). Those days were charged to everyone who was here at some point in the month.`,
+      `Nobody is down as being here on ${plural(orphanDays.length, "day")} (${daySpanLabel(orphanDays)}). Those days were charged to everyone who was here at some point in ${scope}.`,
     );
   }
 
@@ -257,7 +337,7 @@ export function dayCounts(state: HouseholdState, key: string): MonthCompute["cou
 export function billUnits(
   state: HouseholdState,
   payers: string[] | null | undefined,
-  counts: MonthCompute["counts"],
+  counts: { liableDays: Record<string, number> },
 ): { units: Record<string, number>; how: Record<string, string>; sum: number; fallback: boolean } {
   const { liableDays } = counts;
   const units: Record<string, number> = {};
@@ -325,6 +405,7 @@ export function computeMonthInner(
   M: MonthRecord,
 ): MonthCompute {
   const counts = dayCounts(state, key);
+  const rentCounts = periodCounts(state, key, state.rentCycleStartDay);
   const rentAmount = typeof M.rent === "number" ? M.rent : state.rent;
   const rentPence = Math.round(rentAmount * 100);
   const r = computeRent(state, key, rentPence);
@@ -358,7 +439,9 @@ export function computeMonthInner(
 
   allLines.forEach(({ def, line, oneOff }) => {
     const amt = Math.round(amountOf(line, mode) * 100);
-    const u = billUnits(state, def.payers, counts);
+    const cycleDay = oneOff ? 1 : clampCycleDay("cycleStartDay" in def ? def.cycleStartDay : 1);
+    const lineCounts = periodCounts(state, key, cycleDay);
+    const u = billUnits(state, def.payers, lineCounts);
     const shares = distribute(u.units, amt);
     Object.keys(shares).forEach((id) => {
       if (!(id in totals)) {
@@ -382,6 +465,9 @@ export function computeMonthInner(
       isActual: typeof line.act === "number",
       est: Math.round((+line.est || 0) * 100),
       act: typeof line.act === "number" ? Math.round(line.act * 100) : null,
+      cycleStartDay: cycleDay,
+      periodLabel: lineCounts.periodLabel,
+      periodLength: lineCounts.periodLength,
     });
   });
 
@@ -390,6 +476,7 @@ export function computeMonthInner(
     key,
     mode,
     counts,
+    rentCounts,
     rentPence,
     rentAmount,
     bedroom: r.bedroom,
@@ -529,8 +616,12 @@ export function monthSummaryText(state: HouseholdState, key: string): string {
   state.people.forEach((p) => {
     const t = c.totals[p.id] || 0;
     if (!t) return;
-    const n = c.counts.liableDays[p.id] || 0;
-    lines.push(`${p.name}: ${money(state.currency, t)}  (${n} of ${daysInMonth(key)} days here)`);
+    const n = chargesUseCalendarMonth(state)
+      ? c.counts.liableDays[p.id] || 0
+      : c.rentCounts.liableDays[p.id] || 0;
+    const denom = chargesUseCalendarMonth(state) ? daysInMonth(key) : c.rentCounts.periodLength;
+    const span = chargesUseCalendarMonth(state) ? "" : ` (${c.rentCounts.periodLabel})`;
+    lines.push(`${p.name}: ${money(state.currency, t)}  (${n} of ${denom} days here${span})`);
   });
   const { bal } = computeBalances(state);
   const owing = state.people.filter((p) => !p.isPayer && Math.abs(bal[p.id] || 0) >= 1);

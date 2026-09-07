@@ -1,8 +1,17 @@
 import { uid } from "./ids";
-import { daysInMonth } from "./dates";
+import { clampCycleDay, daysInMonth } from "./dates";
 import { DEFAULT_BILLS, DEFAULT_ROOMS, MAX_PEOPLE } from "./defaults";
 import { ensureMonth } from "./months";
-import type { HouseholdState } from "./types";
+import type { HouseholdState, MonthConfig } from "./types";
+
+function normaliseMonthConfig(cfg: MonthConfig): void {
+  cfg.rentCycleStartDay = clampCycleDay(cfg.rentCycleStartDay);
+  if (Array.isArray(cfg.bills)) {
+    cfg.bills.forEach((b) => {
+      b.cycleStartDay = clampCycleDay(b.cycleStartDay);
+    });
+  }
+}
 
 export function normalise(state: HouseholdState): void {
   if (!Array.isArray(state.rooms) || !state.rooms.length) {
@@ -35,6 +44,8 @@ export function normalise(state: HouseholdState): void {
   const live = state.people.filter((p) => !p.archived);
   if (live.length && !live.some((p) => p.isPayer) && live[0]) live[0].isPayer = true;
 
+  state.rentCycleStartDay = clampCycleDay(state.rentCycleStartDay);
+
   if (!Array.isArray(state.bills)) state.bills = DEFAULT_BILLS.map((b) => ({ ...b }));
   state.bills.forEach((b) => {
     if (!b.id) b.id = uid("bl");
@@ -42,6 +53,7 @@ export function normalise(state: HouseholdState): void {
     delete (b as { kind?: unknown }).kind;
     if (typeof b.est !== "number") b.est = 0;
     if (b.payers && !Array.isArray(b.payers)) b.payers = null;
+    b.cycleStartDay = clampCycleDay(b.cycleStartDay);
   });
 
   if (!state.months || typeof state.months !== "object") state.months = {};
@@ -91,6 +103,7 @@ export function normalise(state: HouseholdState): void {
     if (M.charged && typeof M.charged !== "object") M.charged = null;
     if (M.config && typeof M.config !== "object") M.config = null;
     if (M.config && !Array.isArray(M.config.rooms)) M.config = null;
+    if (M.config) normaliseMonthConfig(M.config);
     if (typeof M.note !== "string") M.note = "";
   });
   if (!state.months[state.currentMonth]) ensureMonth(state, state.currentMonth);

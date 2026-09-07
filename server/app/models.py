@@ -24,6 +24,7 @@ class Household(Base):
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String, nullable=False, default="£")
     rent: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    rent_cycle_start_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     catchall: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     catchall_weight: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     current_month: Mapped[str] = mapped_column(String, nullable=False, default="")
@@ -85,6 +86,7 @@ class Bill(Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     est: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    cycle_start_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     payers_restricted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sort_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
