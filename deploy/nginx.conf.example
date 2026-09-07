@@ -1,0 +1,40 @@
+# nginx reverse proxy in front of the Node server.
+#
+# server.js serves the built frontend from frontend/dist AND the /api/*
+# endpoints from one process — nginx should proxy to that process's port,
+# not point at a static folder directly. Pointing nginx straight at dist
+# would bypass the password/session check on every /api/* request.
+#
+# Install (Debian/Ubuntu example):
+#   sudo cp nginx.conf.example /etc/nginx/sites-available/rent-split
+#   sudo ln -s /etc/nginx/sites-available/rent-split /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+# Then get a certificate (e.g. `sudo certbot --nginx -d your-domain.example`).
+
+server {
+    listen 80;
+    server_name your-domain.example;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your-domain.example;
+
+    ssl_certificate     /etc/letsencrypt/live/your-domain.example/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.example/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        # Required: server.js reads this for its login rate-limiter. Without
+        # it every request looks like it comes from nginx's own IP.
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+    }
+}
+
+# Once this is live over https, set SECURE_COOKIE=1 in the server's
+# environment (see .env.example / rent-split.service) so the session
+# cookie gets the Secure flag.

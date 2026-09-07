@@ -1,0 +1,47 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Package manager noise (bun only)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Runtime data — never commit household records
+data/*
+!data/.gitkeep
+
+# Logs & caches
+logs/
+*.log
+.npm
+.eslintcache
+.cache/
+.swc/
+.turbo/
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.sublime-workspace
+*.sublime-project
+
+# Local scratch
+_archive/
+temp/
+.temp/
+*.code-workspace

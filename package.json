@@ -1,0 +1,23 @@
+{
+  "name": "rent-split",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Self-hosted household rent & bill splitter",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"bun run --cwd server dev\" \"bun run --cwd frontend dev\"",
+    "build": "bun run --cwd frontend build",
+    "start": "bun run --cwd server start",
+    "lint": "bun run --cwd frontend lint",
+    "typecheck": "bun run --cwd frontend typecheck",
+    "format": "oxfmt -c .oxfmtrc.json frontend/src server",
+    "install:all": "bun install && bun install --cwd frontend && bun install --cwd server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "oxfmt": "^0.47.0"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  }
+}
