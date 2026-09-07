@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { addMonths, monthLabel } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import type { MonthStatus } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -222,5 +223,95 @@ export function Screen(props: { id: string; active: boolean; children: ReactNode
     >
       {props.children}
     </div>
+  );
+}
+
+export type EditableTextProps = {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+};
+
+export function EditableText(props: EditableTextProps) {
+  const [draft, setDraft] = useState(props.value);
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setDraft(props.value);
+  }, [props.value]);
+
+  return (
+    <Input
+      value={draft}
+      disabled={props.disabled}
+      className={props.className}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={() => {
+        focused.current = false;
+        if (draft !== props.value) props.onChange(draft);
+      }}
+      onChange={(e) => {
+        const next = e.target.value;
+        setDraft(next);
+        props.onChange(next);
+      }}
+    />
+  );
+}
+
+export type EditableNumberProps = {
+  value: number;
+  onChange: (value: number) => void;
+  className?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  disabled?: boolean;
+};
+
+export function EditableNumber(props: EditableNumberProps) {
+  const [draft, setDraft] = useState(String(props.value));
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setDraft(String(props.value));
+  }, [props.value]);
+
+  function commit(raw: string): void {
+    const n = Math.round(parseFloat(raw));
+    if (!Number.isFinite(n)) {
+      setDraft(String(props.value));
+      return;
+    }
+    props.onChange(n);
+  }
+
+  return (
+    <Input
+      type="number"
+      className={props.className}
+      min={props.min}
+      max={props.max}
+      step={props.step}
+      disabled={props.disabled}
+      value={draft}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={() => {
+        focused.current = false;
+        commit(draft);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setDraft(raw);
+        if (raw.trim() === "") return;
+        const n = parseFloat(raw);
+        if (Number.isFinite(n)) props.onChange(n);
+      }}
+    />
   );
 }

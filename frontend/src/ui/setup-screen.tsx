@@ -10,7 +10,7 @@ import { useHousehold } from "../store/household-context";
 import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
 import { CycleDayField } from "./cycle-day-field";
-import { MoneyInput, PageHeader, Panel, Screen } from "./kit";
+import { EditableText, MoneyInput, PageHeader, Panel, Screen } from "./kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -83,17 +83,16 @@ export function SetupScreen() {
                 >
                   <Avatar state={state} person={p} size={32} />
                   <div className="min-w-0 flex-1">
-                    <Input
-                      value={p.name}
-                      className="h-7 border-transparent bg-transparent px-1 font-medium shadow-none"
-                      onChange={(e) => {
-                        const name = e.target.value;
-                        store.mutate(() => {
-                          const person = personById(store.state, p.id);
-                          if (person) person.name = name;
-                        });
-                      }}
-                    />
+                  <EditableText
+                    value={p.name}
+                    className="h-7 border-transparent bg-transparent px-1 font-medium shadow-none"
+                    onChange={(name) => {
+                      store.mutate(() => {
+                        const person = personById(store.state, p.id);
+                        if (person) person.name = name;
+                      });
+                    }}
+                  />
                     <div className="px-1 text-xs text-muted-foreground">{where}</div>
                   </div>
                   {p.archived ? (
@@ -227,11 +226,10 @@ export function SetupScreen() {
             return (
               <div key={room.id} className="mb-3 rounded-xl bg-muted/50 p-3 last:mb-0">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <Input
+                  <EditableText
                     value={room.name}
                     className="h-8 min-w-32 flex-1 border-transparent bg-transparent font-medium shadow-none"
-                    onChange={(e) => {
-                      const name = e.target.value;
+                    onChange={(name) => {
                       store.mutate(() => {
                         const r = store.state.rooms.find((x) => x.id === room.id);
                         if (r) r.name = name;
@@ -378,11 +376,10 @@ export function SetupScreen() {
             return (
               <div key={b.id} className="mb-3 rounded-xl bg-muted/50 p-3 last:mb-0">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <Input
+                  <EditableText
                     value={b.name}
                     className="h-8 min-w-28 flex-1 border-transparent bg-transparent font-medium shadow-none"
-                    onChange={(e) => {
-                      const name = e.target.value;
+                    onChange={(name) => {
                       store.mutate(() => {
                         const bill = store.state.bills.find((x) => x.id === b.id);
                         if (bill) bill.name = name;

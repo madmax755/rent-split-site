@@ -8,14 +8,21 @@ import { ensureMonth, lastRoomOf } from "../domain/months";
 import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
-import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
+import {
+  EditableNumber,
+  EmptyState,
+  MonthSwitcher,
+  PageHeader,
+  Panel,
+  Screen,
+  WarnList,
+} from "./kit";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 export function StintsScreen() {
-  const { store, state, activeTab } = useHousehold();
+  const { store, state, activeTab, version } = useHousehold();
   const selfOnly = store.isTenant();
   const myId = store.linkedPersonId();
   const [addingPerson, setAddingPerson] = useState(false);
@@ -82,7 +89,7 @@ export function StintsScreen() {
         )}
       />
 
-      <div className="mb-5 overflow-hidden rounded-xl border bg-card">
+      <div className="mb-5 overflow-hidden rounded-xl border bg-card" data-store-version={version}>
         <div className="overflow-x-auto p-4">
           {involved.length ? (
             <div className="min-w-[560px]">
@@ -258,30 +265,28 @@ export function StintsScreen() {
                   )}
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     day
-                    <Input
-                      type="number"
+                    <EditableNumber
                       className="w-14 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.from}
                       disabled={!editable}
-                      onChange={(e) => {
+                      onChange={(from) => {
                         patchStint(s.id, (st) => {
-                          st.from = Math.round(parseFloat(e.target.value) || 1);
+                          st.from = from;
                         });
                       }}
                     />
                     →
-                    <Input
-                      type="number"
+                    <EditableNumber
                       className="w-14 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.to}
                       disabled={!editable}
-                      onChange={(e) => {
+                      onChange={(to) => {
                         patchStint(s.id, (st) => {
-                          st.to = Math.round(parseFloat(e.target.value) || D);
+                          st.to = to;
                         });
                       }}
                     />

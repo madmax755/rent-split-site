@@ -1,4 +1,10 @@
-import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { HouseholdState } from "../domain/types";
 import { HouseholdStore } from "./household-store";
 
@@ -22,9 +28,12 @@ export function useHousehold(): {
 } {
   const store = useStore();
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  // In-place mutations keep `store.state` the same object. A new shallow
+  // identity on each version bump makes React Compiler invalidate screens.
+  const state = useMemo(() => ({ ...store.state }), [store, snap.version]);
   return {
     store,
-    state: store.state,
+    state,
     version: snap.version,
     activeTab: store.state.activeTab,
   };
