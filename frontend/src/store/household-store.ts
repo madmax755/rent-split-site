@@ -1,3 +1,4 @@
+import { deep } from "../domain/clone";
 import { freshHousehold } from "../domain/defaults";
 import { todayKey } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
@@ -68,6 +69,9 @@ export class HouseholdStore {
 
   mutate(fn: () => void, opts: { persist?: boolean; quiet?: boolean } = {}): void {
     fn();
+    // Replace object identities after in-place edits so React Compiler
+    // memo caches cannot keep rendering the pre-edit tree.
+    this.state = deep(this.state);
     const persist = opts.persist !== false;
     if (persist) this.save();
     this.notify();

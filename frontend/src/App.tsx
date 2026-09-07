@@ -66,6 +66,15 @@ function RentSplitApp() {
     void boot(store).then(() => setBooted(true));
   }, [store]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as Window & { __rsStore?: HouseholdStore };
+    w.__rsStore = store;
+    return () => {
+      if (w.__rsStore === store) delete w.__rsStore;
+    };
+  }, [store]);
+
   async function onLogin(username: string, password: string): Promise<void> {
     setLoginError("");
     const login = store.adapter.login;
