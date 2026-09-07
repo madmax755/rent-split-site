@@ -1,6 +1,6 @@
-# nginx reverse proxy in front of the Node server.
+# nginx reverse proxy in front of the FastAPI server.
 #
-# server.js serves the built frontend from frontend/dist AND the /api/*
+# app.main serves the built frontend from frontend/dist AND the /api/*
 # endpoints from one process — nginx should proxy to that process's port,
 # not point at a static folder directly. Pointing nginx straight at dist
 # would bypass the password/session check on every /api/* request.
@@ -27,7 +27,7 @@ server {
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
-        # Required: server.js reads this for its login rate-limiter. Without
+        # Required: the API reads this for its login rate-limiter. Without
         # it every request looks like it comes from nginx's own IP.
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;

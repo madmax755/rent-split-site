@@ -1,5 +1,5 @@
-// API types shared conceptually with the Node server.
-// Keep these in sync with `server/server.js` route handlers.
+// API types shared conceptually with the Python FastAPI server.
+// Keep these in sync with `server/app/routes.py` and `server/app/schemas.py`.
 
 export type AccountRole = "admin" | "tenant";
 

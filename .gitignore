@@ -22,6 +22,17 @@ pnpm-lock.yaml
 data/*
 !data/.gitkeep
 
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.db
+*.db-wal
+*.db-shm
+
 # Logs & caches
 logs/
 *.log

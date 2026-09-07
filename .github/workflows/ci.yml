@@ -11,12 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: astral-sh/setup-uv@v6
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
       - name: Install
         run: bun run install:all
+
+      - name: Server tests
+        run: bun run test:server
 
       - name: Typecheck & build
         run: bun run build

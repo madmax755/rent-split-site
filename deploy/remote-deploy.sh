@@ -6,7 +6,7 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/rent-split-site}"
 REPO_URL="${REPO_URL:-https://github.com/madmax755/rent-split-site.git}"
 REF="${REF:-main}"
-export PATH="${HOME}/.bun/bin:/usr/local/bin:/usr/bin:/bin:${PATH}"
+export PATH="${HOME}/.local/bin:${HOME}/.bun/bin:/usr/local/bin:/usr/bin:/bin:${PATH}"
 
 log() { printf '[deploy] %s\n' "$*"; }
 
@@ -15,7 +15,7 @@ sync_to_ref() {
   git remote set-url origin "${REPO_URL}" 2>/dev/null || git remote add origin "${REPO_URL}"
   git fetch --depth 1 origin "${REF}"
   git checkout --force --detach FETCH_HEAD
-  git clean -fd --exclude=data --exclude=frontend/node_modules --exclude=node_modules --exclude=frontend/dist
+  git clean -fd --exclude=data --exclude=frontend/node_modules --exclude=node_modules --exclude=frontend/dist --exclude=server/.venv
 }
 
 if ! command -v bun >/dev/null 2>&1; then
@@ -23,9 +23,15 @@ if ! command -v bun >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v node >/dev/null 2>&1; then
-  log "node not found"
+if ! command -v python3 >/dev/null 2>&1; then
+  log "python3 not found"
   exit 1
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+  log "Installing uv"
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  export PATH="${HOME}/.local/bin:${PATH}"
 fi
 
 if [[ ! -d "${DEPLOY_DIR}" ]]; then
@@ -85,10 +91,12 @@ fi
 sync_to_ref
 
 log "Installing dependencies"
-bun run install:all
+bun install
+bun install --cwd frontend
+uv sync --directory server --frozen
 
 log "Building frontend"
-bun run build
+bun run --cwd frontend build
 
 if [[ ! -f frontend/dist/index.html ]]; then
   log "Build failed — frontend/dist/index.html missing"
@@ -101,6 +109,8 @@ sudo systemctl daemon-reload
 
 sudo chown -R rent-split:rent-split "${DEPLOY_DIR}/data"
 sudo chmod -R u+rwX,g+rwX "${DEPLOY_DIR}/data"
+sudo chgrp -R rent-split "${DEPLOY_DIR}/server/.venv"
+sudo chmod -R g+rX "${DEPLOY_DIR}/server/.venv"
 
 log "Restarting rent-split.service"
 sudo systemctl restart rent-split

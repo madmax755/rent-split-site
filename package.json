@@ -5,13 +5,14 @@
   "description": "Self-hosted household rent & bill splitter",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"bun run --cwd server dev\" \"bun run --cwd frontend dev\"",
+    "dev": "concurrently -n server,web -c blue,green \"uv run --directory server uvicorn app.main:app --reload --host 127.0.0.1 --port 8080\" \"bun run --cwd frontend dev\"",
     "build": "bun run --cwd frontend build",
-    "start": "bun run --cwd server start",
+    "start": "uv run --directory server rent-split",
     "lint": "bun run --cwd frontend lint",
     "typecheck": "bun run --cwd frontend typecheck",
-    "format": "oxfmt -c .oxfmtrc.json frontend/src server",
-    "install:all": "bun install && bun install --cwd frontend && bun install --cwd server"
+    "test:server": "uv run --directory server pytest",
+    "format": "oxfmt -c .oxfmtrc.json frontend/src",
+    "install:all": "bun install && bun install --cwd frontend && uv sync --directory server --extra dev"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

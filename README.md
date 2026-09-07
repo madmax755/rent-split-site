@@ -3,8 +3,8 @@
 Self-hosted household rent & bill splitter.
 
 - **Frontend:** Vite 8 + React 19 + React Compiler + Tailwind 4 + TypeScript
-- **Server:** zero-dependency Node 18+ (`server/server.js`) — JSON file store, per-person logins, backups
-- **Tooling:** Bun workspaces-style scripts (sterling-lite), oxfmt / oxlint
+- **Server:** FastAPI + SQLAlchemy 2 + Alembic + SQLite (`server/`) — per-person logins, backups
+- **Tooling:** Bun (frontend) and uv (Python API); oxfmt / oxlint
 
 ## Layout
 
@@ -12,15 +12,16 @@ Self-hosted household rent & bill splitter.
 rent-split-site/
 ├── frontend/          Vite React app (build → frontend/dist)
 │   └── src/           typed React UI, domain engine, storage adapters
-├── server/            Node API + static file server
+├── server/            FastAPI API + static file server
+│   └── alembic/       SQLite schema migrations
 ├── deploy/            systemd + nginx examples
-├── data/              runtime JSON + backups (gitignored)
+├── data/              runtime SQLite + backups (gitignored)
 └── .env.example
 ```
 
 ## Develop
 
-Requires **Bun** and **Node 18+**.
+Requires **Bun**, **uv**, and **Python 3.12+**.
 
 ```bash
 bun run install:all
@@ -29,6 +30,8 @@ bun run dev
 
 - UI: http://127.0.0.1:5173 (Vite proxies `/api` → server on :8080)
 - API/static prod shape: http://127.0.0.1:8080 after `bun run build && bun start`
+
+Server tests: `bun run test:server`. New schema: edit SQLAlchemy models in `server/app/models.py`, then `uv run --directory server alembic revision --autogenerate -m "…"`.
 
 ## Production
 
@@ -40,6 +43,8 @@ bun start
 
 The server serves `frontend/dist` and `/api/*`. Put nginx in front with TLS (`deploy/nginx.conf.example`) and optionally run under systemd (`deploy/rent-split.service`).
 
+On first boot, if `data/` still has the old `rent-split.json` / `accounts.json` and the database is empty, they are imported. The JSON files are left in place.
+
 ### Deploy to server1 (tms.maxkendall.com)
 
 Live install: systemd unit `rent-split.service`, app dir `/opt/rent-split-site`, credentials in `/etc/rent-split.env`.
@@ -47,21 +52,21 @@ Live install: systemd unit `rent-split.service`, app dir `/opt/rent-split-site`,
 GitHub Actions (`.github/workflows/deploy.yml`) on push to `main` (or manual dispatch):
 
 1. Self-hosted runner SSHs to `server1` as `max-kendall`
-2. Runs `deploy/remote-deploy.sh` — bootstrap/pull, `bun run install:all && bun run build`, refresh unit, `systemctl restart rent-split`
+2. Runs `deploy/remote-deploy.sh` — bootstrap/pull, frontend build, `uv sync`, refresh unit, `systemctl restart rent-split`
 
 First run converts the old manual copy into a git checkout and keeps `data/` intact.
 
 Important env vars:
 
-- `RENT_SPLIT_ADMIN_USER` / `RENT_SPLIT_ADMIN_PASSWORD` — seeded into `accounts.json` if that file is empty
-- `DATA_DIR` — where `rent-split.json`, `accounts.json`, and `backups/` live
+- `RENT_SPLIT_ADMIN_USER` / `RENT_SPLIT_ADMIN_PASSWORD` — seeded into SQLite if the account table is empty
+- `DATA_DIR` — where `rent-split.db`, `backups/`, and optional legacy JSON live
 - `SECURE_COOKIE=1` — once on https
 
 Disable or reset a person's login to revoke them. Changing `RENT_SPLIT_SECRET` signs everyone out.
 
 ## Data
 
-Household numbers are one JSON document with a revision. Logins (password hashes) live in a separate `accounts.json` next to it and are never sent to the browser. Every household write keeps a timestamped backup (capped at 200). Concurrent edits: last write with matching `rev` wins; conflicts ask the user to keep/overwrite. Admins can edit the household; tenants see only their own dashboard and can record a settlement.
+Household numbers are stored relationally in SQLite (`people`, `rooms`, `bills`, `months`, `ledger`, …) behind the same JSON document API the React app already uses. Logins live in the `account` table; password hashes never go to the browser. Every household write keeps a timestamped JSON backup (capped at 200). Concurrent edits: last write with matching `rev` wins; conflicts ask the user to keep/overwrite. Admins can edit the household; tenants see only their own dashboard and can record a settlement.
 
 ## New features
 

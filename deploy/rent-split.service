@@ -22,7 +22,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/rent-split-site
-ExecStart=/usr/bin/node server/server.js
+ExecStart=/opt/rent-split-site/server/.venv/bin/rent-split
 Restart=on-failure
 RestartSec=3
 
@@ -30,8 +30,9 @@ User=rent-split
 Group=rent-split
 
 EnvironmentFile=/etc/rent-split.env
-# Built assets (override in the env file if you move them).
 Environment=PUBLIC_DIR=/opt/rent-split-site/frontend/dist
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
 
 NoNewPrivileges=true
 ProtectSystem=strict
