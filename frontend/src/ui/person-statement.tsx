@@ -8,6 +8,8 @@ import {
 import { money, personById, plural, signedMoney } from "../domain/format";
 import type { HouseholdState, MonthCompute, MonthRecord } from "../domain/types";
 import { Avatar } from "./avatar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type PersonStatementCardProps = {
   state: HouseholdState;
@@ -56,122 +58,133 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
   const clickable = !!props.onToggle;
 
   return (
-    <div className={`stmt-card${open ? " open" : ""}`}>
-      <div
-        className="stmt-head"
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center gap-3 px-4 py-3 text-left",
+          clickable ? "hover:bg-muted/50" : "cursor-default",
+        )}
         onClick={clickable ? props.onToggle : undefined}
-        style={clickable ? undefined : { cursor: "default" }}
       >
         <Avatar state={state} person={p} size={34} />
-        <div className="grow" style={{ minWidth: 0 }}>
-          <div className="stmt-name">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 font-medium">
             {p.name}
-            {p.isPayer ? (
-              <span className="badge ok" style={{ marginLeft: 4 }}>
-                pays the bills
-              </span>
-            ) : null}
+            {p.isPayer ? <Badge variant="secondary">pays the bills</Badge> : null}
           </div>
-          <div className="stmt-sub">
+          <div className="tabular text-xs text-muted-foreground">
             {calendar
               ? `here ${liable} of ${D} days`
               : `rent ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
             {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
           </div>
         </div>
-        <div className="stmt-amt">
-          <b>{money(state.currency, total)}</b>
-          <span>{monthAllActual(state, M) ? "realised" : "estimated"}</span>
+        <div className="text-right">
+          <div className="tabular font-heading text-lg font-semibold">
+            {money(state.currency, total)}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            {monthAllActual(state, M) ? "realised" : "estimated"}
+          </div>
         </div>
-        {clickable ? (
-          <svg
-            className="chev"
-            style={{
-              transform: `rotate(${open ? 90 : 0}deg)`,
-              width: 18,
-              height: 18,
-              color: "var(--muted-2)",
-            }}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
-        ) : null}
-      </div>
-      <div className="stmt-body">
-        <div className="lineitem">
-          <span className="li-name">Bedroom</span>
-          <span className="li-how">
-            {roomTxt}
-            {sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here {liable}/{D} days
-            {calendar ? "" : ` · ${c.rentCounts.periodLabel}`}
-          </span>
-          <span className="li-amt">{money(state.currency, c.bedroom[personId] || 0)}</span>
+      </button>
+      {open ? (
+        <div className="border-t px-4 py-2">
+          <Line
+            name="Bedroom"
+            how={`${roomTxt}${sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here ${liable}/${D} days${calendar ? "" : ` · ${c.rentCounts.periodLabel}`}`}
+            amount={money(state.currency, c.bedroom[personId] || 0)}
+          />
+          <Line
+            name="Shared space"
+            how={`${sharedNames.join(", ")}${state.catchall > 0 ? ", hallway" : ""} · split with everyone here each day`}
+            amount={money(state.currency, c.shared[personId] || 0)}
+          />
+          {c.lines.map((l) => {
+            const u = l.units[personId] || 0;
+            const how =
+              u === 0
+                ? l.how[personId] === "not a payer"
+                  ? "not a payer on this bill"
+                  : "not here this month"
+                : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days${l.cycleStartDay === 1 ? "" : ` · ${l.periodLabel}`}`;
+            return (
+              <Line
+                key={l.id}
+                name={`${l.name}${l.isActual ? "" : " (est)"}`}
+                how={how}
+                amount={money(state.currency, l.shares[personId] || 0)}
+                inset
+              />
+            );
+          })}
+          <Line
+            name={`Total for ${monthLabel(monthKey)}`}
+            how=""
+            amount={money(state.currency, total)}
+            strong
+          />
+          {charged ? (
+            <>
+              <Line
+                name="Asked for at the time"
+                how="collected on the estimates"
+                amount={money(state.currency, was)}
+              />
+              {monthHasActuals(M) ? (
+                <Line
+                  name={
+                    diff > 0
+                      ? "Underpaid — owes"
+                      : diff < 0
+                        ? "Overpaid — refund due"
+                        : "Settled exactly"
+                  }
+                  how="difference between the real bills and what was collected · carried to Settle"
+                  amount={signedMoney(state.currency, diff)}
+                  tone={diff > 0 ? "debit" : diff < 0 ? "credit" : undefined}
+                />
+              ) : null}
+            </>
+          ) : null}
         </div>
-        <div className="lineitem">
-          <span className="li-name">Shared space</span>
-          <span className="li-how">
-            {sharedNames.join(", ")}
-            {state.catchall > 0 ? ", hallway" : ""} · split with everyone here each day
-          </span>
-          <span className="li-amt">{money(state.currency, c.shared[personId] || 0)}</span>
-        </div>
-        {c.lines.map((l) => {
-          const u = l.units[personId] || 0;
-          const how =
-            u === 0
-              ? l.how[personId] === "not a payer"
-                ? "not a payer on this bill"
-                : "not here this month"
-              : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days${l.cycleStartDay === 1 ? "" : ` · ${l.periodLabel}`}`;
-          return (
-            <div className="lineitem sub" key={l.id}>
-              <span className="li-name">
-                {l.name}
-                {l.isActual ? null : (
-                  <span style={{ color: "var(--muted-2)", fontWeight: 500 }}> (est)</span>
-                )}
-              </span>
-              <span className="li-how">{how}</span>
-              <span className="li-amt">{money(state.currency, l.shares[personId] || 0)}</span>
-            </div>
-          );
-        })}
-        <div className="lineitem tot">
-          <span className="li-name">Total for {monthLabel(monthKey)}</span>
-          <span className="li-how" />
-          <span className="li-amt">{money(state.currency, total)}</span>
-        </div>
-        {charged ? (
-          <>
-            <div className="lineitem">
-              <span className="li-name">Asked for at the time</span>
-              <span className="li-how">collected on the estimates</span>
-              <span className="li-amt">{money(state.currency, was)}</span>
-            </div>
-            {monthHasActuals(M) ? (
-              <div className={`lineitem ${diff > 0 ? "debit" : diff < 0 ? "credit" : ""}`}>
-                <span className="li-name">
-                  {diff > 0
-                    ? "Underpaid — owes"
-                    : diff < 0
-                      ? "Overpaid — refund due"
-                      : "Settled exactly"}
-                </span>
-                <span className="li-how">
-                  difference between the real bills and what was collected · carried to Balances
-                </span>
-                <span className="li-amt">{signedMoney(state.currency, diff)}</span>
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+      ) : null}
+    </div>
+  );
+}
+
+type LineProps = {
+  name: string;
+  how: string;
+  amount: string;
+  inset?: boolean;
+  strong?: boolean;
+  tone?: "credit" | "debit";
+};
+
+function Line(props: LineProps) {
+  return (
+    <div
+      className={cn(
+        "flex items-baseline gap-3 border-t py-2 text-sm first:border-t-0",
+        props.inset && "pl-3",
+        props.strong && "border-t-2 font-semibold",
+      )}
+    >
+      <span className={cn("font-medium", props.inset && "font-normal text-foreground/80")}>
+        {props.name}
+      </span>
+      <span className="min-w-0 flex-1 text-xs text-muted-foreground">{props.how}</span>
+      <span
+        className={cn(
+          "tabular whitespace-nowrap font-medium",
+          props.tone === "credit" && "text-emerald-600 dark:text-emerald-400",
+          props.tone === "debit" && "text-destructive",
+        )}
+      >
+        {props.amount}
+      </span>
     </div>
   );
 }

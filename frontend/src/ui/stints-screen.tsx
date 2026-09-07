@@ -8,16 +8,12 @@ import { ensureMonth, lastRoomOf } from "../domain/months";
 import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
-import { Icon } from "./icon";
-import { goMonth } from "./month-screen";
-import { screenClass } from "./screen-class";
-import { Section } from "./section";
+import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
-type StintsScreenProps = {
-  onToggleSection: (id: string) => void;
-};
-
-export function StintsScreen(props: StintsScreenProps) {
+export function StintsScreen() {
   const { store, state, activeTab } = useHousehold();
   const selfOnly = store.isTenant();
   const myId = store.linkedPersonId();
@@ -30,9 +26,6 @@ export function StintsScreen(props: StintsScreenProps) {
   const gaps = bedroomGaps(state, key);
   const totalDays = days.reduce((s, d) => s + d.liable.length, 0);
   const gapCount = gaps.reduce((s, g) => s + g.days.length, 0);
-  const stintSummary =
-    `${plural((M.stints || []).length, "stint")} · ${totalDays} person-days` +
-    (gapCount ? ` · ${gapCount} empty bedroom-days` : "");
 
   function clampAll(stints: Stint[]): void {
     stints.forEach((s) => {
@@ -64,365 +57,308 @@ export function StintsScreen(props: StintsScreenProps) {
 
   if (selfOnly && !myId) {
     return (
-      <div className={screenClass("stints", activeTab)} data-screen="stints">
-        <div className="empty">
-          This login is not linked to a person yet. Ask the household admin.
-        </div>
-      </div>
+      <Screen id="stints" active={activeTab === "stints"}>
+        <EmptyState
+          title="This login is not linked to a person yet"
+          description="Ask the household admin to link your account."
+        />
+      </Screen>
     );
   }
 
   return (
-    <div className={screenClass("stints", activeTab)} data-screen="stints">
-      <div className="monthbar">
-        <button className="iconbtn" title="Previous month" onClick={() => goMonth(store, -1)}>
-          <Icon strokeWidth={2.5}>
-            <path d="M15 6l-6 6 6 6" />
-          </Icon>
-        </button>
-        <div className="month-label">
-          <span>{monthLabel(key)}</span>
-          <span className="sub">{stintSummary}</span>
-        </div>
-        <button className="iconbtn" title="Next month" onClick={() => goMonth(store, 1)}>
-          <Icon strokeWidth={2.5}>
-            <path d="M9 6l6 6-6 6" />
-          </Icon>
-        </button>
-      </div>
+    <Screen id="stints" active={activeTab === "stints"}>
+      <PageHeader
+        title="Who's here"
+        description={`${plural((M.stints || []).length, "stint")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
+        actions={<MonthSwitcher />}
+      />
+      <WarnList
+        items={gaps.map(
+          (g) =>
+            `${g.name} empty on ${g.days.length === D ? "every day" : "day " + rangeText(g.days)}`,
+        )}
+      />
 
-      <div className="tl" style={{ marginBottom: 14 }}>
-        <div className="tl-scroll">
-          <div className="tl-grid">
-            {involved.length ? (
-              <>
-                <div className="tl-ruler" style={cols}>
-                  {Array.from({ length: D }, (_, i) => {
-                    const d = i + 1;
-                    const dow = dayDate(key, d).getDay();
-                    const wk = dow === 0 || dow === 6;
-                    return (
-                      <div key={d} className={`tl-tick${wk ? " wk" : ""}`}>
-                        {d % 2 === 1 || D <= 20 ? d : "\u00a0"}
-                      </div>
-                    );
-                  })}
+      <div className="mb-5 overflow-hidden rounded-xl border bg-card">
+        <div className="overflow-x-auto p-4">
+          {involved.length ? (
+            <div className="min-w-[560px]">
+              <div className="mb-2 grid gap-0.5 pl-[116px]" style={cols}>
+                {Array.from({ length: D }, (_, i) => {
+                  const d = i + 1;
+                  const dow = dayDate(key, d).getDay();
+                  const wk = dow === 0 || dow === 6;
+                  return (
+                    <div
+                      key={d}
+                      className={`tabular text-center text-[9px] ${wk ? "font-bold text-foreground" : "text-muted-foreground"}`}
+                    >
+                      {d % 2 === 1 || D <= 20 ? d : "\u00a0"}
+                    </div>
+                  );
+                })}
+              </div>
+              {involved.map((p) => (
+                <div key={p.id} className="mb-1.5 flex items-center gap-2.5">
+                  <div className="flex w-[106px] shrink-0 items-center gap-2">
+                    <Avatar state={state} person={p} size={22} />
+                    <span className="truncate text-xs font-medium">{p.name}</span>
+                  </div>
+                  <div className="grid h-6 flex-1 gap-0.5" style={cols}>
+                    {Array.from({ length: D }, (_, i) => {
+                      const day = days[i];
+                      const isHere = day ? day.liable.includes(p.id) : false;
+                      let sharing = false;
+                      if (day) {
+                        Object.keys(day.rooms).forEach((rid) => {
+                          const occ = day.rooms[rid] ?? [];
+                          if (occ.includes(p.id) && occ.length > 1) sharing = true;
+                        });
+                      }
+                      return (
+                        <div
+                          key={i}
+                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-foreground" : ""}`}
+                          style={isHere ? { background: personColor(state, p.id) } : undefined}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-                {involved.map((p) => (
+              ))}
+              <div className="mt-2 grid gap-0.5 pl-[116px]" style={cols}>
+                {days.map((day) => (
                   <div
-                    key={p.id}
-                    className="tl-row"
-                    style={
-                      {
-                        "--seg": personColor(state, p.id),
-                        "--seg-soft": personColor(state, p.id),
-                      } as CSSProperties
+                    key={day.d}
+                    title={
+                      state.rentCycleStartDay !== 1 &&
+                      day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                        ? "Rent period starts"
+                        : undefined
                     }
+                    className={`flex h-5 items-center justify-center rounded-[3px] bg-muted text-[9px] font-bold tabular text-muted-foreground ${
+                      state.rentCycleStartDay !== 1 &&
+                      day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                        ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
+                        : ""
+                    }`}
                   >
-                    <div className="tl-who">
-                      <Avatar state={state} person={p} size={22} />
-                      <span className="nm">{p.name}</span>
-                    </div>
-                    <div className="tl-track" style={cols}>
-                      {Array.from({ length: D }, (_, i) => {
-                        const day = days[i];
-                        const isHere = day ? day.liable.includes(p.id) : false;
-                        let sharing = false;
-                        if (day) {
-                          Object.keys(day.rooms).forEach((rid) => {
-                            const occ = day.rooms[rid] ?? [];
-                            if (occ.includes(p.id) && occ.length > 1) sharing = true;
-                          });
-                        }
-                        return (
-                          <div
-                            key={i}
-                            className={`tl-cell ${isHere ? "here" : ""}${sharing ? " share" : ""}`}
-                          />
-                        );
-                      })}
-                    </div>
+                    {day.liable.length}
                   </div>
                 ))}
-                <div className="tl-hc" style={cols}>
-                  {days.map((day) => (
-                    <div
-                      key={day.d}
-                      className={
-                        state.rentCycleStartDay !== 1 &&
-                        day.d === cycleDayInMonth(key, state.rentCycleStartDay)
-                          ? "tl-hcell rent-start"
-                          : "tl-hcell"
-                      }
-                      title={
-                        state.rentCycleStartDay !== 1 &&
-                        day.d === cycleDayInMonth(key, state.rentCycleStartDay)
-                          ? "Rent period starts"
-                          : undefined
-                      }
-                    >
-                      {day.liable.length}
-                    </div>
-                  ))}
-                </div>
-                <div
-                  style={{ fontSize: 11.5, color: "var(--muted)", paddingLeft: 116, marginTop: 5 }}
-                >
-                  people in the house each day
-                </div>
-                {state.rooms.some((r) => !r.communal) ? (
-                  <div
-                    style={{
-                      marginTop: 14,
-                      paddingTop: 12,
-                      borderTop: "0.5px solid var(--hairline)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11.5,
-                        color: "var(--muted)",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: ".04em",
-                        marginBottom: 7,
-                      }}
-                    >
-                      Bedroom cover
-                    </div>
-                    {state.rooms
-                      .filter((r) => !r.communal)
-                      .map((room) => {
-                        const g = gaps.find((x) => x.roomId === room.id);
-                        return (
-                          <div
-                            key={room.id}
-                            className="tl-row"
-                            style={{ "--seg": g ? "var(--red)" : "var(--green)" } as CSSProperties}
-                          >
-                            <div className="tl-who">
-                              <span
-                                className="nm"
-                                style={{ color: g ? "var(--red)" : "var(--muted)" }}
-                              >
-                                {room.name}
-                              </span>
-                            </div>
-                            <div className="tl-track" style={cols}>
-                              {Array.from({ length: D }, (_, i) => {
-                                const occ = (days[i]?.rooms[room.id] || []).length;
-                                return (
-                                  <div
-                                    key={i}
-                                    className={`tl-cell${occ ? " here" : " empty"}`}
-                                    title={`${room.name} — day ${i + 1}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
-                                  />
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <div className="empty">
-                Nobody is down for {monthLabel(key)} yet. Use <b>Add a stint</b> below, or reset
-                from the roster on the This month tab.
               </div>
-            )}
-          </div>
+              <div className="mt-1 pl-[116px] text-[11px] text-muted-foreground">
+                people in the house each day
+              </div>
+              {state.rooms.some((r) => !r.communal) ? (
+                <div className="mt-4 border-t pt-3">
+                  <div className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    Bedroom cover
+                  </div>
+                  {state.rooms
+                    .filter((r) => !r.communal)
+                    .map((room) => {
+                      const g = gaps.find((x) => x.roomId === room.id);
+                      return (
+                        <div key={room.id} className="mb-1.5 flex items-center gap-2.5">
+                          <div className="w-[106px] shrink-0 truncate text-xs font-medium">
+                            <span className={g ? "text-destructive" : "text-muted-foreground"}>
+                              {room.name}
+                            </span>
+                          </div>
+                          <div className="grid h-6 flex-1 gap-0.5" style={cols}>
+                            {Array.from({ length: D }, (_, i) => {
+                              const occ = (days[i]?.rooms[room.id] || []).length;
+                              return (
+                                <div
+                                  key={i}
+                                  title={`${room.name} — day ${i + 1}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
+                                  className={`rounded-[3px] ${occ ? "bg-emerald-500/80" : "bg-destructive/25 ring-1 ring-destructive"}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <EmptyState
+              title={`Nobody is down for ${monthLabel(key)} yet`}
+              description="Add a stint below, or reset from the roster on This month."
+            />
+          )}
         </div>
-        <div className="tl-legend">
-          <span>
-            <i style={{ background: "var(--accent)" }} />
-            In the house — paying that day
+        <div className="flex flex-wrap gap-4 border-t px-4 py-3 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block size-3 rounded-sm bg-primary" /> In the house
           </span>
-          <span>
-            <i style={{ background: "var(--card-2)", boxShadow: "inset 0 0 0 2px var(--text)" }} />
-            Sharing a bedroom
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block size-3 rounded-sm bg-muted ring-1 ring-foreground" /> Sharing
+            a bedroom
           </span>
-          <span>
-            <i style={{ background: "var(--red)" }} />
-            Bedroom with nobody in it
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block size-3 rounded-sm bg-destructive/40 ring-1 ring-destructive" />{" "}
+            Empty bedroom
           </span>
         </div>
       </div>
 
-      <Section
-        id="stintlist"
+      <Panel
         title="Stints"
-        meta={stintSummary}
-        iconBg="var(--orange)"
-        open={!!state.sectionsOpen.stintlist}
-        onToggle={() => props.onToggleSection("stintlist")}
-        icon={
-          <Icon>
-            <rect x="3" y="5" width="18" height="16" rx="2" />
-            <path d="M8 3v4M16 3v4M3 10h18" />
-          </Icon>
+        description={
+          selfOnly
+            ? "These dates are when you are paying — usually the same as being in the house."
+            : "A stint is a block of days someone is in the house, in one bedroom. Occupancy lives here and nowhere else."
         }
       >
         {!(M.stints || []).length ? (
-          <div className="empty">No stints yet.</div>
+          <EmptyState title="No stints yet" />
         ) : (
-          (M.stints || []).map((s) => {
-            const p = personById(state, s.personId);
-            const editable = canEdit(s);
-            return (
-              <div className={`stint-row${editable ? "" : " opacity-70"}`} key={s.id}>
-                <span
-                  className="swatch"
-                  style={{ background: p ? personColor(state, p.id) : "var(--muted)" }}
-                />
-                {selfOnly ? (
-                  <span style={{ minWidth: 104, fontWeight: 600 }}>{p?.name ?? "Unknown"}</span>
-                ) : (
-                  <select
-                    style={{ width: "auto", minWidth: 104 }}
-                    value={s.personId}
+          <div className="grid gap-2">
+            {(M.stints || []).map((s) => {
+              const p = personById(state, s.personId);
+              const editable = canEdit(s);
+              return (
+                <div
+                  key={s.id}
+                  className={`flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 p-2.5 ${editable ? "" : "opacity-70"}`}
+                >
+                  <span
+                    className="size-2.5 shrink-0 rounded-full"
+                    style={
+                      {
+                        background: p ? personColor(state, p.id) : "var(--muted-foreground)",
+                      } as CSSProperties
+                    }
+                  />
+                  {selfOnly ? (
+                    <span className="min-w-24 font-medium">{p?.name ?? "Unknown"}</span>
+                  ) : (
+                    <NativeSelect
+                      value={s.personId}
+                      disabled={!editable}
+                      onChange={(e) => {
+                        patchStint(s.id, (st) => {
+                          st.personId = e.target.value;
+                        });
+                      }}
+                    >
+                      {state.people.map((person) => (
+                        <NativeSelectOption key={person.id} value={person.id}>
+                          {person.name}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  )}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    day
+                    <Input
+                      type="number"
+                      className="w-14 text-center tabular"
+                      min={1}
+                      max={D}
+                      value={s.from}
+                      disabled={!editable}
+                      onChange={(e) => {
+                        patchStint(s.id, (st) => {
+                          st.from = Math.round(parseFloat(e.target.value) || 1);
+                        });
+                      }}
+                    />
+                    →
+                    <Input
+                      type="number"
+                      className="w-14 text-center tabular"
+                      min={1}
+                      max={D}
+                      value={s.to}
+                      disabled={!editable}
+                      onChange={(e) => {
+                        patchStint(s.id, (st) => {
+                          st.to = Math.round(parseFloat(e.target.value) || D);
+                        });
+                      }}
+                    />
+                  </div>
+                  <NativeSelect
+                    value={s.roomId}
                     disabled={!editable}
                     onChange={(e) => {
                       patchStint(s.id, (st) => {
-                        st.personId = e.target.value;
+                        st.roomId = e.target.value;
                       });
                     }}
                   >
-                    {state.people.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.name}
-                      </option>
+                    {state.rooms.map((r) => (
+                      <NativeSelectOption key={r.id} value={r.id} disabled={r.communal}>
+                        {r.name}
+                        {r.communal ? " (shared)" : ""}
+                      </NativeSelectOption>
                     ))}
-                  </select>
-                )}
-                <div className="field compact" style={{ width: "auto" }}>
-                  <span className="prefix">day</span>
-                  <input
-                    type="number"
-                    className="num-input daynum"
-                    min={1}
-                    max={D}
-                    value={s.from}
-                    disabled={!editable}
-                    onChange={(e) => {
-                      patchStint(s.id, (st) => {
-                        st.from = Math.round(parseFloat(e.target.value) || 1);
-                      });
-                    }}
-                  />
-                </div>
-                <span style={{ color: "var(--muted-2)" }}>→</span>
-                <div className="field compact" style={{ width: "auto" }}>
-                  <input
-                    type="number"
-                    className="num-input daynum"
-                    min={1}
-                    max={D}
-                    value={s.to}
-                    disabled={!editable}
-                    onChange={(e) => {
-                      patchStint(s.id, (st) => {
-                        st.to = Math.round(parseFloat(e.target.value) || D);
-                      });
-                    }}
-                  />
-                </div>
-                <select
-                  style={{ width: "auto", minWidth: 120 }}
-                  value={s.roomId}
-                  disabled={!editable}
-                  onChange={(e) => {
-                    patchStint(s.id, (st) => {
-                      st.roomId = e.target.value;
-                    });
-                  }}
-                >
-                  {state.rooms.map((r) => (
-                    <option key={r.id} value={r.id} disabled={r.communal}>
-                      {r.name}
-                      {r.communal ? " (shared)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: "var(--muted)",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {plural(s.to - s.from + 1, "day")}
-                </span>
-                <div className="spacer" />
-                {editable ? (
-                  <>
-                    <button
-                      className="btn-icon"
-                      title="Split this stint in two"
-                      onClick={() => {
-                        if (s.to - s.from < 1) {
-                          store.announce("A one-day stint can't be split.");
-                          return;
-                        }
-                        commitStints(() => {
-                          const month = ensureMonth(store.state, key);
-                          const stints = month.stints || [];
-                          const cur = stints.find((x) => x.id === s.id);
-                          if (!cur) return;
-                          const mid = Math.floor((cur.from + cur.to) / 2);
-                          const copy: Stint = { ...cur, id: uid("st"), from: mid + 1, to: cur.to };
-                          cur.to = mid;
-                          stints.splice(stints.indexOf(cur) + 1, 0, copy);
-                        });
-                        store.announce(
-                          selfOnly
-                            ? "Split in two — adjust the dates, or delete the half you weren't here for."
-                            : "Split in two — adjust the dates, or delete the half they weren't here for.",
-                        );
-                      }}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
+                  </NativeSelect>
+                  <span className="tabular text-xs text-muted-foreground">
+                    {plural(s.to - s.from + 1, "day")}
+                  </span>
+                  <div className="flex-1" />
+                  {editable ? (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (s.to - s.from < 1) {
+                            store.announce("A one-day stint can't be split.");
+                            return;
+                          }
+                          commitStints(() => {
+                            const month = ensureMonth(store.state, key);
+                            const stints = month.stints || [];
+                            const cur = stints.find((x) => x.id === s.id);
+                            if (!cur) return;
+                            const mid = Math.floor((cur.from + cur.to) / 2);
+                            const copy: Stint = {
+                              ...cur,
+                              id: uid("st"),
+                              from: mid + 1,
+                              to: cur.to,
+                            };
+                            cur.to = mid;
+                            stints.splice(stints.indexOf(cur) + 1, 0, copy);
+                          });
+                          store.announce(
+                            "Split in two — adjust the dates, or delete the half that was away.",
+                          );
+                        }}
                       >
-                        <path d="M12 3v18" />
-                        <path d="M5 8h4M15 8h4" />
-                      </svg>
-                    </button>
-                    <button
-                      className="btn-icon"
-                      title="Remove"
-                      onClick={() => {
-                        commitStints(() => {
-                          const month = ensureMonth(store.state, key);
-                          month.stints = (month.stints || []).filter((x) => x.id !== s.id);
-                        });
-                      }}
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
+                        Split
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        title="Remove"
+                        onClick={() => {
+                          commitStints(() => {
+                            const month = ensureMonth(store.state, key);
+                            month.stints = (month.stints || []).filter((x) => x.id !== s.id);
+                          });
+                        }}
                       >
-                        <path d="M6 6l12 12M6 18L18 6" />
-                      </svg>
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            );
-          })
+                        ×
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         )}
-        <div className="rowwrap" style={{ marginTop: 10 }}>
-          <button
-            className="btn-add"
-            style={{ width: "auto" }}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant="outline"
             onClick={() => {
               const p = selfOnly
                 ? state.people.find((x) => x.id === myId)
@@ -431,7 +367,7 @@ export function StintsScreen(props: StintsScreenProps) {
                 store.announce(
                   selfOnly
                     ? "This login is not linked to a person yet."
-                    : "Add someone on the Setup tab first.",
+                    : "Add someone on the Household page first.",
                 );
                 return;
               }
@@ -447,12 +383,11 @@ export function StintsScreen(props: StintsScreenProps) {
               });
             }}
           >
-            ＋ Add a stint
-          </button>
+            Add a stint
+          </Button>
           {selfOnly ? null : (
-            <button
-              className="btn-add"
-              style={{ width: "auto" }}
+            <Button
+              variant="ghost"
               onClick={() => {
                 if (state.people.filter((p) => !p.archived).length >= MAX_PEOPLE) {
                   store.announce(`That's the limit of ${MAX_PEOPLE} people.`);
@@ -483,36 +418,11 @@ export function StintsScreen(props: StintsScreenProps) {
                 store.announce("Added — set their dates and which bedroom they're in.");
               }}
             >
-              ＋ Add someone new
-            </button>
+              Add someone new
+            </Button>
           )}
         </div>
-        <div className="stack" style={{ marginBottom: 10 }}>
-          {gaps.map((g) => (
-            <div key={g.roomId} className="badge warn" style={{ display: "inline-block" }}>
-              <b>{g.name}</b> empty on{" "}
-              {g.days.length === D ? "every day" : "day " + rangeText(g.days)}
-            </div>
-          ))}
-        </div>
-        <div className="helper">
-          {selfOnly ? (
-            <>
-              These dates are when you are <b>paying</b> — usually the same as being in the house.
-              Add a stint for a spell you are in; split one and delete the half you were out for.
-              Everyone else's dates are visible but only they (or an admin) can change them.
-            </>
-          ) : (
-            <>
-              A stint is a block of days someone is in the house, in one bedroom — occupancy lives
-              here and nowhere else. Rent and each bill pick a start day (the 1st is a calendar
-              month; the 8th is 8th–8th) and share out across those stint-days. Two people on one
-              bedroom over the same days split it between them, day by day. Each new month starts as
-              a copy of the month before, so in a normal month there is nothing to change.
-            </>
-          )}
-        </div>
-      </Section>
-    </div>
+      </Panel>
+    </Screen>
   );
 }

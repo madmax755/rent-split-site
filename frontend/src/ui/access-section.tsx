@@ -2,14 +2,13 @@ import { useEffect, useState } from "react";
 import { plural } from "../domain/format";
 import type { AccountRole, PublicAccount } from "../lib/api-types";
 import { useHousehold } from "../store/household-context";
-import { Icon } from "./icon";
-import { Section } from "./section";
+import { EmptyState, Panel } from "./kit";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
-type AccessSectionProps = {
-  onToggleSection: (id: string) => void;
-};
-
-export function AccessSection(props: AccessSectionProps) {
+export function AccessSection() {
   const { store, state } = useHousehold();
   const [accounts, setAccounts] = useState<PublicAccount[]>([]);
   const [username, setUsername] = useState("");
@@ -46,175 +45,149 @@ export function AccessSection(props: AccessSectionProps) {
   if (!canManage) return null;
 
   const livePeople = state.people.filter((p) => !p.archived);
+  const payerName = state.people.find((p) => p.isPayer)?.name ?? "the payer";
 
   return (
-    <Section
-      id="access"
+    <Panel
+      id="logins"
       title="Who can sign in"
-      meta={plural(accounts.filter((a) => a.enabled).length, "login")}
-      iconBg="var(--p5)"
-      open={!!state.sectionsOpen.access}
-      onToggle={() => {
-        props.onToggleSection("access");
-        void refresh().catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : "Couldn't load logins.");
-        });
-      }}
-      icon={
-        <Icon>
-          <rect x="5" y="11" width="14" height="10" rx="2" />
-          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-        </Icon>
-      }
+      description={`Each housemate gets their own login. Admin sees the whole household. Tenant sees only their dashboard and can settle with ${payerName}. There is exactly one admin. ${plural(accounts.filter((a) => a.enabled).length, "login")}.`}
     >
-      <div className="helper" style={{ marginTop: 0 }}>
-        Each housemate gets their own username and password. <b>Admin</b> sees the whole household
-        editor. <b>Tenant</b> sees only their own dashboard and can record a settlement with{" "}
-        {state.people.find((p) => p.isPayer)?.name ?? "the payer"}. There is exactly one admin.
-      </div>
-      {error ? (
-        <div className="callout warn">
-          <p style={{ margin: 0 }}>{error}</p>
-        </div>
-      ) : null}
-      {accounts.map((account) => {
-        const linked = account.personId
-          ? (state.people.find((p) => p.id === account.personId)?.name ?? "removed person")
-          : "not linked";
-        return (
-          <div className="list-row" key={account.id} style={{ opacity: account.enabled ? 1 : 0.6 }}>
-            <div className="grow" style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>{account.username}</div>
-              <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-                {linked}
-                {!account.enabled ? " · disabled" : ""}
+      {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
+      {!accounts.length ? <EmptyState title="No logins yet" /> : null}
+      <div className="grid gap-2">
+        {accounts.map((account) => {
+          const linked = account.personId
+            ? (state.people.find((p) => p.id === account.personId)?.name ?? "removed person")
+            : "not linked";
+          return (
+            <div
+              key={account.id}
+              className={`flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 px-3 py-2.5 ${account.enabled ? "" : "opacity-60"}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{account.username}</div>
+                <div className="text-xs text-muted-foreground">
+                  {linked}
+                  {!account.enabled ? " · disabled" : ""}
+                </div>
               </div>
-            </div>
-            <span className={`badge ${account.role === "admin" ? "ok" : "muted"}`}>
-              {account.role === "admin" ? "Admin" : "Tenant"}
-            </span>
-            {account.role !== "admin" ? (
-              <span
-                className="badge muted"
-                style={{ cursor: "pointer" }}
-                onClick={() => {
-                  if (
-                    !confirm(
-                      `Make ${account.username} the admin? You will become a tenant on the next request.`,
+              <Badge variant={account.role === "admin" ? "default" : "secondary"}>
+                {account.role === "admin" ? "Admin" : "Tenant"}
+              </Badge>
+              {account.role !== "admin" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (
+                      !confirm(
+                        `Make ${account.username} the admin? You will become a tenant on the next request.`,
+                      )
                     )
-                  )
-                    return;
-                  void store.adapter
-                    .patchAccount?.(account.id, { role: "admin" })
-                    .then(() => onBecameTenant())
-                    .catch((e: unknown) =>
-                      setError(e instanceof Error ? e.message : "Couldn't change admin."),
-                    );
-                }}
-              >
-                Make admin
-              </span>
-            ) : null}
-            <button
-              className="btn-ghost btn btn-sm"
-              onClick={() => {
-                const next = prompt(`New password for ${account.username}?`);
-                if (!next) return;
-                void store.adapter
-                  .patchAccount?.(account.id, { password: next })
-                  .then(() => {
-                    store.announce("Password updated — they will need to sign in again.");
-                    return refresh();
-                  })
-                  .catch((e: unknown) =>
-                    setError(e instanceof Error ? e.message : "Couldn't set password."),
-                  );
-              }}
-            >
-              Reset password
-            </button>
-            <select
-              value={account.personId ?? ""}
-              style={{ maxWidth: 140 }}
-              onChange={(e) => {
-                const id = e.target.value || null;
-                void store.adapter
-                  .patchAccount?.(account.id, { personId: id })
-                  .then(() => refresh())
-                  .catch((e2: unknown) =>
-                    setError(e2 instanceof Error ? e2.message : "Couldn't link person."),
-                  );
-              }}
-            >
-              <option value="">Not linked</option>
-              {livePeople.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-            {account.role !== "admin" ? (
-              <button
-                className="btn-icon"
-                title={account.enabled ? "Disable login" : "Enable login"}
-                onClick={() => {
-                  void store.adapter
-                    .patchAccount?.(account.id, { enabled: !account.enabled })
-                    .then(() => refresh())
-                    .catch((e: unknown) =>
-                      setError(e instanceof Error ? e.message : "Couldn't update login."),
-                    );
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
+                      return;
+                    void store.adapter
+                      .patchAccount?.(account.id, { role: "admin" })
+                      .then(() => onBecameTenant())
+                      .catch((e: unknown) =>
+                        setError(e instanceof Error ? e.message : "Couldn't change admin."),
+                      );
+                  }}
                 >
-                  {account.enabled ? <path d="M6 6l12 12M6 18L18 6" /> : <path d="M5 12h14" />}
-                </svg>
-              </button>
-            ) : null}
-          </div>
-        );
-      })}
-      <div className="bill-card" style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Add a login</div>
-        <div className="dim-grid">
-          <div>
-            <div className="dim-label">Username</div>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} />
-          </div>
-          <div>
-            <div className="dim-label">Password</div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="new-password"
-            />
-          </div>
+                  Make admin
+                </Button>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const next = prompt(`New password for ${account.username}?`);
+                  if (!next) return;
+                  void store.adapter
+                    .patchAccount?.(account.id, { password: next })
+                    .then(() => {
+                      store.announce("Password updated — they will need to sign in again.");
+                      return refresh();
+                    })
+                    .catch((e: unknown) =>
+                      setError(e instanceof Error ? e.message : "Couldn't set password."),
+                    );
+                }}
+              >
+                Reset password
+              </Button>
+              <NativeSelect
+                value={account.personId ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value || null;
+                  void store.adapter
+                    .patchAccount?.(account.id, { personId: id })
+                    .then(() => refresh())
+                    .catch((e2: unknown) =>
+                      setError(e2 instanceof Error ? e2.message : "Couldn't link person."),
+                    );
+                }}
+              >
+                <NativeSelectOption value="">Not linked</NativeSelectOption>
+                {livePeople.map((p) => (
+                  <NativeSelectOption key={p.id} value={p.id}>
+                    {p.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              {account.role !== "admin" ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    void store.adapter
+                      .patchAccount?.(account.id, { enabled: !account.enabled })
+                      .then(() => refresh())
+                      .catch((e: unknown) =>
+                        setError(e instanceof Error ? e.message : "Couldn't update login."),
+                      );
+                  }}
+                >
+                  {account.enabled ? "Disable" : "Enable"}
+                </Button>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 rounded-xl border p-3">
+        <div className="mb-2 font-medium">Add a login</div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+          />
         </div>
-        <div className="row-h" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-          <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
-            <option value="">Link to person…</option>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <NativeSelect value={personId} onChange={(e) => setPersonId(e.target.value)}>
+            <NativeSelectOption value="">Link to person…</NativeSelectOption>
             {livePeople.map((p) => (
-              <option key={p.id} value={p.id}>
+              <NativeSelectOption key={p.id} value={p.id}>
                 {p.name}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
-          <select
+          </NativeSelect>
+          <NativeSelect
             value={role}
             onChange={(e) => setRole(e.target.value === "admin" ? "admin" : "tenant")}
           >
-            <option value="tenant">Tenant</option>
-            <option value="admin">Admin</option>
-          </select>
-          <button
-            className="btn"
+            <NativeSelectOption value="tenant">Tenant</NativeSelectOption>
+            <NativeSelectOption value="admin">Admin</NativeSelectOption>
+          </NativeSelect>
+          <Button
             onClick={() => {
               setError("");
               void store.adapter
@@ -239,9 +212,9 @@ export function AccessSection(props: AccessSectionProps) {
             }}
           >
             Create
-          </button>
+          </Button>
         </div>
       </div>
-    </Section>
+    </Panel>
   );
 }

@@ -4,20 +4,22 @@ import { money, money0, personName, plural } from "../domain/format";
 import { ensureMonth, sortedMonthKeys } from "../domain/months";
 import type { MonthCompute } from "../domain/types";
 import { useHousehold } from "../store/household-context";
-import { Icon } from "./icon";
-import { screenClass } from "./screen-class";
-import { Kpi, Section } from "./section";
+import { KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-type HistoryScreenProps = {
-  onToggleSection: (id: string) => void;
-};
-
-export function HistoryScreen(props: HistoryScreenProps) {
+export function HistoryScreen() {
   const { store, state, activeTab } = useHousehold();
   const keys = sortedMonthKeys(state);
 
   if (!keys.length) {
-    return <div className={screenClass("history", activeTab)} data-screen="history" />;
+    return <Screen id="history" active={activeTab === "history"} />;
   }
 
   const cache: Record<string, MonthCompute> = {};
@@ -45,88 +47,82 @@ export function HistoryScreen(props: HistoryScreenProps) {
   }
 
   return (
-    <div className={screenClass("history", activeTab)} data-screen="history">
-      <div className="kpis">
-        <Kpi
+    <Screen id="history" active={activeTab === "history"}>
+      <PageHeader
+        title="History"
+        description="Tap a month to open it. Lighter figures are still estimates."
+      />
+      <KpiGrid>
+        <KpiCard
           label="Months on record"
           value={String(keys.length)}
           sub={`${monthLabel(firstKey, true)} – ${monthLabel(lastKey, true)}`}
         />
-        <Kpi
+        <KpiCard
           label="Total housed cost"
           value={money0(state.currency, grand)}
           sub="rent and bills, all months"
         />
-        <Kpi
+        <KpiCard
           label="Average month"
           value={money0(state.currency, grand / keys.length)}
           sub={`${realised.length} fully realised`}
         />
-      </div>
+      </KpiGrid>
 
-      <Section
-        id="hpeople"
-        title="Every month, every person"
-        meta={plural(keys.length, "month")}
-        iconBg="var(--accent)"
-        open={!!state.sectionsOpen.hpeople}
-        onToggle={() => props.onToggleSection("hpeople")}
-        icon={
-          <Icon>
-            <path d="M3 3v18h18" />
-            <rect x="7" y="11" width="3" height="6" />
-            <rect x="12" y="7" width="3" height="10" />
-          </Icon>
-        }
-      >
-        <div className="htable-wrap">
-          <table className="htable">
-            <thead>
-              <tr>
-                <th>Month</th>
+      <div className="grid gap-5">
+        <Panel title="Every month, every person" description={plural(keys.length, "month")}>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Month</TableHead>
                 {ids.map((id) => (
-                  <th key={id}>{personName(state, id)}</th>
+                  <TableHead key={id} className="text-right">
+                    {personName(state, id)}
+                  </TableHead>
                 ))}
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {keys.map((k) => {
                 const c = cache[k];
                 const done = monthAllActual(state, state.months[k]);
                 const tot = ids.reduce((s, id) => s + (c?.totals[id] || 0), 0);
                 return (
-                  <tr
+                  <TableRow
                     key={k}
-                    style={{ cursor: "pointer", opacity: done ? undefined : 0.62 }}
+                    className={`cursor-pointer ${done ? "" : "opacity-60"}`}
                     onClick={() => goToMonth(k)}
                   >
-                    <td>
+                    <TableCell>
                       {monthLabel(k)}
                       {done ? null : (
-                        <span style={{ fontSize: 10.5, color: "var(--muted)" }}> est</span>
+                        <span className="ml-1 text-[10px] text-muted-foreground">est</span>
                       )}
-                    </td>
+                    </TableCell>
                     {ids.map((id) => (
-                      <td key={id}>
+                      <TableCell key={id} className="tabular text-right">
                         {c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}
-                      </td>
+                      </TableCell>
                     ))}
-                    <td className="strong">{money(state.currency, tot)}</td>
-                  </tr>
+                    <TableCell className="tabular text-right font-semibold">
+                      {money(state.currency, tot)}
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-              <tr style={{ borderTop: "1.5px solid var(--hairline-2)" }}>
-                <td className="strong">All months</td>
+              <TableRow>
+                <TableCell className="font-semibold">All months</TableCell>
                 {ids.map((id) => (
-                  <td className="strong" key={id}>
+                  <TableCell key={id} className="tabular text-right font-semibold">
                     {money(
                       state.currency,
                       keys.reduce((s, k) => s + (cache[k]?.totals[id] || 0), 0),
                     )}
-                  </td>
+                  </TableCell>
                 ))}
-                <td className="strong">
+                <TableCell className="tabular text-right font-semibold">
                   {money(
                     state.currency,
                     keys.reduce(
@@ -134,96 +130,67 @@ export function HistoryScreen(props: HistoryScreenProps) {
                       0,
                     ),
                   )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="helper">
-          Tap a month to open it. Figures in a lighter tone are still estimates.
-        </div>
-      </Section>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Panel>
 
-      <Section
-        id="hbills"
-        title="How the bills have moved"
-        iconBg="var(--orange)"
-        open={!!state.sectionsOpen.hbills}
-        onToggle={() => props.onToggleSection("hbills")}
-        icon={
-          <Icon>
-            <path d="M3 17l6-6 4 4 8-8" />
-          </Icon>
-        }
-      >
-        {state.bills.length ? (
-          state.bills.map((b) => {
-            const vals = keys.map((k) => {
-              const L = state.months[k]?.lines[b.id] ?? { est: 0, act: null };
-              return {
-                v: typeof L.act === "number" ? L.act : +L.est || 0,
-                actual: typeof L.act === "number",
-              };
-            });
-            const max = Math.max(...vals.map((v) => v.v), 1);
-            const realisedVals = vals.filter((v) => v.actual).map((v) => v.v);
-            const avg = realisedVals.length
-              ? realisedVals.reduce((s, v) => s + v, 0) / realisedVals.length
-              : 0;
-            return (
-              <div
-                key={b.id}
-                style={{
-                  background: "var(--card-2)",
-                  borderRadius: "var(--radius)",
-                  padding: "12px 14px",
-                  marginBottom: 10,
-                }}
-              >
-                <div className="row-h">
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</div>
-                  <div className="spacer" />
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      color: "var(--muted)",
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {realisedVals.length
-                      ? `avg ${state.currency}${avg.toFixed(2)} realised`
-                      : "no realised figures yet"}
+        <Panel title="How the bills have moved">
+          {state.bills.length ? (
+            <div className="grid gap-3">
+              {state.bills.map((b) => {
+                const vals = keys.map((k) => {
+                  const L = state.months[k]?.lines[b.id] ?? { est: 0, act: null };
+                  return {
+                    v: typeof L.act === "number" ? L.act : +L.est || 0,
+                    actual: typeof L.act === "number",
+                  };
+                });
+                const max = Math.max(...vals.map((v) => v.v), 1);
+                const realisedVals = vals.filter((v) => v.actual).map((v) => v.v);
+                const avg = realisedVals.length
+                  ? realisedVals.reduce((s, v) => s + v, 0) / realisedVals.length
+                  : 0;
+                return (
+                  <div key={b.id} className="rounded-xl bg-muted/50 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <div className="font-medium">{b.name}</div>
+                      <div className="tabular text-xs text-muted-foreground">
+                        {realisedVals.length
+                          ? `avg ${state.currency}${avg.toFixed(2)} realised`
+                          : "no realised figures yet"}
+                      </div>
+                    </div>
+                    <div className="flex h-11 items-end gap-0.5">
+                      {vals.map((v, i) => (
+                        <div
+                          key={keys[i]}
+                          title={`${monthLabel(keys[i] ?? "")} — ${state.currency}${v.v.toFixed(2)}${v.actual ? "" : " (estimate)"}`}
+                          className={`min-h-0.5 flex-1 rounded-t-sm ${
+                            v.actual
+                              ? v.v >= max
+                                ? "bg-primary"
+                                : "bg-primary/40"
+                              : "bg-primary/20"
+                          }`}
+                          style={{ height: `${Math.max(4, (v.v / max) * 100)}%` }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                      <span>{monthLabel(firstKey, true)}</span>
+                      <span>{monthLabel(lastKey, true)}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="trend">
-                  {vals.map((v, i) => (
-                    <div
-                      key={keys[i]}
-                      className={`trend-bar ${v.actual ? (v.v >= max ? "hi" : "") : "est"}`}
-                      style={{ height: `${Math.max(2, (v.v / max) * 100)}%` }}
-                      title={`${monthLabel(keys[i] ?? "")} — ${state.currency}${v.v.toFixed(2)}${v.actual ? "" : " (estimate)"}`}
-                    />
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: 10.5,
-                    color: "var(--muted-2)",
-                    marginTop: 4,
-                  }}
-                >
-                  <span>{monthLabel(firstKey, true)}</span>
-                  <span>{monthLabel(lastKey, true)}</span>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="empty">No bills configured.</div>
-        )}
-      </Section>
-    </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No bills configured.</p>
+          )}
+        </Panel>
+      </div>
+    </Screen>
   );
 }

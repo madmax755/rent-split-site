@@ -1,3 +1,278 @@
 @import "tailwindcss";
-@import "./styles/app.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
 @import "./styles/print.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "Geist Variable", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(0.975 0.01 85);
+  --foreground: oklch(0.22 0.02 50);
+  --card: oklch(0.995 0.004 85);
+  --card-foreground: oklch(0.22 0.02 50);
+  --popover: oklch(0.995 0.004 85);
+  --popover-foreground: oklch(0.22 0.02 50);
+  --primary: oklch(0.42 0.08 175);
+  --primary-foreground: oklch(0.99 0.01 175);
+  --secondary: oklch(0.945 0.012 85);
+  --secondary-foreground: oklch(0.28 0.02 50);
+  --muted: oklch(0.945 0.01 85);
+  --muted-foreground: oklch(0.5 0.02 55);
+  --accent: oklch(0.94 0.018 160);
+  --accent-foreground: oklch(0.28 0.04 175);
+  --destructive: oklch(0.55 0.2 25);
+  --border: oklch(0.88 0.014 80);
+  --input: oklch(0.88 0.014 80);
+  --ring: oklch(0.42 0.08 175);
+  --chart-1: oklch(0.42 0.08 175);
+  --chart-2: oklch(0.62 0.1 70);
+  --chart-3: oklch(0.55 0.08 250);
+  --chart-4: oklch(0.6 0.12 20);
+  --chart-5: oklch(0.5 0.08 310);
+  --radius: 0.7rem;
+  --sidebar: oklch(0.96 0.012 85);
+  --sidebar-foreground: oklch(0.22 0.02 50);
+  --sidebar-primary: oklch(0.42 0.08 175);
+  --sidebar-primary-foreground: oklch(0.99 0.01 175);
+  --sidebar-accent: oklch(0.93 0.02 160);
+  --sidebar-accent-foreground: oklch(0.28 0.04 175);
+  --sidebar-border: oklch(0.88 0.014 80);
+  --sidebar-ring: oklch(0.42 0.08 175);
+}
+
+.dark {
+  --background: oklch(0.18 0.016 50);
+  --foreground: oklch(0.97 0.01 85);
+  --card: oklch(0.225 0.016 50);
+  --card-foreground: oklch(0.97 0.01 85);
+  --popover: oklch(0.225 0.016 50);
+  --popover-foreground: oklch(0.97 0.01 85);
+  --primary: oklch(0.78 0.09 175);
+  --primary-foreground: oklch(0.18 0.03 175);
+  --secondary: oklch(0.28 0.016 50);
+  --secondary-foreground: oklch(0.97 0.01 85);
+  --muted: oklch(0.28 0.016 50);
+  --muted-foreground: oklch(0.72 0.02 70);
+  --accent: oklch(0.3 0.03 175);
+  --accent-foreground: oklch(0.92 0.04 175);
+  --destructive: oklch(0.7 0.17 22);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.78 0.09 175);
+  --chart-1: oklch(0.78 0.09 175);
+  --chart-2: oklch(0.75 0.1 70);
+  --chart-3: oklch(0.7 0.08 250);
+  --chart-4: oklch(0.7 0.12 20);
+  --chart-5: oklch(0.7 0.08 310);
+  --sidebar: oklch(0.16 0.014 50);
+  --sidebar-foreground: oklch(0.97 0.01 85);
+  --sidebar-primary: oklch(0.78 0.09 175);
+  --sidebar-primary-foreground: oklch(0.18 0.03 175);
+  --sidebar-accent: oklch(0.28 0.03 175);
+  --sidebar-accent-foreground: oklch(0.92 0.04 175);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.78 0.09 175);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html[data-density="compact"] {
+    font-size: 14px;
+  }
+}
+
+@layer components {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .prose-help {
+    @apply text-[0.95rem] leading-relaxed text-foreground/85;
+  }
+  .prose-help h2 {
+    @apply font-heading mt-10 mb-3 scroll-mt-24 text-xl font-semibold tracking-tight text-foreground first:mt-0;
+  }
+  .prose-help h3 {
+    @apply mt-6 mb-2 text-base font-semibold text-foreground;
+  }
+  .prose-help p {
+    @apply mb-3;
+  }
+  .prose-help ul,
+  .prose-help ol {
+    @apply mb-3 ml-5;
+  }
+  .prose-help ul {
+    @apply list-disc;
+  }
+  .prose-help ol {
+    @apply list-decimal;
+  }
+  .prose-help li {
+    @apply mb-1.5;
+  }
+  .prose-help b,
+  .prose-help strong {
+    @apply font-semibold text-foreground;
+  }
+  .prose-help code {
+    @apply rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[0.8rem];
+  }
+  .prose-help hr {
+    @apply my-8 border-border;
+  }
+
+  .callout {
+    @apply mb-4 rounded-lg border border-l-4 border-border bg-muted/50 px-4 py-3 text-sm;
+  }
+  .callout.warn {
+    @apply border-l-amber-500 bg-amber-50/80 dark:bg-amber-950/30;
+  }
+  .callout.good {
+    @apply border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30;
+  }
+  .callout p:last-child {
+    @apply mb-0;
+  }
+
+  .worked {
+    @apply mb-4 rounded-lg bg-muted/60 p-4;
+  }
+  .worked table {
+    @apply w-full text-sm;
+  }
+  .worked td {
+    @apply tabular py-1;
+  }
+  .worked td:last-child {
+    @apply text-right font-medium;
+  }
+  .worked tr.tot td {
+    @apply border-t pt-2 font-semibold;
+  }
+
+  .flow {
+    @apply mb-4 overflow-x-auto pb-1;
+  }
+  .flow svg {
+    @apply block h-auto w-full min-w-[640px];
+  }
+  .flow .n-box {
+    fill: var(--muted);
+    stroke: var(--border);
+    stroke-width: 1;
+  }
+  .flow .n-dec {
+    fill: color-mix(in oklch, var(--primary) 12%, var(--card));
+    stroke: var(--primary);
+    stroke-width: 1.2;
+  }
+  .flow .n-end {
+    fill: color-mix(in oklch, var(--chart-2) 18%, var(--card));
+    stroke: var(--chart-2);
+    stroke-width: 1.2;
+  }
+  .flow .n-warn {
+    fill: color-mix(in oklch, var(--chart-4) 18%, var(--card));
+    stroke: var(--chart-4);
+    stroke-width: 1.2;
+  }
+  .flow .t {
+    fill: var(--foreground);
+    font-size: 12.5px;
+    font-weight: 550;
+  }
+  .flow .t-sm {
+    fill: var(--muted-foreground);
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+  .flow .t-edge {
+    fill: var(--muted-foreground);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .flow .ln {
+    stroke: var(--muted-foreground);
+    stroke-width: 1.4;
+    fill: none;
+  }
+  .flow-cap {
+    @apply -mt-2 mb-4 text-sm text-muted-foreground;
+  }
+
+  .htable-wrap {
+    @apply mb-4 overflow-x-auto rounded-lg border bg-card;
+  }
+  table.htable {
+    @apply w-full min-w-[520px] border-collapse text-sm;
+  }
+  table.htable th,
+  table.htable td {
+    @apply tabular border-b px-3 py-2 text-right whitespace-nowrap;
+  }
+  table.htable th:first-child,
+  table.htable td:first-child {
+    @apply sticky left-0 bg-card text-left;
+  }
+  table.htable thead th {
+    @apply text-[11px] font-semibold tracking-wider text-muted-foreground uppercase;
+  }
+  table.htable td.strong,
+  table.htable .strong {
+    @apply font-semibold;
+  }
+}

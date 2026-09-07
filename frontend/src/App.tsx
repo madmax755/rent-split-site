@@ -24,20 +24,15 @@ export function App() {
   const [store] = useState(() => new HouseholdStore());
   return (
     <HouseholdProvider store={store}>
-      <RentSplitApp store={store} />
+      <RentSplitApp />
     </HouseholdProvider>
   );
 }
 
-type RentSplitAppProps = {
-  store: HouseholdStore;
-};
-
-function RentSplitApp(_props: RentSplitAppProps) {
+function RentSplitApp() {
   const { store } = useHousehold();
   const [tweaks, setTweaks] = useState<Tweaks>(() => loadTweaks());
   const [toast, setToast] = useState("");
-  const [propertyOpen, setPropertyOpen] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -70,12 +65,6 @@ function RentSplitApp(_props: RentSplitAppProps) {
   useEffect(() => {
     void boot(store).then(() => setBooted(true));
   }, [store]);
-
-  function toggleSection(id: string): void {
-    store.mutate(() => {
-      store.state.sectionsOpen[id] = !store.state.sectionsOpen[id];
-    });
-  }
 
   async function onLogin(username: string, password: string): Promise<void> {
     setLoginError("");
@@ -157,27 +146,24 @@ function RentSplitApp(_props: RentSplitAppProps) {
         void store.adapter.logout?.().then(() => location.reload());
       }}
       toast={toast}
-      propertyOpen={propertyOpen}
-      setPropertyOpen={setPropertyOpen}
     >
       {store.isTenant() ? (
         <>
-          <TenantHomeScreen onToggleSection={toggleSection} />
-          <TenantMonthScreen onToggleSection={toggleSection} />
-          <StintsScreen onToggleSection={toggleSection} />
+          <TenantHomeScreen />
+          <TenantMonthScreen />
+          <StintsScreen />
           <TenantHistoryScreen />
           <TenantBalancesScreen />
           <HowScreen />
         </>
       ) : (
         <>
-          <MonthScreen onToggleSection={toggleSection} />
-          <StintsScreen onToggleSection={toggleSection} />
-          <BalancesScreen onToggleSection={toggleSection} />
-          <HistoryScreen onToggleSection={toggleSection} />
-          <SetupScreen onToggleSection={toggleSection} />
+          <MonthScreen />
+          <StintsScreen />
+          <BalancesScreen />
+          <HistoryScreen />
+          <SetupScreen />
           <SettingsScreen
-            onToggleSection={toggleSection}
             tweaks={tweaks}
             onTweaks={setTweaks}
             showImport={showImport}
