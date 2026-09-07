@@ -2,7 +2,6 @@
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",
-    "**/_archive/**",
-    "frontend/src/legacy/**"
+    "**/_archive/**"
   ]
 }
