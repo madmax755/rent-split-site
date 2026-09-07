@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -11,7 +13,9 @@ from app.config import get_settings
 
 config = context.config
 
-if config.config_file_name is not None:
+# Only configure CLI logging. fileConfig() during app bootstrap wipes uvicorn's
+# handlers, which hides bind/startup errors behind a silent exit code 3.
+if config.config_file_name is not None and Path(sys.argv[0]).name.startswith("alembic"):
     fileConfig(config.config_file_name)
 
 if not config.get_main_option("sqlalchemy.url"):

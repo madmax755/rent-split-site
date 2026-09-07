@@ -93,7 +93,9 @@ sync_to_ref
 log "Installing dependencies"
 bun install
 bun install --cwd frontend
-uv sync --directory server --frozen
+# System Python only: uv's default can symlink .venv/bin/python into
+# ~/.local/share/uv/python, which ProtectHome=true then hides from rent-split (203/EXEC).
+uv sync --directory server --frozen --python /usr/bin/python3
 
 log "Building frontend"
 bun run --cwd frontend build
