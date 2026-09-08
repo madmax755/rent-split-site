@@ -1,3 +1,4 @@
+import { ChevronDownIcon } from "lucide-react";
 import { daysInMonth, monthLabel } from "../domain/dates";
 import {
   chargedFor,
@@ -61,6 +62,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
     <div className="overflow-hidden rounded-xl border bg-card">
       <button
         type="button"
+        aria-expanded={clickable ? open : undefined}
         className={cn(
           "flex w-full items-center gap-3 px-4 py-3 text-left",
           clickable ? "hover:bg-muted/50" : "cursor-default",
@@ -88,6 +90,14 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             {monthAllActual(state, M) ? "realised" : "estimated"}
           </div>
         </div>
+        {clickable ? (
+          <ChevronDownIcon
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-180",
+            )}
+          />
+        ) : null}
       </button>
       {open ? (
         <div className="border-t px-4 py-2">

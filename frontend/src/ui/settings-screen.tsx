@@ -6,6 +6,7 @@ import { plural } from "../domain/format";
 import { useHousehold } from "../store/household-context";
 import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { PageHeader, Panel, Screen } from "./kit";
+import { XIcon } from "lucide-react";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -166,7 +167,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     </Button>
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
+                      className="max-sm:size-10"
                       title="Remove"
                       onClick={() => {
                         if (!confirm(`Remove "${preset.name}"?`)) return;
@@ -175,7 +177,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
                         });
                       }}
                     >
-                      ×
+                      <XIcon />
                     </Button>
                   </div>
                 );

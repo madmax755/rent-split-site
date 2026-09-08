@@ -50,7 +50,7 @@ export function HistoryScreen() {
     <Screen id="history" active={activeTab === "history"}>
       <PageHeader
         title="History"
-        description="Tap a month to open it. Lighter figures are still estimates."
+        description="Open a month to see the split. Lighter figures are still estimates."
       />
       <KpiGrid>
         <KpiCard
@@ -132,8 +132,15 @@ export function HistoryScreen() {
                 return (
                   <TableRow
                     key={k}
+                    tabIndex={0}
                     className={`cursor-pointer ${done ? "" : "opacity-60"}`}
                     onClick={() => goToMonth(k)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goToMonth(k);
+                      }
+                    }}
                   >
                     <TableCell>
                       {monthLabel(k)}

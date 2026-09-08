@@ -16,7 +16,7 @@ export function CycleDayField(props: CycleDayFieldProps) {
   const day = clampCycleDay(props.value);
   return (
     <div className="grid gap-1.5">
-      <InputGroup className="w-[220px]">
+      <InputGroup className="w-full max-w-sm">
         <InputGroupAddon>
           <InputGroupText>the</InputGroupText>
         </InputGroupAddon>

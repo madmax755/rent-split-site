@@ -8,6 +8,7 @@ import { useHousehold } from "../store/household-context";
 import { PersonStatementCard } from "./person-statement";
 import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
+import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -147,9 +148,20 @@ export function TenantHistoryScreen() {
   if (!personId) {
     return <Screen id="history" active={activeTab === "history"} />;
   }
+
+  function openMonth(k: string): void {
+    store.mutate(
+      () => {
+        store.state.currentMonth = k;
+      },
+      { persist: false },
+    );
+    store.setTab("month");
+  }
+
   return (
     <Screen id="history" active={activeTab === "history"}>
-      <PageHeader title="History" description="Tap a month to open it." />
+      <PageHeader title="History" description="Open a month to see your share." />
       <Table>
         <TableHeader>
           <TableRow>
@@ -167,15 +179,13 @@ export function TenantHistoryScreen() {
             return (
               <TableRow
                 key={k}
+                tabIndex={0}
                 className="cursor-pointer"
-                onClick={() => {
-                  store.mutate(
-                    () => {
-                      store.state.currentMonth = k;
-                    },
-                    { persist: false },
-                  );
-                  store.setTab("month");
+                onClick={() => openMonth(k)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  openMonth(k);
                 }}
               >
                 <TableCell>{monthLabel(k)}</TableCell>
@@ -270,7 +280,8 @@ export function TenantBalancesScreen() {
               {x.id && x.type === "settle" ? (
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="icon-sm"
+                  className="max-sm:size-10"
                   title="Undo this record"
                   onClick={() => {
                     if (!confirm("Undo this record? The balance will go back to what it was."))
@@ -278,7 +289,7 @@ export function TenantBalancesScreen() {
                     void store.undoSettle(x.id ?? "").then(() => store.announce("Undone."));
                   }}
                 >
-                  ×
+                  <XIcon />
                 </Button>
               ) : null}
             </div>

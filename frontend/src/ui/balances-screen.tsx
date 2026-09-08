@@ -15,6 +15,7 @@ import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
+import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -200,7 +201,8 @@ export function BalancesScreen() {
                     {x.id ? (
                       <Button
                         variant="ghost"
-                        size="icon-xs"
+                        size="icon-sm"
+                        className="max-sm:size-10"
                         title="Undo this record"
                         onClick={() => {
                           if (
@@ -210,7 +212,7 @@ export function BalancesScreen() {
                           void store.undoSettle(x.id).then(() => store.announce("Undone."));
                         }}
                       >
-                        ×
+                        <XIcon />
                       </Button>
                     ) : null}
                   </div>

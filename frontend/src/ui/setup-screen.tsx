@@ -6,6 +6,7 @@ import { uid } from "../domain/ids";
 import { lastRoomOf, sortedMonthKeys } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import type { CurrencySymbol } from "../domain/types";
+import { XIcon } from "lucide-react";
 import { useHousehold } from "../store/household-context";
 import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
@@ -65,7 +66,6 @@ export function SetupScreen() {
         <TabsContent value="people">
         <Panel
           id="people"
-          title="People"
           description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}. When they are here, and which bedroom they are in, is recorded on Who's here.`}
         >
           <div className="grid gap-2">
@@ -131,7 +131,8 @@ export function SetupScreen() {
                   {state.people.length > 1 ? (
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
+                      className="max-sm:size-10"
                       title="Remove"
                       onClick={() => {
                         const person = personById(state, p.id);
@@ -181,7 +182,7 @@ export function SetupScreen() {
                         void store.adapter.disablePersonLogin?.(p.id);
                       }}
                     >
-                      ×
+                      <XIcon />
                     </Button>
                   ) : null}
                 </div>
@@ -214,7 +215,6 @@ export function SetupScreen() {
         <TabsContent value="rooms">
         <Panel
           id="rooms"
-          title="Rooms"
           description={`${state.rooms.length} rooms · ${fmtNum(totalArea, 0)} m² · weighted ${fmtNum(total)} m² · ${total > 0 ? money(state.currency, Math.round(state.rent * 100) / total) : "—"} per m²`}
         >
           {state.rooms.map((room) => {
@@ -268,7 +268,8 @@ export function SetupScreen() {
                   {state.rooms.length > 1 ? (
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
+                      className="max-sm:size-10"
                       title="Remove"
                       onClick={() => {
                         const lockedR = sortedMonthKeys(state).filter(
@@ -289,7 +290,7 @@ export function SetupScreen() {
                         });
                       }}
                     >
-                      ×
+                      <XIcon />
                     </Button>
                   ) : null}
                 </div>
@@ -368,7 +369,6 @@ export function SetupScreen() {
         <TabsContent value="bills">
         <Panel
           id="bills"
-          title="Bills"
           description={`${state.bills.length} bills · ~${state.currency}${Math.round(monthly).toLocaleString()}/mo. The usual amount is only the starting figure for months you haven't filled in yet.`}
         >
           {state.bills.map((b) => {
@@ -388,6 +388,7 @@ export function SetupScreen() {
                   />
                   <MoneyInput
                     currency={state.currency}
+                    className="sm:w-36 sm:flex-none"
                     value={b.est}
                     min={0}
                     onChange={(v) => {
@@ -401,7 +402,8 @@ export function SetupScreen() {
                   {state.bills.length > 1 ? (
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
+                      className="max-sm:size-10"
                       title="Remove"
                       onClick={() => {
                         const locked = sortedMonthKeys(state).filter(
@@ -419,7 +421,7 @@ export function SetupScreen() {
                         });
                       }}
                     >
-                      ×
+                      <XIcon />
                     </Button>
                   ) : null}
                 </div>
@@ -448,7 +450,7 @@ export function SetupScreen() {
                         <Button
                           key={p.id}
                           size="sm"
-                          variant={on ? "default" : "outline"}
+                          variant={on ? "secondary" : "outline"}
                           onClick={() => {
                             store.mutate(() => {
                               const bill = store.state.bills.find((x) => x.id === b.id);

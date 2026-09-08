@@ -56,22 +56,22 @@ export function MonthSwitcher() {
       >
         <ChevronLeftIcon />
       </Button>
-      <div className="min-w-28 text-center sm:min-w-36">
-        <div className="text-sm font-semibold">{monthLabel(key)}</div>
+      <div className="relative min-w-28 text-center sm:min-w-36">
+        <div className="pointer-events-none text-sm font-semibold sm:hidden">{monthLabel(key)}</div>
+        <input
+          type="month"
+          aria-label="Choose month"
+          className="h-8 cursor-pointer rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none max-sm:absolute max-sm:inset-0 max-sm:opacity-0 sm:block focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          value={key}
+          onChange={(e) => {
+            if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
+            store.mutate(() => {
+              store.state.currentMonth = e.target.value;
+              ensureMonth(store.state, store.state.currentMonth);
+            });
+          }}
+        />
       </div>
-      <input
-        type="month"
-        aria-label="Choose month"
-        className="hidden h-8 rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none sm:block focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        value={key}
-        onChange={(e) => {
-          if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
-          store.mutate(() => {
-            store.state.currentMonth = e.target.value;
-            ensureMonth(store.state, store.state.currentMonth);
-          });
-        }}
-      />
       <Button variant="outline" size="icon-sm" title="Next month" onClick={() => goMonth(store, 1)}>
         <ChevronRightIcon />
       </Button>
@@ -129,7 +129,7 @@ export type MoneyInputProps = {
 
 export function MoneyInput(props: MoneyInputProps) {
   return (
-    <InputGroup className={cn("w-full min-w-0 sm:w-[148px]", props.className)}>
+    <InputGroup className={cn("w-full min-w-0", props.className)}>
       <InputGroupAddon>
         <InputGroupText>{props.currency}</InputGroupText>
       </InputGroupAddon>
@@ -194,7 +194,7 @@ export function EmptyState(props: { title: string; description?: string; action?
 }
 
 export type PanelProps = {
-  title: string;
+  title?: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
@@ -203,20 +203,25 @@ export type PanelProps = {
 };
 
 export function Panel(props: PanelProps) {
+  const hasHeader = Boolean(props.title || props.description || props.action);
   return (
     <Card id={props.id} className={cn("scroll-mt-24", props.className)}>
-      <CardHeader className="border-b">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <CardTitle>{props.title}</CardTitle>
-            {props.description ? (
-              <CardDescription className="mt-1">{props.description}</CardDescription>
-            ) : null}
+      {hasHeader ? (
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              {props.title ? <CardTitle>{props.title}</CardTitle> : null}
+              {props.description ? (
+                <CardDescription className={props.title ? "mt-1" : undefined}>
+                  {props.description}
+                </CardDescription>
+              ) : null}
+            </div>
+            {props.action ? <div className="flex flex-wrap gap-2">{props.action}</div> : null}
           </div>
-          {props.action ? <div className="flex flex-wrap gap-2">{props.action}</div> : null}
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4">{props.children}</CardContent>
+        </CardHeader>
+      ) : null}
+      <CardContent className={hasHeader ? "pt-4" : undefined}>{props.children}</CardContent>
     </Card>
   );
 }

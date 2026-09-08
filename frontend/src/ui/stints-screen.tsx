@@ -19,6 +19,7 @@ import {
 } from "./kit";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
+import { XIcon } from "lucide-react";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 export function StintsScreen() {
@@ -350,7 +351,8 @@ export function StintsScreen() {
                         </Button>
                         <Button
                           variant="ghost"
-                          size="icon-xs"
+                          size="icon-sm"
+                          className="max-sm:size-10"
                           title="Remove"
                           onClick={() => {
                             commitStints(() => {
@@ -359,7 +361,7 @@ export function StintsScreen() {
                             });
                           }}
                         >
-                          ×
+                          <XIcon />
                         </Button>
                       </>
                     ) : null}

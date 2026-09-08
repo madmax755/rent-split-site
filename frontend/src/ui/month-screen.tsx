@@ -26,7 +26,10 @@ import type { HouseholdState, MonthCompute, MonthLine, MonthRecord } from "../do
 import { copyText } from "../lib/copy-text";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
+import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   EmptyState,
   KpiCard,
@@ -139,7 +142,9 @@ export function MonthScreen() {
             <div className="grid items-center gap-2 rounded-xl bg-muted/50 p-3 md:grid-cols-[1fr_118px_118px_92px]">
               <div>
                 <div className="font-medium">Rent</div>
-                <div className="text-xs text-muted-foreground">{c.rentCounts.periodLabel}</div>
+                <div className="text-xs text-muted-foreground">
+                  {c.rentCounts.periodLabel} · {fmtNum(weightedAreas(state).total, 1)} m² weighted
+                </div>
               </div>
               <div>
                 <div className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase md:hidden">
@@ -158,9 +163,7 @@ export function MonthScreen() {
                   }}
                 />
               </div>
-              <div className="tabular-nums text-xs text-muted-foreground md:text-right">
-                {fmtNum(weightedAreas(state).total, 1)} m² weighted
-              </div>
+              <div className="hidden md:block" />
               <div className="text-xs text-muted-foreground md:text-right">fixed</div>
             </div>
             {state.bills.map((b) => (
@@ -324,8 +327,8 @@ export function MonthScreen() {
           title="Notes"
           description="This month only — a boiler repair, a rent review, who had guests."
         >
-          <textarea
-            className="min-h-20 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          <Textarea
+            className="min-h-20"
             placeholder="Anything worth remembering about this month…"
             value={M.note || ""}
             onChange={(e) => {
@@ -402,9 +405,9 @@ function BillRow(props: BillRowProps) {
     >
       <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 md:col-span-1">
         {oneOff ? (
-          <input
+          <Input
             type="text"
-            className="min-w-32 flex-1 bg-transparent text-sm font-medium outline-none"
+            className="min-w-32 flex-1 border-transparent bg-transparent px-1 font-medium shadow-none"
             value={def.name}
             onChange={(e) => {
               store.mutate(() => {
@@ -421,7 +424,8 @@ function BillRow(props: BillRowProps) {
         {oneOff ? (
           <Button
             variant="ghost"
-            size="icon-xs"
+            size="icon-sm"
+            className="max-sm:size-10"
             title="Remove"
             onClick={() => {
               store.mutate(() => {
@@ -430,7 +434,7 @@ function BillRow(props: BillRowProps) {
               });
             }}
           >
-            ×
+            <XIcon />
           </Button>
         ) : null}
         <span className="basis-full text-xs text-muted-foreground">{range}</span>

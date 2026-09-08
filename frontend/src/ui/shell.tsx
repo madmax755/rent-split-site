@@ -265,6 +265,7 @@ export function AppShell(props: AppShellProps) {
               variant="ghost"
               size="sm"
               className="flex-1 justify-start"
+              title={dark ? "Switch to light" : "Switch to dark"}
               onClick={() => {
                 props.onTweaks({
                   ...props.tweaks,
@@ -272,8 +273,8 @@ export function AppShell(props: AppShellProps) {
                 });
               }}
             >
-              {dark ? <MoonIcon /> : <SunIcon />}
-              {dark ? "Dark" : "Light"}
+              {dark ? <SunIcon /> : <MoonIcon />}
+              {dark ? "Light" : "Dark"}
             </Button>
             {store.adapter.logout ? (
               <Button
@@ -309,6 +310,7 @@ export function AppShell(props: AppShellProps) {
           <Button
             variant="ghost"
             size="icon-sm"
+            title={dark ? "Switch to light" : "Switch to dark"}
             onClick={() => {
               props.onTweaks({
                 ...props.tweaks,
@@ -316,7 +318,7 @@ export function AppShell(props: AppShellProps) {
               });
             }}
           >
-            {dark ? <MoonIcon /> : <SunIcon />}
+            {dark ? <SunIcon /> : <MoonIcon />}
           </Button>
         </header>
         {props.children}
