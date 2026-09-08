@@ -1,4 +1,5 @@
 import { clampCycleDay, cyclePhrase, periodLabel } from "../domain/dates";
+import { NumericField } from "./numeric-field";
 
 export type CycleDayFieldProps = {
   value: number;
@@ -12,15 +13,15 @@ export function CycleDayField(props: CycleDayFieldProps) {
     <div>
       <div className="field compact" style={{ width: 188 }}>
         <span className="prefix">the</span>
-        <input
-          type="number"
+        <NumericField
+          integer
           min={1}
           max={31}
           className="num-input"
           value={day}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
-            props.onChange(Number.isFinite(v) ? clampCycleDay(v) : 1);
+          aria-label="Billing period start day"
+          onChange={(v) => {
+            props.onChange(clampCycleDay(v));
           }}
         />
         <span className="suffix">of each month</span>

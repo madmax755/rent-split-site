@@ -1593,7 +1593,7 @@ input[type="date"] {
   flex: 0 0 auto;
 }
 .stint-row select,
-.stint-row input[type="number"] {
+.stint-row .num-input {
   font-size: 13px;
 }
 .daynum {

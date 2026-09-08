@@ -27,6 +27,7 @@ import { copyText } from "../lib/copy-text";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
 import { Icon } from "./icon";
+import { NumericField } from "./numeric-field";
 import { PersonStatementCard } from "./person-statement";
 import { screenClass } from "./screen-class";
 import { Kpi, Section } from "./section";
@@ -40,6 +41,7 @@ type MonthScreenProps = {
 };
 
 export function MonthScreen(props: MonthScreenProps) {
+  "use no memo";
   const { store, state, activeTab } = useHousehold();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
@@ -197,15 +199,14 @@ export function MonthScreen(props: MonthScreenProps) {
               <div className="minilabel">Agreed</div>
               <div className="field compact">
                 <span className="prefix cur-symbol">{state.currency}</span>
-                <input
-                  type="number"
-                  step={10}
+                <NumericField
                   min={0}
                   className="num-input"
                   value={typeof M.rent === "number" ? M.rent : state.rent}
-                  onChange={(e) => {
+                  aria-label="Agreed rent"
+                  onChange={(v) => {
                     store.mutate(() => {
-                      ensureMonth(store.state, key).rent = parseFloat(e.target.value) || 0;
+                      ensureMonth(store.state, key).rent = v;
                     });
                   }}
                 />
@@ -509,6 +510,7 @@ type BillRowProps = {
 };
 
 function BillRow(props: BillRowProps) {
+  "use no memo";
   const { store, state, def, line, oneOff } = props;
   const cycleDay = oneOff ? 1 : clampCycleDay(def.cycleStartDay ?? 1);
   const range = periodLabel(props.monthKey, cycleDay);
@@ -566,16 +568,15 @@ function BillRow(props: BillRowProps) {
         <div className="minilabel">Estimate</div>
         <div className="field compact">
           <span className="prefix cur-symbol">{state.currency}</span>
-          <input
-            type="number"
-            step={0.01}
+          <NumericField
             min={oneOff ? undefined : 0}
             className="num-input"
             value={+line.est || 0}
-            onChange={(e) => {
+            aria-label={`${def.name} estimate`}
+            onChange={(v) => {
               store.mutate(() => {
                 const L = lineOf(ensureMonth(store.state, props.monthKey), def.id, oneOff);
-                if (L) L.est = parseFloat(e.target.value) || 0;
+                if (L) L.est = v;
               });
             }}
           />
@@ -585,19 +586,18 @@ function BillRow(props: BillRowProps) {
         <div className="minilabel">Realised</div>
         <div className="field compact">
           <span className="prefix cur-symbol">{state.currency}</span>
-          <input
-            type="number"
-            step={0.01}
+          <NumericField
+            allowEmpty
             min={oneOff ? undefined : 0}
             className="num-input"
-            value={typeof line.act === "number" ? line.act : ""}
+            value={typeof line.act === "number" ? line.act : null}
             placeholder="—"
-            onChange={(e) => {
+            aria-label={`${def.name} realised`}
+            onChange={(v) => {
               store.mutate(() => {
                 const L = lineOf(ensureMonth(store.state, props.monthKey), def.id, oneOff);
                 if (!L) return;
-                const v = e.target.value.trim();
-                L.act = v === "" ? null : parseFloat(v) || 0;
+                L.act = v;
               });
             }}
           />

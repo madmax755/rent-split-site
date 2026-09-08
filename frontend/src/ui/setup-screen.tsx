@@ -10,6 +10,7 @@ import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
 import { CycleDayField } from "./cycle-day-field";
 import { Icon } from "./icon";
+import { NumericField } from "./numeric-field";
 import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
@@ -18,6 +19,7 @@ type SetupScreenProps = {
 };
 
 export function SetupScreen(props: SetupScreenProps) {
+  "use no memo";
   const { store, state, activeTab } = useHousehold();
   const ordered = state.people.slice().sort((a, c) => (a.archived ? 1 : 0) - (c.archived ? 1 : 0));
   const live = state.people.filter((p) => !p.archived);
@@ -313,14 +315,12 @@ export function SetupScreen(props: SetupScreenProps) {
                 <div>
                   <div className="dim-label">Width</div>
                   <div className="field compact">
-                    <input
-                      type="number"
+                    <NumericField
                       value={room.w}
-                      step={0.01}
                       min={0}
                       className="num-input"
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value) || 0;
+                      aria-label={`${room.name} width`}
+                      onChange={(v) => {
                         store.mutate(() => {
                           const r = store.state.rooms.find((x) => x.id === room.id);
                           if (r) r.w = v;
@@ -333,14 +333,12 @@ export function SetupScreen(props: SetupScreenProps) {
                 <div>
                   <div className="dim-label">Length</div>
                   <div className="field compact">
-                    <input
-                      type="number"
+                    <NumericField
                       value={room.l}
-                      step={0.01}
                       min={0}
                       className="num-input"
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value) || 0;
+                      aria-label={`${room.name} length`}
+                      onChange={(v) => {
                         store.mutate(() => {
                           const r = store.state.rooms.find((x) => x.id === room.id);
                           if (r) r.l = v;
@@ -353,14 +351,12 @@ export function SetupScreen(props: SetupScreenProps) {
                 <div>
                   <div className="dim-label">Weight</div>
                   <div className="field compact">
-                    <input
-                      type="number"
+                    <NumericField
                       value={room.weight}
-                      step={0.05}
                       min={0}
                       className="num-input"
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value) || 0;
+                      aria-label={`${room.name} weight`}
+                      onChange={(v) => {
                         store.mutate(() => {
                           const r = store.state.rooms.find((x) => x.id === room.id);
                           if (r) r.weight = v;
@@ -443,14 +439,12 @@ export function SetupScreen(props: SetupScreenProps) {
                 />
                 <div className="field compact" style={{ width: 132 }}>
                   <span className="prefix cur-symbol">{state.currency}</span>
-                  <input
-                    type="number"
+                  <NumericField
                     value={b.est}
-                    step={0.01}
                     min={0}
                     className="num-input"
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value) || 0;
+                    aria-label={`${b.name} estimate`}
+                    onChange={(v) => {
                       store.mutate(() => {
                         const bill = store.state.bills.find((x) => x.id === b.id);
                         if (bill) bill.est = v;

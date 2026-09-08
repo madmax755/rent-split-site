@@ -9,6 +9,7 @@ import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { Avatar } from "./avatar";
 import { CycleDayField } from "./cycle-day-field";
 import { Icon } from "./icon";
+import { NumericField } from "./numeric-field";
 import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
@@ -32,6 +33,7 @@ function isCurrency(v: string): v is CurrencySymbol {
 }
 
 export function SettingsScreen(props: SettingsScreenProps) {
+  "use no memo";
   const { store, state, activeTab } = useHousehold();
   const key = state.currentMonth;
   const c = computeMonth(state, key, "eff");
@@ -174,14 +176,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <div className="grow" />
             <div className="field compact" style={{ width: 150 }}>
               <span className="prefix cur-symbol">{state.currency}</span>
-              <input
-                type="number"
+              <NumericField
                 min={0}
-                step={10}
                 className="num-input"
                 value={state.rent}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value) || 0;
+                aria-label="Standing monthly rent"
+                onChange={(v) => {
                   store.mutate(() => {
                     store.state.rent = v;
                   });
@@ -248,13 +248,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <span className="lbl">Hallway / stairs area</span>
             <div className="grow" />
             <div className="field compact" style={{ width: 120 }}>
-              <input
-                type="number"
-                step={0.01}
+              <NumericField
+                min={0}
                 className="num-input"
                 value={state.catchall}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value) || 0;
+                aria-label="Hallway / stairs area"
+                onChange={(v) => {
                   store.mutate(() => {
                     store.state.catchall = v;
                   });
@@ -267,15 +266,12 @@ export function SettingsScreen(props: SettingsScreenProps) {
             <span className="lbl">Hallway weight</span>
             <div className="grow" />
             <div className="field compact" style={{ width: 120 }}>
-              <input
-                type="number"
-                step={0.05}
+              <NumericField
                 min={0}
                 className="num-input"
                 value={state.catchallWeight}
-                onChange={(e) => {
-                  let v = parseFloat(e.target.value);
-                  if (!Number.isFinite(v) || v < 0) v = 0;
+                aria-label="Hallway weight"
+                onChange={(v) => {
                   store.mutate(() => {
                     store.state.catchallWeight = v;
                   });
