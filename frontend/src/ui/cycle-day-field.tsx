@@ -22,7 +22,7 @@ export function CycleDayField(props: CycleDayFieldProps) {
           min={1}
           max={31}
           value={day}
-          aria-label="Billing period start day"
+          aria-label="Payment start day"
           onChange={(v) => {
             props.onChange(clampCycleDay(v));
           }}

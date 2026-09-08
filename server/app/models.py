@@ -25,6 +25,7 @@ class Household(Base):
     currency: Mapped[str] = mapped_column(String, nullable=False, default="£")
     rent: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     rent_cycle_start_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    tenancy_start: Mapped[str] = mapped_column(String, nullable=False, default="2026-08-09")
     catchall: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     catchall_weight: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     current_month: Mapped[str] = mapped_column(String, nullable=False, default="")

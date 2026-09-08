@@ -58,6 +58,7 @@ export type Stint = {
 export type MonthConfig = {
   rent: number;
   rentCycleStartDay: number;
+  tenancyStart: string;
   rooms: Room[];
   catchall: number;
   catchallWeight: number;
@@ -92,6 +93,7 @@ export const SNAPSHOT_FIELDS = [
   "currency",
   "rent",
   "rentCycleStartDay",
+  "tenancyStart",
   "catchall",
   "catchallWeight",
   "rooms",
@@ -107,6 +109,7 @@ export type Snapshot = {
   currency: string;
   rent: number;
   rentCycleStartDay: number;
+  tenancyStart: string;
   catchall: number;
   catchallWeight: number;
   rooms: Room[];
@@ -183,6 +186,10 @@ export type MonthCompute = {
   rentCounts: PeriodCounts;
   rentPence: number;
   rentAmount: number;
+  agreedRentPence: number;
+  carryInPence: number;
+  carryOutPence: number;
+  chargeableDays: number;
   bedroom: Record<string, number>;
   shared: Record<string, number>;
   rentShare: Record<string, number>;

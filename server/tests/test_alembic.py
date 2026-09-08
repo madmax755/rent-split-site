@@ -28,7 +28,8 @@ def test_cycle_start_days_upgrade_skips_existing_columns(settings) -> None:
     household_cols = {col["name"] for col in inspector.get_columns("household")}
     bill_cols = {col["name"] for col in inspector.get_columns("bill")}
     assert "rent_cycle_start_day" in household_cols
+    assert "tenancy_start" in household_cols
     assert "cycle_start_day" in bill_cols
     with engine.connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    assert version == "0002_cycle_start_days"
+    assert version == "0003_tenancy_start"

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { addMonths, monthLabel } from "../domain/dates";
+import { addMonths, monthLabel, tenancyMonthKey } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import type { MonthStatus } from "../domain/types";
 import { useHousehold } from "../store/household-context";
@@ -42,12 +42,14 @@ export function PageHeader(props: PageHeaderProps) {
 export function MonthSwitcher() {
   const { store, state } = useHousehold();
   const key = state.currentMonth;
+  const floor = tenancyMonthKey(state.tenancyStart);
   return (
     <div className="flex items-center gap-1">
       <Button
         variant="outline"
         size="icon-sm"
         title="Previous month"
+        disabled={key <= floor}
         onClick={() => goMonth(store, -1)}
       >
         <ChevronLeftIcon />
@@ -57,12 +59,14 @@ export function MonthSwitcher() {
         <input
           type="month"
           aria-label="Choose month"
+          min={floor}
           className="h-8 cursor-pointer rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none max-sm:absolute max-sm:inset-0 max-sm:opacity-0 sm:block focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           value={key}
           onChange={(e) => {
             if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
+            const next = e.target.value < floor ? floor : e.target.value;
             store.mutate(() => {
-              store.state.currentMonth = e.target.value;
+              store.state.currentMonth = next;
               ensureMonth(store.state, store.state.currentMonth);
             });
           }}
@@ -77,7 +81,10 @@ export function MonthSwitcher() {
 
 export function goMonth(store: HouseholdStore, delta: number): void {
   store.mutate(() => {
-    store.state.currentMonth = addMonths(store.state.currentMonth, delta);
+    const next = addMonths(store.state.currentMonth, delta);
+    const floor = tenancyMonthKey(store.state.tenancyStart);
+    if (delta < 0 && next < floor) return;
+    store.state.currentMonth = next;
     ensureMonth(store.state, store.state.currentMonth);
   });
 }

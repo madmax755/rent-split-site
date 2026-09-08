@@ -1,5 +1,11 @@
 import { useState, type CSSProperties } from "react";
-import { cycleDayInMonth, daysInMonth, dayDate, monthLabel } from "../domain/dates";
+import {
+  cycleDayInMonth,
+  daysInMonth,
+  dayDate,
+  firstChargeableDay,
+  monthLabel,
+} from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
 import { personById, personColor, plural, rangeText } from "../domain/format";
@@ -31,6 +37,7 @@ export function StintsScreen() {
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
   const days = buildDayModel(state, key);
+  const startDay = firstChargeableDay(key, state.tenancyStart);
   const cols = { gridTemplateColumns: `repeat(${D}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
   const gaps = bedroomGaps(state, key);
@@ -99,10 +106,17 @@ export function StintsScreen() {
                   const d = i + 1;
                   const dow = dayDate(key, d).getDay();
                   const wk = dow === 0 || dow === 6;
+                  const beforeTenancy = d < startDay;
                   return (
                     <div
                       key={d}
-                      className={`tabular-nums text-center text-[9px] ${wk ? "font-bold text-foreground" : "text-muted-foreground"}`}
+                      className={`tabular-nums text-center text-[9px] ${
+                        beforeTenancy
+                          ? "text-muted-foreground/40"
+                          : wk
+                            ? "font-bold text-foreground"
+                            : "text-muted-foreground"
+                      }`}
                     >
                       {d % 2 === 1 || D <= 20 ? d : "\u00a0"}
                     </div>
@@ -129,7 +143,7 @@ export function StintsScreen() {
                       return (
                         <div
                           key={i}
-                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
+                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${i + 1 < startDay ? "opacity-40" : ""} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
                           style={isHere ? { background: personColor(state, p.id) } : undefined}
                         />
                       );
@@ -142,16 +156,24 @@ export function StintsScreen() {
                   <div
                     key={day.d}
                     title={
-                      state.rentCycleStartDay !== 1 &&
-                      day.d === cycleDayInMonth(key, state.rentCycleStartDay)
-                        ? "Rent period starts"
-                        : undefined
+                      day.d === startDay && startDay > 1
+                        ? "Tenancy starts"
+                        : state.rentCycleStartDay !== 1 &&
+                            day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                          ? "Rent is paid"
+                          : undefined
                     }
-                    className={`flex h-5 items-center justify-center rounded-[3px] bg-muted text-[9px] font-bold tabular-nums text-muted-foreground ${
-                      state.rentCycleStartDay !== 1 &&
-                      day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                    className={`flex h-5 items-center justify-center rounded-[3px] text-[9px] font-bold tabular-nums ${
+                      day.d < startDay
+                        ? "bg-muted/40 text-muted-foreground/40"
+                        : "bg-muted text-muted-foreground"
+                    } ${
+                      day.d === startDay && startDay > 1
                         ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
-                        : ""
+                        : state.rentCycleStartDay !== 1 &&
+                            day.d === cycleDayInMonth(key, state.rentCycleStartDay)
+                          ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
+                          : ""
                     }`}
                   >
                     {day.liable.length}
@@ -185,11 +207,13 @@ export function StintsScreen() {
                                   key={i}
                                   title={`${room.name} — day ${i + 1}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
                                   className={`rounded-[3px] ${
-                                    occ > 1
-                                      ? "bg-emerald-500 ring-1 ring-inset ring-foreground/60"
-                                      : occ
-                                        ? "bg-emerald-500/80"
-                                        : "bg-destructive/25 ring-1 ring-destructive"
+                                    i + 1 < startDay
+                                      ? "bg-muted/40"
+                                      : occ > 1
+                                        ? "bg-emerald-500 ring-1 ring-inset ring-foreground/60"
+                                        : occ
+                                          ? "bg-emerald-500/80"
+                                          : "bg-destructive/25 ring-1 ring-destructive"
                                   }`}
                                 />
                               );
@@ -398,7 +422,7 @@ export function StintsScreen() {
                   id: uid("st"),
                   personId: p.id,
                   roomId: lastRoomOf(store.state, p.id),
-                  from: 1,
+                  from: firstChargeableDay(key, store.state.tenancyStart),
                   to: daysInMonth(key),
                 });
               });

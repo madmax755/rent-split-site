@@ -1,5 +1,5 @@
 export const APP_ID = "rent-split" as const;
-export const SCHEMA = 5;
+export const SCHEMA = 6;
 export const STORAGE_KEY = "rent-split";
 export const BACKUP_KEY = "rent-split.previous";
 
@@ -14,6 +14,19 @@ function fillCycleStartDay(rec: Record<string, unknown>, field: string): void {
 }
 
 export const MIGRATIONS: Record<number, MigrationFn> = {
+  5: function (d) {
+    if (typeof d.tenancyStart !== "string") d.tenancyStart = "2026-08-09";
+    const months = asRecord(d.months) ?? {};
+    Object.values(months).forEach((M) => {
+      const rec = asRecord(M);
+      if (!rec) return;
+      const cfg = asRecord(rec.config);
+      if (!cfg || typeof cfg.tenancyStart === "string") return;
+      const key = typeof rec.key === "string" ? rec.key : "";
+      cfg.tenancyStart = key && key < "2026-08" ? `${key}-01` : "2026-08-09";
+    });
+    return d;
+  },
   4: function (d) {
     fillCycleStartDay(d, "rentCycleStartDay");
     const bills = Array.isArray(d.bills) ? d.bills : [];
