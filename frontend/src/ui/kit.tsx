@@ -5,18 +5,14 @@ import { ensureMonth } from "../domain/months";
 import type { MonthStatus } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
+import { NumericField } from "./numeric-field";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupText } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 
 export type PageHeaderProps = {
@@ -102,7 +98,9 @@ export function KpiCard(props: KpiCardProps) {
         <CardTitle className="tabular-nums font-heading text-2xl tracking-tight">
           {props.value}
         </CardTitle>
-        {props.sub ? <p className="tabular-nums text-xs text-muted-foreground">{props.sub}</p> : null}
+        {props.sub ? (
+          <p className="tabular-nums text-xs text-muted-foreground">{props.sub}</p>
+        ) : null}
       </CardHeader>
     </Card>
   );
@@ -133,21 +131,15 @@ export function MoneyInput(props: MoneyInputProps) {
       <InputGroupAddon>
         <InputGroupText>{props.currency}</InputGroupText>
       </InputGroupAddon>
-      <InputGroupInput
-        type="number"
-        className="tabular-nums"
-        step={props.step ?? 0.01}
+      <NumericField
+        group
+        allowEmpty
         min={props.min}
         disabled={props.disabled}
         placeholder={props.placeholder}
-        value={props.value}
-        onChange={(e) => {
-          const raw = e.target.value.trim();
-          if (raw === "") {
-            props.onChange("");
-            return;
-          }
-          props.onChange(parseFloat(raw) || 0);
+        value={typeof props.value === "number" ? props.value : null}
+        onChange={(v) => {
+          props.onChange(v === null ? "" : v);
         }}
       />
     </InputGroup>
@@ -285,45 +277,15 @@ export type EditableNumberProps = {
 };
 
 export function EditableNumber(props: EditableNumberProps) {
-  const [draft, setDraft] = useState(String(props.value));
-  const focused = useRef(false);
-
-  useEffect(() => {
-    if (!focused.current) setDraft(String(props.value));
-  }, [props.value]);
-
-  function commit(raw: string): void {
-    const n = Math.round(parseFloat(raw));
-    if (!Number.isFinite(n)) {
-      setDraft(String(props.value));
-      return;
-    }
-    props.onChange(n);
-  }
-
   return (
-    <Input
-      type="number"
+    <NumericField
+      integer
       className={props.className}
       min={props.min}
       max={props.max}
-      step={props.step}
       disabled={props.disabled}
-      value={draft}
-      onFocus={() => {
-        focused.current = true;
-      }}
-      onBlur={() => {
-        focused.current = false;
-        commit(draft);
-      }}
-      onChange={(e) => {
-        const raw = e.target.value;
-        setDraft(raw);
-        if (raw.trim() === "") return;
-        const n = parseFloat(raw);
-        if (Number.isFinite(n)) props.onChange(n);
-      }}
+      value={props.value}
+      onChange={props.onChange}
     />
   );
 }

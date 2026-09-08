@@ -1,10 +1,6 @@
 import { clampCycleDay, cyclePhrase, periodLabel } from "../domain/dates";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "@/components/ui/input-group";
+import { NumericField } from "./numeric-field";
+import { InputGroup, InputGroupAddon, InputGroupText } from "@/components/ui/input-group";
 
 export type CycleDayFieldProps = {
   value: number;
@@ -20,15 +16,15 @@ export function CycleDayField(props: CycleDayFieldProps) {
         <InputGroupAddon>
           <InputGroupText>the</InputGroupText>
         </InputGroupAddon>
-        <InputGroupInput
-          type="number"
+        <NumericField
+          group
+          integer
           min={1}
           max={31}
-          className="tabular-nums"
           value={day}
-          onChange={(e) => {
-            const v = parseInt(e.target.value, 10);
-            props.onChange(Number.isFinite(v) ? clampCycleDay(v) : 1);
+          aria-label="Billing period start day"
+          onChange={(v) => {
+            props.onChange(clampCycleDay(v));
           }}
         />
         <InputGroupAddon align="inline-end">

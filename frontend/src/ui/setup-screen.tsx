@@ -13,10 +13,10 @@ import { Avatar } from "./avatar";
 import { CycleDayField } from "./cycle-day-field";
 import { useConfirm } from "./confirm-dialog";
 import { EditableText, MoneyInput, PageHeader, Panel, Screen } from "./kit";
+import { NumericField } from "./numeric-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -347,7 +347,6 @@ export function SetupScreen() {
                       label="Weight"
                       suffix="×"
                       value={room.weight}
-                      step={0.05}
                       onChange={(v) => {
                         store.mutate(() => {
                           const r = store.state.rooms.find((x) => x.id === room.id);
@@ -602,7 +601,6 @@ export function SetupScreen() {
                 label="Hallway weight"
                 suffix="×"
                 value={state.catchallWeight}
-                step={0.05}
                 onChange={(v) => {
                   store.mutate(() => {
                     store.state.catchallWeight = v < 0 ? 0 : v;
@@ -632,7 +630,6 @@ function DimField(props: {
   label: string;
   suffix: string;
   value: number;
-  step?: number;
   onChange: (v: number) => void;
 }) {
   return (
@@ -641,13 +638,12 @@ function DimField(props: {
         {props.label}
       </span>
       <div className="flex items-center gap-1.5">
-        <Input
-          type="number"
+        <NumericField
           className="tabular-nums"
-          step={props.step ?? 0.01}
           min={0}
           value={props.value}
-          onChange={(e) => props.onChange(parseFloat(e.target.value) || 0)}
+          aria-label={props.label}
+          onChange={props.onChange}
         />
         <span className="text-xs text-muted-foreground">{props.suffix}</span>
       </div>
