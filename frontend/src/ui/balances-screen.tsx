@@ -15,12 +15,14 @@ import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
+import { useConfirm } from "./confirm-dialog";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function BalancesScreen() {
   const { store, state, activeTab } = useHousehold();
+  const ask = useConfirm();
   const { bal, items } = computeBalances(state);
   const pay = payer(state);
   const ids = Object.keys(bal).filter((id) => Math.abs(bal[id] ?? 0) >= 1);
@@ -204,11 +206,17 @@ export function BalancesScreen() {
                         size="icon-sm"
                         className="max-sm:size-10"
                         title="Undo this record"
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            !confirm("Undo this record? The balance will go back to what it was.")
-                          )
+                            !(await ask({
+                              title: "Undo this record?",
+                              description: "The balance will go back to what it was.",
+                              confirmLabel: "Undo",
+                              destructive: true,
+                            }))
+                          ) {
                             return;
+                          }
                           void store.undoSettle(x.id).then(() => store.announce("Undone."));
                         }}
                       >

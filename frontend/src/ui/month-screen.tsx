@@ -44,6 +44,7 @@ import {
   goMonth,
 } from "./kit";
 import { PersonStatementCard } from "./person-statement";
+import { useConfirm } from "./confirm-dialog";
 
 export { goMonth };
 
@@ -53,6 +54,7 @@ function lineOf(M: MonthRecord, id: string, isOneOff: boolean): MonthLine | unde
 
 export function MonthScreen() {
   const { store, state, activeTab } = useHousehold();
+  const ask = useConfirm();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
   const D = daysInMonth(key);
@@ -281,15 +283,19 @@ export function MonthScreen() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => {
+                onClick={async () => {
                   const month = ensureMonth(state, key);
                   if (month.collected) {
                     if (
-                      !confirm(
-                        "Unlock? This month goes back to following the current rent, rooms and bills, and its true-ups come off the balances until you lock it again.",
-                      )
-                    )
+                      !(await ask({
+                        title: "Unlock this month?",
+                        description:
+                          "It goes back to following the current rent, rooms and bills. True-ups come off the balances until you lock it again.",
+                        confirmLabel: "Unlock",
+                      }))
+                    ) {
                       return;
+                    }
                   }
                   store.mutate(() => {
                     const m = ensureMonth(store.state, key);
@@ -341,13 +347,18 @@ export function MonthScreen() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  !confirm(
-                    "Rebuild this month's stints from the roster? Any visitor stays and away periods you've entered for this month are lost.",
-                  )
-                )
+                  !(await ask({
+                    title: "Rebuild this month's stints?",
+                    description:
+                      "Any visitor stays and away periods you've entered for this month are lost.",
+                    confirmLabel: "Rebuild",
+                    destructive: true,
+                  }))
+                ) {
                   return;
+                }
                 store.mutate(() => {
                   seedStints(store.state, key);
                 });
@@ -359,13 +370,17 @@ export function MonthScreen() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  !confirm(
-                    `Delete ${monthLabel(key)} entirely? Its bills, stints and true-ups all go.`,
-                  )
-                )
+                  !(await ask({
+                    title: `Delete ${monthLabel(key)}?`,
+                    description: "Its bills, stints and true-ups all go.",
+                    confirmLabel: "Delete month",
+                    destructive: true,
+                  }))
+                ) {
                   return;
+                }
                 store.mutate(() => {
                   delete store.state.months[key];
                   ensureMonth(store.state, key);

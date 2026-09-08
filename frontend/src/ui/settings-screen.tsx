@@ -6,6 +6,7 @@ import { plural } from "../domain/format";
 import { useHousehold } from "../store/household-context";
 import { ACCENTS, type Tweaks } from "../theme/tweaks";
 import { PageHeader, Panel, Screen } from "./kit";
+import { SIGN_OUT_REQUEST, useConfirm } from "./confirm-dialog";
 import { XIcon } from "lucide-react";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ export type SettingsScreenProps = {
 
 export function SettingsScreen(props: SettingsScreenProps) {
   const { store, state, activeTab } = useHousehold();
+  const ask = useConfirm();
   const a = store.adapter;
   const [savingProperty, setSavingProperty] = useState(false);
 
@@ -138,13 +140,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          !confirm(
-                            `Load "${preset.name}"? Everything currently on screen is replaced.`,
-                          )
-                        )
+                          !(await ask({
+                            title: `Load ${preset.name}?`,
+                            description: "Everything currently on screen is replaced.",
+                            confirmLabel: "Load",
+                            destructive: true,
+                          }))
+                        ) {
                           return;
+                        }
                         store.loadPreset(preset);
                       }}
                     >
@@ -153,8 +159,17 @@ export function SettingsScreen(props: SettingsScreenProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        if (!confirm(`Overwrite "${preset.name}" with the current setup?`)) return;
+                      onClick={async () => {
+                        if (
+                          !(await ask({
+                            title: `Overwrite ${preset.name}?`,
+                            description: "The saved snapshot is replaced with the current setup.",
+                            confirmLabel: "Overwrite",
+                            destructive: true,
+                          }))
+                        ) {
+                          return;
+                        }
                         store.mutate(() => {
                           const p = store.state.presets[i];
                           if (!p) return;
@@ -170,8 +185,18 @@ export function SettingsScreen(props: SettingsScreenProps) {
                       size="icon-sm"
                       className="max-sm:size-10"
                       title="Remove"
-                      onClick={() => {
-                        if (!confirm(`Remove "${preset.name}"?`)) return;
+                      onClick={async () => {
+                        if (
+                          !(await ask({
+                            title: `Remove ${preset.name}?`,
+                            description:
+                              "The saved snapshot is deleted. The current household is unchanged.",
+                            confirmLabel: "Remove",
+                            destructive: true,
+                          }))
+                        ) {
+                          return;
+                        }
                         store.mutate(() => {
                           store.state.presets.splice(i, 1);
                         });
@@ -219,8 +244,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    if (!confirm("Sign out of this browser?")) return;
+                  onClick={async () => {
+                    if (!(await ask(SIGN_OUT_REQUEST))) return;
                     props.onLogout();
                   }}
                 >
@@ -277,12 +302,23 @@ export function SettingsScreen(props: SettingsScreenProps) {
         }
         onClose={() => setSavingProperty(false)}
         onConfirm={(name) => {
-          if (state.presets.some((p) => p.name === name)) {
-            if (!confirm(`"${name}" already exists. Overwrite it?`)) return;
-          }
-          store.saveAsProperty(name);
-          setSavingProperty(false);
-          store.announce("Saved.");
+          void (async () => {
+            if (state.presets.some((p) => p.name === name)) {
+              if (
+                !(await ask({
+                  title: `${name} already exists`,
+                  description: "Overwrite the saved snapshot with the current setup?",
+                  confirmLabel: "Overwrite",
+                  destructive: true,
+                }))
+              ) {
+                return;
+              }
+            }
+            store.saveAsProperty(name);
+            setSavingProperty(false);
+            store.announce("Saved.");
+          })();
         }}
       />
     </Screen>

@@ -8,6 +8,7 @@ import { useHousehold } from "../store/household-context";
 import { PersonStatementCard } from "./person-statement";
 import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
+import { useConfirm } from "./confirm-dialog";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,6 +207,7 @@ export function TenantHistoryScreen() {
 
 export function TenantBalancesScreen() {
   const { store, state, activeTab } = useHousehold();
+  const ask = useConfirm();
   const personId = store.session?.personId;
   const me = personId ? personById(state, personId) : null;
   const pay = payer(state);
@@ -283,9 +285,17 @@ export function TenantBalancesScreen() {
                   size="icon-sm"
                   className="max-sm:size-10"
                   title="Undo this record"
-                  onClick={() => {
-                    if (!confirm("Undo this record? The balance will go back to what it was."))
+                  onClick={async () => {
+                    if (
+                      !(await ask({
+                        title: "Undo this record?",
+                        description: "The balance will go back to what it was.",
+                        confirmLabel: "Undo",
+                        destructive: true,
+                      }))
+                    ) {
                       return;
+                    }
                     void store.undoSettle(x.id ?? "").then(() => store.announce("Undone."));
                   }}
                 >

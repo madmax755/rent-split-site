@@ -18,6 +18,7 @@ import { ensureMonth } from "../domain/months";
 import type { TabId } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { resolvedTheme, type Tweaks } from "../theme/tweaks";
+import { SIGN_OUT_REQUEST, useConfirm } from "./confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,7 @@ const NAV: NavItem[] = [
 
 export function AppShell(props: AppShellProps) {
   const { store, state, activeTab } = useHousehold();
+  const ask = useConfirm();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [signingIn, setSigningIn] = useState(false);
@@ -137,6 +139,11 @@ export function AppShell(props: AppShellProps) {
         return false;
       }
     }
+  }
+
+  async function signOut(): Promise<void> {
+    if (!(await ask(SIGN_OUT_REQUEST))) return;
+    props.onLogout();
   }
 
   function go(id: TabId): void {
@@ -281,10 +288,7 @@ export function AppShell(props: AppShellProps) {
                 variant="ghost"
                 size="icon-sm"
                 title="Sign out"
-                onClick={() => {
-                  if (!confirm("Sign out of this browser?")) return;
-                  props.onLogout();
-                }}
+                onClick={() => void signOut()}
               >
                 <LogOutIcon />
               </Button>
@@ -390,10 +394,7 @@ export function AppShell(props: AppShellProps) {
               <Button
                 variant="ghost"
                 className="justify-start text-destructive"
-                onClick={() => {
-                  if (!confirm("Sign out of this browser?")) return;
-                  props.onLogout();
-                }}
+                onClick={() => void signOut()}
               >
                 <LogOutIcon />
                 Sign out

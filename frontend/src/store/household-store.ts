@@ -8,6 +8,7 @@ import { APP_ID } from "../domain/schema";
 import { applySnapshot, resetHousehold, snapshotCurrent } from "../domain/snapshot";
 import type { DataEnvelope, HouseholdState, LedgerEntry, TabId } from "../domain/types";
 import type { SessionInfo } from "../lib/api-types";
+import type { ConfirmAsk } from "../ui/confirm-dialog";
 import {
   ConflictError,
   NeedAuthError,
@@ -37,6 +38,7 @@ export class HouseholdStore {
   private warned = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private toast: ToastFn = () => {};
+  private ask: ConfirmAsk = async () => false;
 
   snapshot: { version: number } = { version: 0 };
 
@@ -51,6 +53,10 @@ export class HouseholdStore {
 
   setToast(fn: ToastFn): void {
     this.toast = fn;
+  }
+
+  setConfirm(fn: ConfirmAsk): void {
+    this.ask = fn;
   }
 
   announce(msg: string): void {
@@ -194,26 +200,29 @@ export class HouseholdStore {
       if (e instanceof NeedAuthError) {
         this.needAuth = true;
         this.lastError = "Signed out.";
-      } else if (e instanceof ConflictError) {
+        throw e;
+      }
+      if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
-        const keepMine = confirm(
-          "Somebody else saved changes while you were editing.\n\n" +
-            "OK  — keep my version and overwrite theirs\n" +
-            "Cancel — throw mine away and load theirs",
-        );
+        this.pushing = false;
+        this.notify();
+        const keepMine = await this.ask({
+          title: "Someone else saved first",
+          description:
+            "Keep your version and overwrite theirs, or throw yours away and load theirs.",
+          confirmLabel: "Keep mine",
+          cancelLabel: "Load theirs",
+        });
         if (keepMine) {
-          this.pushing = false;
-          this.notify();
-          return this.push(true);
+          await this.push(true);
+          return;
         }
         const fresh = await this.adapter.load();
-        if (fresh) {
-          hydrate(this.state, fresh);
-        }
+        if (fresh) hydrate(this.state, fresh);
         this.dirty = false;
-      } else {
-        this.lastError = e instanceof Error ? e.message : "Could not reach the server.";
+        return;
       }
+      this.lastError = e instanceof Error ? e.message : "Could not reach the server.";
       throw e;
     } finally {
       this.pushing = false;
@@ -245,25 +254,30 @@ export class HouseholdStore {
       if (e instanceof NeedAuthError) {
         this.needAuth = true;
         this.lastError = "Signed out.";
-      } else if (e instanceof ConflictError) {
+        throw e;
+      }
+      if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
-        const keepMine = confirm(
-          "Somebody else saved changes while you were editing.\n\n" +
-            "OK  — keep my version and overwrite theirs\n" +
-            "Cancel — throw mine away and load theirs",
-        );
+        this.pushing = false;
+        this.notify();
+        const keepMine = await this.ask({
+          title: "Someone else saved first",
+          description:
+            "Keep your version and overwrite theirs, or throw yours away and load theirs.",
+          confirmLabel: "Keep mine",
+          cancelLabel: "Load theirs",
+        });
         if (keepMine) {
-          this.pushing = false;
-          this.notify();
-          return this.pushOwnStints(true);
+          await this.pushOwnStints(true);
+          return;
         }
         const fresh = await this.adapter.load();
         if (fresh) this.applyHydrate(fresh);
         this.pendingOwnStints.clear();
         this.dirty = false;
-      } else {
-        this.lastError = e instanceof Error ? e.message : "Could not reach the server.";
+        return;
       }
+      this.lastError = e instanceof Error ? e.message : "Could not reach the server.";
       throw e;
     } finally {
       this.pushing = false;

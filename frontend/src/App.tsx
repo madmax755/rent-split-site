@@ -13,6 +13,7 @@ import { SettingsScreen } from "./ui/settings-screen";
 import { SetupScreen } from "./ui/setup-screen";
 import { AppShell } from "./ui/shell";
 import { StintsScreen } from "./ui/stints-screen";
+import { ConfirmProvider, useConfirm } from "./ui/confirm-dialog";
 import {
   TenantBalancesScreen,
   TenantHistoryScreen,
@@ -23,14 +24,17 @@ import {
 export function App() {
   const [store] = useState(() => new HouseholdStore());
   return (
-    <HouseholdProvider store={store}>
-      <RentSplitApp />
-    </HouseholdProvider>
+    <ConfirmProvider>
+      <HouseholdProvider store={store}>
+        <RentSplitApp />
+      </HouseholdProvider>
+    </ConfirmProvider>
   );
 }
 
 function RentSplitApp() {
   const { store } = useHousehold();
+  const ask = useConfirm();
   const [tweaks, setTweaks] = useState<Tweaks>(() => loadTweaks());
   const [toast, setToast] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -61,6 +65,10 @@ function RentSplitApp() {
     });
     return () => clearTimeout(hide);
   }, [store]);
+
+  useEffect(() => {
+    store.setConfirm(ask);
+  }, [store, ask]);
 
   useEffect(() => {
     void boot(store).then(() => setBooted(true));
@@ -120,7 +128,7 @@ function RentSplitApp() {
     }
   }
 
-  function onImport(): void {
+  async function onImport(): Promise<void> {
     let o: unknown;
     try {
       o = JSON.parse(importText);
@@ -128,10 +136,23 @@ function RentSplitApp() {
       store.announce("That isn't valid data.");
       return;
     }
-    if (!confirm("Replace everything currently on screen with this backup?")) return;
+    if (
+      !(await ask({
+        title: "Restore this backup?",
+        description: "Everything currently on screen is replaced.",
+        confirmLabel: "Restore",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
     const result = store.importPayload(o);
     if (result === "tooNew") {
-      alert(store.loadNote);
+      await ask({
+        title: "Couldn't restore",
+        description: store.loadNote || "This backup was saved by a newer version of the app.",
+        mode: "notice",
+      });
       return;
     }
     if (result === "unrecognised") {
@@ -180,15 +201,22 @@ function RentSplitApp() {
             importText={importText}
             setImportText={setImportText}
             onExport={() => void exportBackup()}
-            onImport={onImport}
+            onImport={() => void onImport()}
             onReset={() => {
-              if (
-                !confirm(
-                  "Reset everything — people, rooms, bills, every month and every balance — back to defaults? Saved properties are kept.",
-                )
-              )
-                return;
-              store.resetToDefaults();
+              void (async () => {
+                if (
+                  !(await ask({
+                    title: "Reset everything?",
+                    description:
+                      "People, rooms, bills, every month and every balance go back to defaults. Saved properties are kept.",
+                    confirmLabel: "Reset",
+                    destructive: true,
+                  }))
+                ) {
+                  return;
+                }
+                store.resetToDefaults();
+              })();
             }}
             onPush={() => {
               void store
