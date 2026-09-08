@@ -72,7 +72,47 @@ export function HistoryScreen() {
 
       <div className="grid gap-5">
         <Panel title="Every month, every person" description={plural(keys.length, "month")}>
-          <Table>
+          <div className="grid gap-2 md:hidden">
+            {keys.map((k) => {
+              const c = cache[k];
+              const done = monthAllActual(state, state.months[k]);
+              const tot = ids.reduce((s, id) => s + (c?.totals[id] || 0), 0);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  className={`rounded-xl bg-muted/50 p-3 text-left ${done ? "" : "opacity-70"}`}
+                  onClick={() => goToMonth(k)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">
+                      {monthLabel(k)}
+                      {done ? null : (
+                        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                          est
+                        </span>
+                      )}
+                    </span>
+                    <span className="tabular-nums text-sm font-semibold">
+                      {money(state.currency, tot)}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {ids
+                      .map((id) =>
+                        c?.totals[id]
+                          ? `${personName(state, id)} ${money(state.currency, c.totals[id] ?? 0)}`
+                          : null,
+                      )
+                      .filter((x): x is string => x !== null)
+                      .join(" · ")}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden md:block">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Month</TableHead>
@@ -133,7 +173,8 @@ export function HistoryScreen() {
                 </TableCell>
               </TableRow>
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </Panel>
 
         <Panel title="How the bills have moved">
