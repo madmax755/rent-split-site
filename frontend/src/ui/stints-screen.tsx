@@ -129,7 +129,7 @@ export function StintsScreen() {
                       return (
                         <div
                           key={i}
-                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-foreground" : ""}`}
+                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
                           style={isHere ? { background: personColor(state, p.id) } : undefined}
                         />
                       );
@@ -184,7 +184,13 @@ export function StintsScreen() {
                                 <div
                                   key={i}
                                   title={`${room.name} — day ${i + 1}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
-                                  className={`rounded-[3px] ${occ ? "bg-emerald-500/80" : "bg-destructive/25 ring-1 ring-destructive"}`}
+                                  className={`rounded-[3px] ${
+                                    occ > 1
+                                      ? "bg-emerald-500 ring-1 ring-inset ring-foreground/60"
+                                      : occ
+                                        ? "bg-emerald-500/80"
+                                        : "bg-destructive/25 ring-1 ring-destructive"
+                                  }`}
                                 />
                               );
                             })}

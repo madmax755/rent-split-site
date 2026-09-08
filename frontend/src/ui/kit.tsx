@@ -110,7 +110,7 @@ export function KpiCard(props: KpiCardProps) {
 
 export function KpiGrid(props: { children: ReactNode }) {
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 lg:mb-6 lg:grid-cols-4 [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1">
+    <div className="mb-5 grid grid-cols-2 gap-3 lg:mb-6 lg:grid-cols-4 [&>*:last-child:nth-child(odd)]:col-span-2">
       {props.children}
     </div>
   );

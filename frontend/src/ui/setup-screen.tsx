@@ -375,10 +375,10 @@ export function SetupScreen() {
             const restricted = Array.isArray(b.payers) && b.payers.length > 0;
             return (
               <div key={b.id} className="mb-3 rounded-xl bg-muted/50 p-3 last:mb-0">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="mb-2 flex items-center gap-2">
                   <EditableText
                     value={b.name}
-                    className="h-8 min-w-28 flex-1 border-transparent bg-transparent font-medium shadow-none"
+                    className="h-8 min-w-0 flex-1 border-transparent bg-transparent font-medium shadow-none"
                     onChange={(name) => {
                       store.mutate(() => {
                         const bill = store.state.bills.find((x) => x.id === b.id);
@@ -386,19 +386,6 @@ export function SetupScreen() {
                       });
                     }}
                   />
-                  <MoneyInput
-                    currency={state.currency}
-                    className="sm:w-36 sm:flex-none"
-                    value={b.est}
-                    min={0}
-                    onChange={(v) => {
-                      store.mutate(() => {
-                        const bill = store.state.bills.find((x) => x.id === b.id);
-                        if (bill) bill.est = typeof v === "number" ? v : 0;
-                      });
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">/ mo</span>
                   {state.bills.length > 1 ? (
                     <Button
                       variant="ghost"
@@ -424,6 +411,20 @@ export function SetupScreen() {
                       <XIcon />
                     </Button>
                   ) : null}
+                </div>
+                <div className="mb-3 flex max-w-xs items-center gap-2">
+                  <MoneyInput
+                    currency={state.currency}
+                    value={b.est}
+                    min={0}
+                    onChange={(v) => {
+                      store.mutate(() => {
+                        const bill = store.state.bills.find((x) => x.id === b.id);
+                        if (bill) bill.est = typeof v === "number" ? v : 0;
+                      });
+                    }}
+                  />
+                  <span className="shrink-0 text-xs text-muted-foreground">/ mo</span>
                 </div>
                 <div className="mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   Billing period starts on
