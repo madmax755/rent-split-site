@@ -27,11 +27,13 @@ export type PageHeaderProps = {
 
 export function PageHeader(props: PageHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">{props.title}</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight max-lg:sr-only">
+          {props.title}
+        </h1>
         {props.description ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{props.description}</p>
+          <p className="max-w-2xl text-sm text-muted-foreground lg:mt-1">{props.description}</p>
         ) : null}
       </div>
       {props.actions ? (
@@ -45,7 +47,7 @@ export function MonthSwitcher() {
   const { store, state } = useHousehold();
   const key = state.currentMonth;
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       <Button
         variant="outline"
         size="icon-sm"
@@ -54,12 +56,13 @@ export function MonthSwitcher() {
       >
         <ChevronLeftIcon />
       </Button>
-      <div className="min-w-36 text-center">
+      <div className="min-w-28 text-center sm:min-w-36">
         <div className="text-sm font-semibold">{monthLabel(key)}</div>
       </div>
       <input
         type="month"
-        className="h-7 rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label="Choose month"
+        className="hidden h-8 rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none sm:block focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         value={key}
         onChange={(e) => {
           if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
@@ -122,7 +125,7 @@ export type MoneyInputProps = {
 
 export function MoneyInput(props: MoneyInputProps) {
   return (
-    <InputGroup className={cn("w-[148px]", props.className)}>
+    <InputGroup className={cn("w-full min-w-0 sm:w-[148px]", props.className)}>
       <InputGroupAddon>
         <InputGroupText>{props.currency}</InputGroupText>
       </InputGroupAddon>
@@ -199,14 +202,14 @@ export function Panel(props: PanelProps) {
   return (
     <Card id={props.id} className={cn("scroll-mt-24", props.className)}>
       <CardHeader className="border-b">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <CardTitle>{props.title}</CardTitle>
             {props.description ? (
               <CardDescription className="mt-1">{props.description}</CardDescription>
             ) : null}
           </div>
-          {props.action}
+          {props.action ? <div className="flex flex-wrap gap-2">{props.action}</div> : null}
         </div>
       </CardHeader>
       <CardContent className="pt-4">{props.children}</CardContent>
@@ -219,7 +222,7 @@ export function Screen(props: { id: string; active: boolean; children: ReactNode
   return (
     <div
       data-screen={props.id}
-      className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 lg:px-8 lg:pb-10"
+      className="mx-auto w-full max-w-5xl px-3 py-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-6 lg:pb-10"
     >
       {props.children}
     </div>

@@ -230,7 +230,7 @@ export function TenantBalancesScreen() {
       </KpiGrid>
       {myBal !== 0 ? (
         <Button
-          className="mb-4"
+          className="mb-4 w-full sm:w-auto"
           disabled={busy}
           onClick={() => {
             setSettle({

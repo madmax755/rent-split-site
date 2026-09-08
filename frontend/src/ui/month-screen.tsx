@@ -158,10 +158,10 @@ export function MonthScreen() {
                   }}
                 />
               </div>
-              <div className="tabular-nums text-right text-xs text-muted-foreground">
+              <div className="tabular-nums text-xs text-muted-foreground md:text-right">
                 {fmtNum(weightedAreas(state).total, 1)} m² weighted
               </div>
-              <div className="text-right text-xs text-muted-foreground">fixed</div>
+              <div className="text-xs text-muted-foreground md:text-right">fixed</div>
             </div>
             {state.bills.map((b) => (
               <BillRow
@@ -398,9 +398,9 @@ function BillRow(props: BillRowProps) {
     delta === null ? "not in yet" : delta === 0 ? "spot on" : signedMoney(state.currency, delta);
   return (
     <div
-      className={`grid items-center gap-2 rounded-xl p-3 md:grid-cols-[1fr_118px_118px_92px] ${oneOff ? "bg-primary/5" : "bg-muted/50"}`}
+      className={`grid grid-cols-2 items-center gap-2 rounded-xl p-3 md:grid-cols-[1fr_118px_118px_92px] ${oneOff ? "bg-primary/5" : "bg-muted/50"}`}
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 md:col-span-1">
         {oneOff ? (
           <input
             type="text"
@@ -472,7 +472,7 @@ function BillRow(props: BillRowProps) {
         />
       </div>
       <div
-        className={`tabular-nums text-right text-xs font-semibold ${
+        className={`col-span-2 tabular-nums text-right text-xs font-semibold md:col-span-1 ${
           delta === null || delta === 0
             ? "text-muted-foreground"
             : delta > 0

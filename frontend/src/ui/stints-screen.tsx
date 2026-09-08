@@ -93,7 +93,7 @@ export function StintsScreen() {
         <div className="overflow-x-auto p-4">
           {involved.length ? (
             <div className="min-w-[560px]">
-              <div className="mb-2 grid gap-0.5 pl-[116px]" style={cols}>
+              <div className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
                 {Array.from({ length: D }, (_, i) => {
                   const d = i + 1;
                   const dow = dayDate(key, d).getDay();
@@ -110,7 +110,7 @@ export function StintsScreen() {
               </div>
               {involved.map((p) => (
                 <div key={p.id} className="mb-1.5 flex items-center gap-2.5">
-                  <div className="flex w-[106px] shrink-0 items-center gap-2">
+                  <div className="flex w-16 shrink-0 items-center gap-2 sm:w-[106px]">
                     <Avatar state={state} person={p} size={22} />
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
@@ -136,7 +136,7 @@ export function StintsScreen() {
                   </div>
                 </div>
               ))}
-              <div className="mt-2 grid gap-0.5 pl-[116px]" style={cols}>
+              <div className="mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
                 {days.map((day) => (
                   <div
                     key={day.d}
@@ -157,7 +157,7 @@ export function StintsScreen() {
                   </div>
                 ))}
               </div>
-              <div className="mt-1 pl-[116px] text-[11px] text-muted-foreground">
+              <div className="mt-1 pl-[4.75rem] text-[11px] text-muted-foreground sm:pl-[116px]">
                 people in the house each day
               </div>
               {state.rooms.some((r) => !r.communal) ? (
@@ -171,7 +171,7 @@ export function StintsScreen() {
                       const g = gaps.find((x) => x.roomId === room.id);
                       return (
                         <div key={room.id} className="mb-1.5 flex items-center gap-2.5">
-                          <div className="w-[106px] shrink-0 truncate text-xs font-medium">
+                          <div className="w-16 shrink-0 truncate text-xs font-medium sm:w-[106px]">
                             <span className={g ? "text-destructive" : "text-muted-foreground"}>
                               {room.name}
                             </span>
@@ -234,39 +234,42 @@ export function StintsScreen() {
               return (
                 <div
                   key={s.id}
-                  className={`flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 p-2.5 ${editable ? "" : "opacity-70"}`}
+                  className={`grid gap-2 rounded-xl bg-muted/50 p-3 sm:flex sm:flex-wrap sm:items-center ${editable ? "" : "opacity-70"}`}
                 >
-                  <span
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={
-                      {
-                        background: p ? personColor(state, p.id) : "var(--muted-foreground)",
-                      } as CSSProperties
-                    }
-                  />
-                  {selfOnly ? (
-                    <span className="min-w-24 font-medium">{p?.name ?? "Unknown"}</span>
-                  ) : (
-                    <NativeSelect
-                      value={s.personId}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        patchStint(s.id, (st) => {
-                          st.personId = e.target.value;
-                        });
-                      }}
-                    >
-                      {state.people.map((person) => (
-                        <NativeSelectOption key={person.id} value={person.id}>
-                          {person.name}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  )}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={
+                        {
+                          background: p ? personColor(state, p.id) : "var(--muted-foreground)",
+                        } as CSSProperties
+                      }
+                    />
+                    {selfOnly ? (
+                      <span className="min-w-0 flex-1 font-medium">{p?.name ?? "Unknown"}</span>
+                    ) : (
+                      <NativeSelect
+                        className="min-w-0 flex-1 sm:flex-none"
+                        value={s.personId}
+                        disabled={!editable}
+                        onChange={(e) => {
+                          patchStint(s.id, (st) => {
+                            st.personId = e.target.value;
+                          });
+                        }}
+                      >
+                        {state.people.map((person) => (
+                          <NativeSelectOption key={person.id} value={person.id}>
+                            {person.name}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     day
                     <EditableNumber
-                      className="w-14 text-center tabular-nums"
+                      className="w-16 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.from}
@@ -279,7 +282,7 @@ export function StintsScreen() {
                     />
                     →
                     <EditableNumber
-                      className="w-14 text-center tabular-nums"
+                      className="w-16 text-center tabular-nums"
                       min={1}
                       max={D}
                       value={s.to}
@@ -292,6 +295,7 @@ export function StintsScreen() {
                     />
                   </div>
                   <NativeSelect
+                    className="w-full sm:w-auto"
                     value={s.roomId}
                     disabled={!editable}
                     onChange={(e) => {
@@ -307,57 +311,59 @@ export function StintsScreen() {
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
-                  <span className="tabular-nums text-xs text-muted-foreground">
-                    {plural(s.to - s.from + 1, "day")}
-                  </span>
-                  <div className="flex-1" />
-                  {editable ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (s.to - s.from < 1) {
-                            store.announce("A one-day stint can't be split.");
-                            return;
-                          }
-                          commitStints(() => {
-                            const month = ensureMonth(store.state, key);
-                            const stints = month.stints || [];
-                            const cur = stints.find((x) => x.id === s.id);
-                            if (!cur) return;
-                            const mid = Math.floor((cur.from + cur.to) / 2);
-                            const copy: Stint = {
-                              ...cur,
-                              id: uid("st"),
-                              from: mid + 1,
-                              to: cur.to,
-                            };
-                            cur.to = mid;
-                            stints.splice(stints.indexOf(cur) + 1, 0, copy);
-                          });
-                          store.announce(
-                            "Split in two — adjust the dates, or delete the half that was away.",
-                          );
-                        }}
-                      >
-                        Split
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        title="Remove"
-                        onClick={() => {
-                          commitStints(() => {
-                            const month = ensureMonth(store.state, key);
-                            month.stints = (month.stints || []).filter((x) => x.id !== s.id);
-                          });
-                        }}
-                      >
-                        ×
-                      </Button>
-                    </>
-                  ) : null}
+                  <div className="flex items-center gap-2 sm:ml-auto">
+                    <span className="tabular-nums text-xs text-muted-foreground">
+                      {plural(s.to - s.from + 1, "day")}
+                    </span>
+                    <div className="flex-1 sm:hidden" />
+                    {editable ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (s.to - s.from < 1) {
+                              store.announce("A one-day stint can't be split.");
+                              return;
+                            }
+                            commitStints(() => {
+                              const month = ensureMonth(store.state, key);
+                              const stints = month.stints || [];
+                              const cur = stints.find((x) => x.id === s.id);
+                              if (!cur) return;
+                              const mid = Math.floor((cur.from + cur.to) / 2);
+                              const copy: Stint = {
+                                ...cur,
+                                id: uid("st"),
+                                from: mid + 1,
+                                to: cur.to,
+                              };
+                              cur.to = mid;
+                              stints.splice(stints.indexOf(cur) + 1, 0, copy);
+                            });
+                            store.announce(
+                              "Split in two — adjust the dates, or delete the half that was away.",
+                            );
+                          }}
+                        >
+                          Split
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          title="Remove"
+                          onClick={() => {
+                            commitStints(() => {
+                              const month = ensureMonth(store.state, key);
+                              month.stints = (month.stints || []).filter((x) => x.id !== s.id);
+                            });
+                          }}
+                        >
+                          ×
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}

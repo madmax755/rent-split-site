@@ -45,19 +45,32 @@ export type AppShellProps = {
 type NavItem = {
   id: TabId;
   label: string;
+  shortLabel: string;
   icon: ReactNode;
   group: "work" | "house" | "help";
 };
 
 const NAV: NavItem[] = [
-  { id: "home", label: "Home", icon: <HomeIcon />, group: "work" },
-  { id: "month", label: "This month", icon: <CalendarDaysIcon />, group: "work" },
-  { id: "stints", label: "Who's here", icon: <UsersIcon />, group: "work" },
-  { id: "balances", label: "Settle", icon: <ScaleIcon />, group: "work" },
-  { id: "history", label: "History", icon: <HistoryIcon />, group: "work" },
-  { id: "setup", label: "Household", icon: <HouseIcon />, group: "house" },
-  { id: "settings", label: "Settings", icon: <SettingsIcon />, group: "house" },
-  { id: "how", label: "How it works", icon: <BookOpenIcon />, group: "help" },
+  { id: "home", label: "Home", shortLabel: "Home", icon: <HomeIcon />, group: "work" },
+  {
+    id: "month",
+    label: "This month",
+    shortLabel: "Month",
+    icon: <CalendarDaysIcon />,
+    group: "work",
+  },
+  { id: "stints", label: "Who's here", shortLabel: "Here", icon: <UsersIcon />, group: "work" },
+  { id: "balances", label: "Settle", shortLabel: "Settle", icon: <ScaleIcon />, group: "work" },
+  { id: "history", label: "History", shortLabel: "History", icon: <HistoryIcon />, group: "work" },
+  { id: "setup", label: "Household", shortLabel: "House", icon: <HouseIcon />, group: "house" },
+  {
+    id: "settings",
+    label: "Settings",
+    shortLabel: "Settings",
+    icon: <SettingsIcon />,
+    group: "house",
+  },
+  { id: "how", label: "How it works", shortLabel: "Help", icon: <BookOpenIcon />, group: "help" },
 ];
 
 export function AppShell(props: AppShellProps) {
@@ -282,7 +295,7 @@ export function AppShell(props: AppShellProps) {
       <div className="min-w-0 flex-1">
         <header
           data-print-hide
-          className="sticky top-0 z-40 flex items-center gap-2 border-b bg-background/85 px-4 py-3 backdrop-blur-xl lg:hidden"
+          className="sticky top-0 z-40 flex items-center gap-2 border-b bg-background/85 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl lg:hidden"
         >
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground">
             RS
@@ -311,7 +324,7 @@ export function AppShell(props: AppShellProps) {
 
       <nav
         data-print-hide
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-1 pt-1 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
       >
         <div className="grid grid-cols-5">
           {mobilePrimary.map((item) => (
@@ -319,13 +332,13 @@ export function AppShell(props: AppShellProps) {
               key={item.id}
               type="button"
               className={cn(
-                "relative flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-medium",
-                activeTab === item.id ? "text-foreground" : "text-muted-foreground",
+                "relative flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium",
+                activeTab === item.id ? "text-primary" : "text-muted-foreground",
               )}
               onClick={() => go(item.id)}
             >
               <span className="[&_svg]:size-5">{item.icon}</span>
-              {item.label}
+              <span className="max-w-full truncate">{item.shortLabel}</span>
               {tabAlert(item.id) ? (
                 <span className="absolute top-1 right-1/4 size-1.5 rounded-full bg-amber-500" />
               ) : null}
@@ -334,9 +347,9 @@ export function AppShell(props: AppShellProps) {
           <button
             type="button"
             className={cn(
-              "flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-medium",
+              "flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium",
               moreOpen || !mobilePrimary.some((item) => item.id === activeTab)
-                ? "text-foreground"
+                ? "text-primary"
                 : "text-muted-foreground",
             )}
             onClick={() => setMoreOpen(true)}
@@ -348,7 +361,10 @@ export function AppShell(props: AppShellProps) {
       </nav>
 
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
             <SheetDescription>History, settings and how the split works.</SheetDescription>

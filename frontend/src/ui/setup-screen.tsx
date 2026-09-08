@@ -236,7 +236,7 @@ export function SetupScreen() {
                       });
                     }}
                   />
-                  <ButtonGroup>
+                  <ButtonGroup className="flex-wrap">
                     <Button
                       size="sm"
                       variant={room.communal ? "outline" : "default"}

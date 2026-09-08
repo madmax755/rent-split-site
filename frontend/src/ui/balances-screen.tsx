@@ -98,7 +98,7 @@ export function BalancesScreen() {
                 return (
                   <div
                     key={id}
-                    className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3"
+                    className="flex flex-wrap items-center gap-3 rounded-xl border bg-card px-3 py-3 sm:px-4"
                   >
                     <Avatar state={state} person={p} size={32} />
                     <div className="min-w-0 flex-1">
@@ -129,6 +129,7 @@ export function BalancesScreen() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="w-full sm:w-auto"
                         onClick={() => {
                           setSettle({
                             currency: state.currency,
