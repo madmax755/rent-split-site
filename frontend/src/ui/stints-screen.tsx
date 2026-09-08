@@ -10,6 +10,7 @@ import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { Icon } from "./icon";
 import { goMonth } from "./month-screen";
+import { NumericField } from "./numeric-field";
 import { screenClass } from "./screen-class";
 import { Section } from "./section";
 
@@ -18,6 +19,7 @@ type StintsScreenProps = {
 };
 
 export function StintsScreen(props: StintsScreenProps) {
+  "use no memo";
   const { store, state, activeTab } = useHousehold();
   const selfOnly = store.isTenant();
   const myId = store.linkedPersonId();
@@ -298,32 +300,34 @@ export function StintsScreen(props: StintsScreenProps) {
                 )}
                 <div className="field compact" style={{ width: "auto" }}>
                   <span className="prefix">day</span>
-                  <input
-                    type="number"
+                  <NumericField
+                    integer
                     className="num-input daynum"
                     min={1}
                     max={D}
                     value={s.from}
                     disabled={!editable}
-                    onChange={(e) => {
+                    aria-label={`${p?.name ?? "Stint"} from day`}
+                    onChange={(v) => {
                       patchStint(s.id, (st) => {
-                        st.from = Math.round(parseFloat(e.target.value) || 1);
+                        st.from = v;
                       });
                     }}
                   />
                 </div>
                 <span style={{ color: "var(--muted-2)" }}>→</span>
                 <div className="field compact" style={{ width: "auto" }}>
-                  <input
-                    type="number"
+                  <NumericField
+                    integer
                     className="num-input daynum"
                     min={1}
                     max={D}
                     value={s.to}
                     disabled={!editable}
-                    onChange={(e) => {
+                    aria-label={`${p?.name ?? "Stint"} to day`}
+                    onChange={(v) => {
                       patchStint(s.id, (st) => {
-                        st.to = Math.round(parseFloat(e.target.value) || D);
+                        st.to = v;
                       });
                     }}
                   />
