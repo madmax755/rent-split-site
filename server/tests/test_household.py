@@ -6,12 +6,13 @@ from app.household import assemble_payload, load_household, put_household
 
 ENVELOPE: dict[str, Any] = {
     "app": "rent-split",
-    "schema": 5,
+    "schema": 6,
     "savedAt": "2026-04-01T12:00:00.000Z",
     "data": {
         "currency": "£",
         "rent": 3500,
         "rentCycleStartDay": 8,
+        "tenancyStart": "2026-03-01",
         "catchall": 14.3,
         "catchallWeight": 0.5,
         "rooms": [
@@ -132,9 +133,10 @@ def test_envelope_round_trip(db, settings) -> None:
     assert household is not None
     payload = assemble_payload(household)
     assert payload["app"] == "rent-split"
-    assert payload["schema"] == 5
+    assert payload["schema"] == 6
     assert payload["data"] == ENVELOPE["data"]
     assert payload["data"]["rentCycleStartDay"] == 8
+    assert payload["data"]["tenancyStart"] == "2026-03-01"
     assert payload["data"]["bills"][0]["cycleStartDay"] == 1
     assert payload["data"]["bills"][1]["cycleStartDay"] == 15
 

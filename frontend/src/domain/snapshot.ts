@@ -7,6 +7,7 @@ import {
   DEFAULT_PEOPLE,
   DEFAULT_RENT,
   DEFAULT_ROOMS,
+  DEFAULT_TENANCY_START,
 } from "./defaults";
 import { SNAPSHOT_FIELDS, type HouseholdState, type Snapshot } from "./types";
 
@@ -28,6 +29,7 @@ export function resetHousehold(state: HouseholdState): void {
   state.currency = "£";
   state.rent = DEFAULT_RENT;
   state.rentCycleStartDay = DEFAULT_CYCLE_START_DAY;
+  state.tenancyStart = DEFAULT_TENANCY_START;
   state.catchall = DEFAULT_CATCHALL;
   state.catchallWeight = DEFAULT_CATCHALL_WEIGHT;
   state.rooms = DEFAULT_ROOMS.map((r) => ({ ...r }));

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { freshHousehold } from "./defaults";
-import { computeMonth } from "./engine";
+import { allocateCalendarRent, bedroomGaps, computeMonth } from "./engine";
+import { ensureMonth, seedStints } from "./months";
 import type { HouseholdState, Stint } from "./types";
 
 function stint(id: string, personId: string, roomId: string, from: number, to: number): Stint {
@@ -32,6 +33,7 @@ function blankMonthRecord(
 
 function twoPersonState(): HouseholdState {
   const state = freshHousehold();
+  state.tenancyStart = "2026-04-01";
   state.currentMonth = "2026-04";
   state.rent = 3000;
   state.rentCycleStartDay = 1;
@@ -56,7 +58,7 @@ function twoPersonState(): HouseholdState {
   return state;
 }
 
-describe("period split maths", () => {
+describe("calendar-month split maths", () => {
   test("day 1 matches calendar-month shares", () => {
     const state = twoPersonState();
     const c = computeMonth(state, "2026-04", "eff");
@@ -74,10 +76,10 @@ describe("period split maths", () => {
     expect(state.months["2026-05"]).toBeUndefined();
   });
 
-  test("day 8 rent vs day 1 bills uses different occupancy windows", () => {
+  test("payment cycle does not pull in next month's stints", () => {
     const state = twoPersonState();
     state.rentCycleStartDay = 8;
-    state.bills[0]!.cycleStartDay = 1;
+    state.bills[0]!.cycleStartDay = 15;
     state.months["2026-04"]!.stints = [stint("s1", "p1", "bed1", 1, 30)];
     state.months["2026-05"] = blankMonthRecord(
       "2026-05",
@@ -85,18 +87,17 @@ describe("period split maths", () => {
       ["energy"],
     );
     const c = computeMonth(state, "2026-04", "eff");
-    expect(c.rentCounts.periodLabel).toBe("8 Apr – 7 May");
+    expect(c.rentCounts.periodLabel).toBe("1 Apr – 30 Apr");
     expect(c.rentCounts.liableDays.p1).toBe(30);
-    expect(c.rentCounts.liableDays.p2).toBe(7);
+    expect(c.rentCounts.liableDays.p2).toBe(0);
     const energy = c.lines.find((l) => l.id === "energy");
-    expect(energy?.periodLabel).toBe("1 Apr – 30 Apr");
     expect(energy?.units.p1).toBe(30);
     expect(energy?.units.p2).toBe(0);
-    expect(c.rentShare.p1).toBeGreaterThan(c.rentShare.p2 ?? 0);
-    expect((c.rentShare.p1 ?? 0) + (c.rentShare.p2 ?? 0)).toBe(c.rentPence);
+    expect(c.rentShare.p1).toBe(c.rentPence);
+    expect(c.rentShare.p2 ?? 0).toBe(0);
   });
 
-  test("missing next month projects this month's stints", () => {
+  test("missing next month is irrelevant to this month's rent", () => {
     const state = twoPersonState();
     state.rentCycleStartDay = 8;
     state.months["2026-04"]!.stints = [stint("s1", "p1", "bed1", 1, 30)];
@@ -106,14 +107,92 @@ describe("period split maths", () => {
     expect(c.rentCounts.liableDays.p2).toBe(0);
     expect(c.rentShare.p1).toBe(c.rentPence);
   });
+});
 
-  test("existing next month wins over projection, even when empty", () => {
+describe("tenancy start pro rata", () => {
+  test("9 August prorates August and carries the leftover into September", () => {
     const state = twoPersonState();
-    state.rentCycleStartDay = 8;
-    state.months["2026-04"]!.stints = [stint("s1", "p1", "bed1", 1, 30)];
-    state.months["2026-05"] = blankMonthRecord("2026-05", [], ["energy"]);
-    const c = computeMonth(state, "2026-04", "eff");
-    expect(c.rentCounts.liableDays.p1).toBe(23);
-    expect(c.rentShare.p1).toBe(c.rentPence);
+    state.tenancyStart = "2026-08-09";
+    state.rent = 3500;
+    state.currentMonth = "2026-08";
+    state.months = {
+      "2026-08": blankMonthRecord(
+        "2026-08",
+        [stint("s1", "p1", "bed1", 9, 31), stint("s2", "p2", "bed2", 9, 31)],
+        ["energy"],
+      ),
+      "2026-09": blankMonthRecord(
+        "2026-09",
+        [stint("s3", "p1", "bed1", 1, 30), stint("s4", "p2", "bed2", 1, 30)],
+        ["energy"],
+      ),
+    };
+    state.months["2026-08"]!.rent = 3500;
+    state.months["2026-09"]!.rent = 3500;
+
+    const aug = allocateCalendarRent(state, "2026-08");
+    expect(aug.calendarDays).toBe(31);
+    expect(aug.chargeableDays).toBe(23);
+    expect(aug.agreedPence).toBe(350000);
+    expect(aug.chargedPence + aug.carryOutPence).toBe(350000);
+    expect(aug.carryInPence).toBe(0);
+    expect(aug.chargedPence).toBe(Math.round((350000 * 23) / 31));
+
+    const sep = allocateCalendarRent(state, "2026-09");
+    expect(sep.carryInPence).toBe(aug.carryOutPence);
+    expect(sep.chargedPence).toBe(350000 + aug.carryOutPence);
+    expect(sep.carryOutPence).toBe(0);
+
+    const augMonth = computeMonth(state, "2026-08", "eff");
+    expect(augMonth.rentPence).toBe(aug.chargedPence);
+    expect(augMonth.counts.days[0]?.d).toBe(9);
+    expect(augMonth.counts.liableDays.p1).toBe(23);
+    expect((augMonth.rentShare.p1 ?? 0) + (augMonth.rentShare.p2 ?? 0)).toBe(augMonth.rentPence);
+
+    const sepMonth = computeMonth(state, "2026-09", "eff");
+    expect(sepMonth.rentPence).toBe(sep.chargedPence);
+    expect(sepMonth.counts.days[0]?.d).toBe(1);
+    expect(sepMonth.counts.liableDays.p1).toBe(30);
+    expect((sepMonth.rentShare.p1 ?? 0) + (sepMonth.rentShare.p2 ?? 0)).toBe(sepMonth.rentPence);
+  });
+
+  test("days before the tenancy starts are not empty-bedroom gaps", () => {
+    const state = twoPersonState();
+    state.tenancyStart = "2026-08-09";
+    state.months = {
+      "2026-08": blankMonthRecord(
+        "2026-08",
+        [stint("s1", "p1", "bed1", 9, 31), stint("s2", "p2", "bed2", 9, 31)],
+        ["energy"],
+      ),
+    };
+    expect(bedroomGaps(state, "2026-08")).toEqual([]);
+  });
+
+  test("a stint covering the first month end becomes a full calendar month next month", () => {
+    const state = twoPersonState();
+    state.tenancyStart = "2026-08-09";
+    state.months = {
+      "2026-08": blankMonthRecord(
+        "2026-08",
+        [stint("s1", "p1", "bed1", 9, 31), stint("s2", "p2", "bed2", 9, 31)],
+        ["energy"],
+      ),
+    };
+    ensureMonth(state, "2026-09");
+    const september = state.months["2026-09"];
+    expect(september?.stints).toEqual([
+      expect.objectContaining({ personId: "p1", roomId: "bed1", from: 1, to: 30 }),
+      expect.objectContaining({ personId: "p2", roomId: "bed2", from: 1, to: 30 }),
+    ]);
+  });
+
+  test("seeding the first month starts on the tenancy start day", () => {
+    const state = twoPersonState();
+    state.tenancyStart = "2026-08-09";
+    state.months = {};
+    ensureMonth(state, "2026-08");
+    seedStints(state, "2026-08", true);
+    expect(state.months["2026-08"]?.stints.every((s) => s.from === 9 && s.to === 31)).toBe(true);
   });
 });

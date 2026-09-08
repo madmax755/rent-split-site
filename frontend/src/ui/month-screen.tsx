@@ -1,4 +1,11 @@
-import { addMonths, clampCycleDay, daysInMonth, monthLabel, periodLabel } from "../domain/dates";
+import {
+  addMonths,
+  calendarRangeLabel,
+  clampCycleDay,
+  daysInMonth,
+  monthLabel,
+  periodLabel,
+} from "../domain/dates";
 import {
   bedroomGaps,
   captureConfig,
@@ -47,6 +54,22 @@ import { PersonStatementCard } from "./person-statement";
 import { useConfirm } from "./confirm-dialog";
 
 export { goMonth };
+
+function rentSplitNote(state: HouseholdState, c: MonthCompute): string {
+  const bits = [
+    `${c.rentCounts.periodLabel} · ${fmtNum(weightedAreas(state).total, 1)} m² weighted`,
+  ];
+  if (c.carryOutPence > 0) {
+    bits.push(
+      `${money(state.currency, c.rentPence)} of ${money(state.currency, c.agreedRentPence)} this month · ${money(state.currency, c.carryOutPence)} carries into ${monthLabel(addMonths(c.key, 1))}`,
+    );
+  } else if (c.carryInPence > 0) {
+    bits.push(
+      `${money(state.currency, c.agreedRentPence)} plus ${money(state.currency, c.carryInPence)} from ${monthLabel(addMonths(c.key, -1))}`,
+    );
+  }
+  return bits.join(" · ");
+}
 
 function lineOf(M: MonthRecord, id: string, isOneOff: boolean): MonthLine | undefined {
   return isOneOff ? (M.oneOffs || []).find((x) => x.id === id) : M.lines[id];
@@ -145,7 +168,7 @@ export function MonthScreen() {
               <div>
                 <div className="font-medium">Rent</div>
                 <div className="text-xs text-muted-foreground">
-                  {c.rentCounts.periodLabel} · {fmtNum(weightedAreas(state).total, 1)} m² weighted
+                  {rentSplitNote(state, c)}
                 </div>
               </div>
               <div>
@@ -244,8 +267,8 @@ export function MonthScreen() {
           </div>
           {chargesUseCalendarMonth(state) ? null : (
             <p className="mt-3 text-xs text-muted-foreground">
-              Date ranges under each line are the days that charge covers — rent and bills need not
-              start on the same day.
+              Everyone's share is worked out on the calendar month. Date ranges under bills are when
+              that payment runs, not the days the split uses.
             </p>
           )}
         </Panel>
@@ -408,7 +431,9 @@ type BillRowProps = {
 function BillRow(props: BillRowProps) {
   const { store, state, def, line, oneOff } = props;
   const cycleDay = oneOff ? 1 : clampCycleDay(def.cycleStartDay ?? 1);
-  const range = periodLabel(props.monthKey, cycleDay);
+  const calendar = calendarRangeLabel(props.monthKey, state.tenancyStart);
+  const range =
+    cycleDay === 1 ? calendar : `${calendar} · paid ${periodLabel(props.monthKey, cycleDay)}`;
   const estP = Math.round((+line.est || 0) * 100);
   const actP = typeof line.act === "number" ? Math.round(line.act * 100) : null;
   const delta = actP === null ? null : actP - estP;

@@ -1,11 +1,12 @@
 import { uid } from "./ids";
-import { clampCycleDay, daysInMonth } from "./dates";
-import { DEFAULT_BILLS, DEFAULT_ROOMS, MAX_PEOPLE } from "./defaults";
+import { clampCycleDay, clampTenancyStart, daysInMonth } from "./dates";
+import { DEFAULT_BILLS, DEFAULT_ROOMS, DEFAULT_TENANCY_START, MAX_PEOPLE } from "./defaults";
 import { ensureMonth } from "./months";
 import type { HouseholdState, MonthConfig } from "./types";
 
 function normaliseMonthConfig(cfg: MonthConfig): void {
   cfg.rentCycleStartDay = clampCycleDay(cfg.rentCycleStartDay);
+  cfg.tenancyStart = clampTenancyStart(cfg.tenancyStart, DEFAULT_TENANCY_START);
   if (Array.isArray(cfg.bills)) {
     cfg.bills.forEach((b) => {
       b.cycleStartDay = clampCycleDay(b.cycleStartDay);
@@ -45,6 +46,7 @@ export function normalise(state: HouseholdState): void {
   if (live.length && !live.some((p) => p.isPayer) && live[0]) live[0].isPayer = true;
 
   state.rentCycleStartDay = clampCycleDay(state.rentCycleStartDay);
+  state.tenancyStart = clampTenancyStart(state.tenancyStart, DEFAULT_TENANCY_START);
 
   if (!Array.isArray(state.bills)) state.bills = DEFAULT_BILLS.map((b) => ({ ...b }));
   state.bills.forEach((b) => {

@@ -176,6 +176,7 @@ def assemble_data(household: Household) -> dict[str, Any]:
         "currency": household.currency,
         "rent": json_num(household.rent),
         "rentCycleStartDay": household.rent_cycle_start_day,
+        "tenancyStart": household.tenancy_start,
         "catchall": json_num(household.catchall),
         "catchallWeight": json_num(household.catchall_weight),
         "rooms": rooms,
@@ -261,6 +262,7 @@ def apply_envelope(session: Session, household: Household, envelope: DataEnvelop
     household.currency = data.currency
     household.rent = float(data.rent)
     household.rent_cycle_start_day = int(data.rentCycleStartDay)
+    household.tenancy_start = data.tenancyStart
     household.catchall = float(data.catchall)
     household.catchall_weight = float(data.catchallWeight)
     household.current_month = data.currentMonth
@@ -479,6 +481,19 @@ def days_in_month_key(key: str) -> int:
     return monthrange(year, month)[1]
 
 
+def first_chargeable_day(key: str, tenancy_start: str) -> int:
+    days = days_in_month_key(key)
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", tenancy_start or ""):
+        return 1
+    start_key = tenancy_start[:7]
+    start_day = int(tenancy_start[8:10])
+    if key < start_key:
+        return days + 1
+    if key == start_key:
+        return min(days, max(1, start_day))
+    return 1
+
+
 def _month_by_key(household: Household, key: str) -> Month | None:
     for month in household.months:
         if month.key == key:
@@ -521,11 +536,19 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
         month.lines.append(MonthLine(month_key=key, bill_id=bill.id, est=est, act=None))
     if prev is not None:
         prev_days = days_in_month_key(prev.key)
+        start_day = first_chargeable_day(key, household.tenancy_start)
         copies = [stint for stint in prev.stints if stint.person_id != person_id]
-        for index, stint in enumerate(sorted(copies, key=lambda row: row.sort_index)):
-            from_day = min(new_days, max(1, stint.from_day))
-            to_day = new_days if stint.to_day >= prev_days else min(new_days, stint.to_day)
-            to_day = max(from_day, to_day)
+        next_index = 0
+        for stint in sorted(copies, key=lambda row: row.sort_index):
+            if stint.to_day >= prev_days:
+                from_day = start_day
+                to_day = new_days
+            else:
+                from_day = min(new_days, max(start_day, stint.from_day))
+                to_day = min(new_days, stint.to_day)
+                to_day = max(from_day, to_day)
+            if from_day > new_days:
+                continue
             month.stints.append(
                 Stint(
                     id=_new_stint_id(),
@@ -534,9 +557,10 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
                     room_id=stint.room_id,
                     from_day=from_day,
                     to_day=to_day,
-                    sort_index=index,
+                    sort_index=next_index,
                 )
             )
+            next_index += 1
     return month
 
 

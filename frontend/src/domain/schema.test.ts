@@ -5,7 +5,7 @@ import { SCHEMA, unwrap } from "./schema";
 
 describe("schema 5 cycle days", () => {
   test("schema 4 envelope hydrates to cycle day 1", () => {
-    expect(SCHEMA).toBe(5);
+    expect(SCHEMA).toBe(6);
     const envelope = {
       app: "rent-split",
       schema: 4,
@@ -29,5 +29,6 @@ describe("schema 5 cycle days", () => {
     expect(outcome).toBe(true);
     expect(state.rentCycleStartDay).toBe(1);
     expect(state.bills.every((b) => b.cycleStartDay === 1)).toBe(true);
+    expect(state.tenancyStart).toBe("2026-08-09");
   });
 });

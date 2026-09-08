@@ -1,9 +1,10 @@
-import { monthLabel } from "../domain/dates";
+import { clampTenancyStart, monthLabel, tenancyMonthKey } from "../domain/dates";
+import { DEFAULT_TENANCY_START } from "../domain/defaults";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { weightedAreas } from "../domain/engine";
 import { fmtNum, money, personById, plural } from "../domain/format";
 import { uid } from "../domain/ids";
-import { lastRoomOf, sortedMonthKeys } from "../domain/months";
+import { ensureMonth, lastRoomOf, sortedMonthKeys } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import type { CurrencySymbol } from "../domain/types";
 import { XIcon } from "lucide-react";
@@ -462,7 +463,7 @@ export function SetupScreen() {
                     <span className="shrink-0 text-xs text-muted-foreground">/ mo</span>
                   </div>
                   <div className="mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Billing period starts on
+                    This bill is paid on
                   </div>
                   <CycleDayField
                     value={b.cycleStartDay}
@@ -539,9 +540,32 @@ export function SetupScreen() {
           <Panel
             id="rent"
             title="Standing rent & shared space"
-            description="The standing rent is what every new month starts from. To change one month only, edit rent on This month."
+            description="The standing rent is what every new month starts from. Splits always follow the calendar month. To change one month only, edit rent on This month."
           >
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-sm sm:col-span-2">
+                <span className="font-medium">Tenancy start</span>
+                <input
+                  type="date"
+                  className="h-8 max-w-56 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={state.tenancyStart}
+                  onChange={(e) => {
+                    const next = clampTenancyStart(e.target.value, DEFAULT_TENANCY_START);
+                    store.mutate(() => {
+                      store.state.tenancyStart = next;
+                      const floor = tenancyMonthKey(next);
+                      if (store.state.currentMonth < floor) {
+                        store.state.currentMonth = floor;
+                        ensureMonth(store.state, floor);
+                      }
+                    });
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">
+                  The first calendar month is charged pro rata up to the month's end. The leftover
+                  slice of that month's rent is added to the next month.
+                </span>
+              </label>
               <label className="grid gap-1.5 text-sm">
                 <span className="font-medium">Currency</span>
                 <NativeSelect
@@ -575,7 +599,7 @@ export function SetupScreen() {
               </label>
             </div>
             <div className="mb-4">
-              <div className="mb-1.5 text-sm font-medium">Rent period starts on</div>
+              <div className="mb-1.5 text-sm font-medium">Rent is paid on</div>
               <CycleDayField
                 value={state.rentCycleStartDay}
                 monthKey={state.currentMonth}
@@ -585,6 +609,10 @@ export function SetupScreen() {
                   });
                 }}
               />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                This is when the landlord takes the money. Everyone's share is still worked out on
+                the calendar month.
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <DimField

@@ -1,8 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import {
+  calendarRangeLabel,
+  chargeableDayCount,
   clampCycleDay,
+  firstChargeableDay,
   inclusivePeriodEnd,
   iteratePeriodDays,
+  parseIsoDate,
   periodBounds,
   periodLabel,
 } from "./dates";
@@ -54,5 +58,22 @@ describe("cycle day helpers", () => {
     expect(febDays[0]).toEqual({ key: "2026-02", d: 28 });
     const seen = new Set(janDays.concat(febDays).map((d) => `${d.key}-${d.d}`));
     expect(seen.size).toBe(janDays.length + febDays.length);
+  });
+});
+
+describe("tenancy start helpers", () => {
+  test("parseIsoDate rejects impossible days", () => {
+    expect(parseIsoDate("2026-08-09")).toEqual({ key: "2026-08", day: 9 });
+    expect(parseIsoDate("2026-02-29")).toBeNull();
+    expect(parseIsoDate("not-a-date")).toBeNull();
+  });
+
+  test("first chargeable day is the tenancy start in that month only", () => {
+    expect(firstChargeableDay("2026-08", "2026-08-09")).toBe(9);
+    expect(firstChargeableDay("2026-09", "2026-08-09")).toBe(1);
+    expect(firstChargeableDay("2026-07", "2026-08-09")).toBe(32);
+    expect(chargeableDayCount("2026-08", "2026-08-09")).toBe(23);
+    expect(chargeableDayCount("2026-09", "2026-08-09")).toBe(30);
+    expect(calendarRangeLabel("2026-08", "2026-08-09")).toBe("9 Aug – 31 Aug");
   });
 });

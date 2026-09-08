@@ -68,6 +68,52 @@ export function cycleDayInMonth(key: string, cycleDay: number): number {
   return Math.min(clampCycleDay(cycleDay), daysInMonth(key));
 }
 
+export type IsoDateParts = { key: string; day: number };
+
+export function parseIsoDate(iso: string): IsoDateParts | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const day = Number(match[3]);
+  if (!y || m < 1 || m > 12 || !day) return null;
+  const key = `${y}-${String(m).padStart(2, "0")}`;
+  const dim = daysInMonth(key);
+  if (day < 1 || day > dim) return null;
+  return { key, day };
+}
+
+export function clampTenancyStart(iso: string, fallback: string): string {
+  return parseIsoDate(iso) ? iso : fallback;
+}
+
+export function tenancyMonthKey(tenancyStart: string, fallback = "2026-08"): string {
+  return parseIsoDate(tenancyStart)?.key ?? fallback;
+}
+
+export function firstChargeableDay(monthKey: string, tenancyStart: string): number {
+  const start = parseIsoDate(tenancyStart);
+  const dim = daysInMonth(monthKey);
+  if (!start) return 1;
+  if (monthKey < start.key) return dim + 1;
+  if (monthKey === start.key) return start.day;
+  return 1;
+}
+
+export function chargeableDayCount(monthKey: string, tenancyStart: string): number {
+  const dim = daysInMonth(monthKey);
+  const from = firstChargeableDay(monthKey, tenancyStart);
+  if (from > dim) return 0;
+  return dim - from + 1;
+}
+
+export function calendarRangeLabel(monthKey: string, tenancyStart: string): string {
+  const dim = daysInMonth(monthKey);
+  const from = firstChargeableDay(monthKey, tenancyStart);
+  if (from > dim) return monthLabel(monthKey);
+  return `${dayMonthLabel(monthKey, from)} – ${dayMonthLabel(monthKey, dim)}`;
+}
+
 export function periodBounds(monthKey: string, cycleDay: number): PeriodBounds {
   const startDay = cycleDayInMonth(monthKey, cycleDay);
   const endKey = addMonths(monthKey, 1);

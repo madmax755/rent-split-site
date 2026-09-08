@@ -1,11 +1,6 @@
 import { ChevronDownIcon } from "lucide-react";
 import { daysInMonth, monthLabel } from "../domain/dates";
-import {
-  chargedFor,
-  chargesUseCalendarMonth,
-  monthAllActual,
-  monthHasActuals,
-} from "../domain/engine";
+import { chargedFor, monthAllActual, monthHasActuals } from "../domain/engine";
 import { money, personById, plural, signedMoney } from "../domain/format";
 import type { HouseholdState, MonthCompute, MonthRecord } from "../domain/types";
 import { Avatar } from "./avatar";
@@ -26,16 +21,13 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
   const { state, personId, monthKey, M, c, open } = props;
   const p = personById(state, personId);
   if (!p) return null;
-  const calendar = chargesUseCalendarMonth(state);
-  const D = calendar ? daysInMonth(monthKey) : c.rentCounts.periodLength;
-  const liable = calendar
-    ? c.counts.liableDays[personId] || 0
-    : c.rentCounts.liableDays[personId] || 0;
+  const D = daysInMonth(monthKey);
+  const liable = c.counts.liableDays[personId] || 0;
   const nights = liable;
   const total = c.totals[personId] || 0;
   const roomsUsed: Record<string, number> = {};
   let sharedDays = 0;
-  const occupancyDays = calendar ? c.counts.days : c.rentCounts.days;
+  const occupancyDays = c.counts.days;
   occupancyDays.forEach((day) => {
     Object.keys(day.rooms).forEach((rid) => {
       const occ = day.rooms[rid] ?? [];
@@ -76,9 +68,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             {p.isPayer ? <Badge variant="secondary">pays the bills</Badge> : null}
           </div>
           <div className="tabular-nums text-xs text-muted-foreground">
-            {calendar
-              ? `here ${liable} of ${D} days`
-              : `rent ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
+            {`here ${liable} of ${D} days${c.chargeableDays < D ? ` · ${c.rentCounts.periodLabel}` : ""}`}
             {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
           </div>
         </div>
@@ -103,7 +93,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
         <div className="border-t px-4 py-2">
           <Line
             name="Bedroom"
-            how={`${roomTxt}${sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here ${liable}/${D} days${calendar ? "" : ` · ${c.rentCounts.periodLabel}`}`}
+            how={`${roomTxt}${sharedDays ? ` · shared on ${plural(sharedDays, "day")}` : ""} · here ${liable}/${D} days`}
             amount={money(state.currency, c.bedroom[personId] || 0)}
           />
           <Line

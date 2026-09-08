@@ -63,9 +63,9 @@ export function HowScreen() {
             A house is rented as one thing but lived in by several people, in different rooms, for
             different amounts of time. This app turns that into a number per person per month. It
             files everything under <b>calendar months</b>, one at a time, using the bills that{" "}
-            <em>actually</em> arrived rather than what anyone guessed at the start. Rent and each
-            bill can cover a different day range — a tenancy on the 8th–8th, energy on the 1st–1st —
-            but they still live in the same month folder.
+            <em>actually</em> arrived rather than what anyone guessed at the start. The landlord or
+            a bill may be paid on a different day — the 9th, say — but the split always uses that
+            calendar month's stints, so August can be finished on the 1st of September.
           </p>
           <p>
             Two people can disagree about what is fair. They cannot really disagree about what the
@@ -89,9 +89,11 @@ export function HowScreen() {
           </ul>
           <p>
             Occupancy comes from your <b>stints</b> on the <b>Who's here</b> tab. A stint is a block
-            of days in one bedroom in a calendar month. Rent and each bill can start on a different
-            day of the month; that only chooses which stint-days count towards that charge. There is
-            no second occupancy record, so nothing can fall out of step.
+            of days in one bedroom in a calendar month. Payment dates (when rent or a bill leaves
+            the account) do not change which days count — only that month's stints do. There is no
+            second occupancy record, so nothing can fall out of step. If the tenancy starts mid-month,
+            the first month is charged pro rata up to the 31st and the leftover slice of that month's
+            rent is added to the next calendar month.
           </p>
           <div className="callout">
             <p>
@@ -190,9 +192,9 @@ export function HowScreen() {
           </div>
           <p>
             The month's rent of <b>{money(state.currency, c.rentPence)}</b> is divided across those
-            shares, then divided again by the {c.rentCounts.periodLength} days in the rent period
-            {c.rentCounts.cycleStartDay === 1 ? "" : ` (${c.rentCounts.periodLabel})`}. That gives
-            every room a <b>daily cost</b>. Then, for each day:
+            shares, then divided again by the {c.rentCounts.periodLength} chargeable days in{" "}
+            {c.rentCounts.periodLabel}. That gives every room a <b>daily cost</b>. Then, for each
+            day:
           </p>
           <ul>
             <li>
@@ -277,7 +279,8 @@ export function HowScreen() {
                       {(+b.est || 0).toLocaleString()}
                     </td>
                     <td style={{ textAlign: "left" }}>
-                      Split across {periodLabel(key, b.cycleStartDay)}
+                      Split across this calendar month
+                      {b.cycleStartDay === 1 ? "" : ` · paid ${periodLabel(key, b.cycleStartDay)}`}
                     </td>
                   </tr>
                 ))}
@@ -461,6 +464,15 @@ export function HowScreen() {
             <li>
               <b>Dates live in exactly one place.</b> Stints. Anything else would need keeping in
               step, and eventually wouldn't be.
+            </li>
+            <li>
+              <b>Splits follow the calendar month.</b> Payment dates can wander; August's figures
+              only ever need August's stints.
+            </li>
+            <li>
+              <b>A mid-month tenancy start is pro rata.</b> Charge the days from the start date to
+              the month's end, and move the leftover slice of that month's rent into the next
+              calendar month.
             </li>
             <li>
               <b>A stint means paying, not present.</b> Being away doesn't reduce your share; ending

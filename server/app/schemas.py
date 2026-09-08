@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RoomModel(BaseModel):
@@ -102,6 +104,7 @@ class HouseholdData(BaseModel):
     currency: str = "£"
     rent: float = 0
     rentCycleStartDay: int = Field(default=1, ge=1, le=31)
+    tenancyStart: str = "2026-08-09"
     catchall: float = 0
     catchallWeight: float = 0
     rooms: list[RoomModel] = Field(default_factory=list)
@@ -113,6 +116,15 @@ class HouseholdData(BaseModel):
     activePresetName: str | None = None
     currentMonth: str = ""
     sectionsOpen: dict[str, bool] = Field(default_factory=dict)
+
+    @field_validator("tenancyStart")
+    @classmethod
+    def tenancy_start_iso(cls, value: str) -> str:
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("tenancyStart must be an ISO date") from exc
+        return value
 
 
 class DataEnvelope(BaseModel):

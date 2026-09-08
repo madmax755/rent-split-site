@@ -38,6 +38,7 @@ export const DEFAULT_ROOM_OF: Record<string, string> = {
 };
 
 export const DEFAULT_CYCLE_START_DAY = 1;
+export const DEFAULT_TENANCY_START = "2026-08-09";
 
 export const DEFAULT_BILLS: Bill[] = [
   { id: "energy", name: "Energy (gas & electric)", est: 195, payers: null, cycleStartDay: 1 },
@@ -78,6 +79,7 @@ export function freshHousehold(): HouseholdState {
     currency: "£",
     rent: DEFAULT_RENT,
     rentCycleStartDay: DEFAULT_CYCLE_START_DAY,
+    tenancyStart: DEFAULT_TENANCY_START,
     catchall: DEFAULT_CATCHALL,
     catchallWeight: DEFAULT_CATCHALL_WEIGHT,
     rooms: DEFAULT_ROOMS.map((r) => ({ ...r })),
