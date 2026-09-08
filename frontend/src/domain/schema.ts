@@ -1,5 +1,9 @@
+import { addMonths, daysInMonth, tenancyMonthKey, tenancyOwnerKey, tenancyPeriodDays } from "./dates";
+import { DEFAULT_TENANCY_START } from "./defaults";
+import { uid } from "./ids";
+
 export const APP_ID = "rent-split" as const;
-export const SCHEMA = 6;
+export const SCHEMA = 7;
 export const STORAGE_KEY = "rent-split";
 export const BACKUP_KEY = "rent-split.previous";
 
@@ -13,7 +17,130 @@ function fillCycleStartDay(rec: Record<string, unknown>, field: string): void {
   if (typeof rec[field] !== "number") rec[field] = 1;
 }
 
+type OccupiedDay = { personId: string; roomId: string; day: number; id: string };
+
+function rebuildPeriodStints(occupied: OccupiedDay[]): Array<{
+  id: string;
+  personId: string;
+  roomId: string;
+  from: number;
+  to: number;
+}> {
+  const groups = new Map<string, OccupiedDay[]>();
+  occupied.forEach((row) => {
+    const key = `${row.personId}\t${row.roomId}`;
+    const list = groups.get(key) ?? [];
+    list.push(row);
+    groups.set(key, list);
+  });
+  const out: Array<{ id: string; personId: string; roomId: string; from: number; to: number }> = [];
+  groups.forEach((rows) => {
+    const days = [...new Set(rows.map((row) => row.day))].sort((a, b) => a - b);
+    const ids = rows.map((row) => row.id).filter(Boolean);
+    let i = 0;
+    let idIndex = 0;
+    while (i < days.length) {
+      const from = days[i];
+      if (from === undefined) break;
+      let to = from;
+      let j = i;
+      while (j + 1 < days.length && days[j + 1] === to + 1) {
+        j += 1;
+        const next = days[j];
+        if (next === undefined) break;
+        to = next;
+      }
+      out.push({
+        id: ids[idIndex] || uid("st"),
+        personId: rows[0]?.personId ?? "",
+        roomId: rows[0]?.roomId ?? "",
+        from,
+        to,
+      });
+      idIndex += 1;
+      i = j + 1;
+    }
+  });
+  return out;
+}
+
 export const MIGRATIONS: Record<number, MigrationFn> = {
+  6: function (d) {
+    const tenancyStart = typeof d.tenancyStart === "string" ? d.tenancyStart : DEFAULT_TENANCY_START;
+    const floor = tenancyMonthKey(tenancyStart);
+    const months = asRecord(d.months) ?? {};
+    const oldStints: Record<
+      string,
+      Array<{ id: string; personId: string; roomId: string; from: number; to: number }>
+    > = {};
+    Object.entries(months).forEach(([key, raw]) => {
+      const rec = asRecord(raw);
+      if (!rec) return;
+      rec.oneOffs = [];
+      const list = Array.isArray(rec.stints) ? rec.stints : [];
+      oldStints[key] = list.flatMap((item) => {
+        const row = asRecord(item);
+        if (!row || typeof row.personId !== "string" || typeof row.roomId !== "string") return [];
+        const from = Number(row.from);
+        const to = Number(row.to);
+        if (!Number.isFinite(from) || !Number.isFinite(to)) return [];
+        return [
+          {
+            id: typeof row.id === "string" ? row.id : "",
+            personId: row.personId,
+            roomId: row.roomId,
+            from,
+            to,
+          },
+        ];
+      });
+    });
+
+    const occupied: Record<string, OccupiedDay[]> = {};
+    Object.entries(oldStints).forEach(([key, stints]) => {
+      const dim = daysInMonth(key);
+      const nextKey = addMonths(key, 1);
+      const nextExists = Boolean(oldStints[nextKey]);
+      stints.forEach((stint) => {
+        const last = Math.min(dim, Math.max(stint.from, stint.to));
+        const first = Math.min(last, Math.max(1, stint.from));
+        for (let calendarDay = first; calendarDay <= last; calendarDay++) {
+          const owner = tenancyOwnerKey(key, calendarDay, tenancyStart);
+          if (owner < floor) continue;
+          const period = tenancyPeriodDays(owner, tenancyStart);
+          const periodDay = period.findIndex((day) => day.key === key && day.d === calendarDay) + 1;
+          if (periodDay < 1) continue;
+          if (!occupied[owner]) occupied[owner] = [];
+          occupied[owner].push({
+            personId: stint.personId,
+            roomId: stint.roomId,
+            day: periodDay,
+            id: stint.id,
+          });
+        }
+        if (!nextExists && stint.to >= dim) {
+          const period = tenancyPeriodDays(key, tenancyStart);
+          period.forEach((day, index) => {
+            if (day.key === key) return;
+            if (!occupied[key]) occupied[key] = [];
+            occupied[key].push({
+              personId: stint.personId,
+              roomId: stint.roomId,
+              day: index + 1,
+              id: stint.id,
+            });
+          });
+        }
+      });
+    });
+
+    Object.entries(months).forEach(([key, raw]) => {
+      const rec = asRecord(raw);
+      if (!rec) return;
+      rec.stints = rebuildPeriodStints(occupied[key] ?? []);
+    });
+    return d;
+  },
   5: function (d) {
     if (typeof d.tenancyStart !== "string") d.tenancyStart = "2026-08-09";
     const months = asRecord(d.months) ?? {};

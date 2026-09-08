@@ -1,4 +1,4 @@
-import { clampTenancyStart, monthLabel, tenancyMonthKey } from "../domain/dates";
+import { clampTenancyStart, tenancyMonthKey, tenancyMonthLabel } from "../domain/dates";
 import { DEFAULT_TENANCY_START } from "../domain/defaults";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { weightedAreas } from "../domain/engine";
@@ -11,7 +11,6 @@ import { XIcon } from "lucide-react";
 import { useHousehold } from "../store/household-context";
 import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
-import { CycleDayField } from "./cycle-day-field";
 import { useConfirm } from "./confirm-dialog";
 import { EditableText, MoneyInput, PageHeader, Panel, Screen } from "./kit";
 import { NumericField } from "./numeric-field";
@@ -77,7 +76,7 @@ export function SetupScreen() {
                   (state.months[k]?.stints || []).some((st) => st.personId === p.id),
                 );
                 const where = months.length
-                  ? `in ${plural(months.length, "month")} · ${monthLabel(months[0] ?? "", true)}–${monthLabel(months[months.length - 1] ?? "", true)}`
+                  ? `in ${plural(months.length, "month")} · ${tenancyMonthLabel(months[0] ?? "", true)}–${tenancyMonthLabel(months[months.length - 1] ?? "", true)}`
                   : "no stints yet";
                 return (
                   <div
@@ -152,7 +151,7 @@ export function SetupScreen() {
                               if (
                                 !(await ask({
                                   title: `Archive ${person.name}?`,
-                                  description: `They appear in ${plural(locked.length, "month")} already locked (${locked.map((k) => monthLabel(k, true)).join(", ")}). Those months stay exactly as they were charged. ${person.name} will be archived — off the roster and out of future months, but still on Settle until settled.`,
+                                  description: `They appear in ${plural(locked.length, "month")} already locked (${locked.map((k) => tenancyMonthLabel(k, true)).join(", ")}). Those months stay exactly as they were charged. ${person.name} will be archived — off the roster and out of future months, but still on Settle until settled.`,
                                   confirmLabel: "Archive",
                                   destructive: true,
                                 }))
@@ -460,21 +459,8 @@ export function SetupScreen() {
                         });
                       }}
                     />
-                    <span className="shrink-0 text-xs text-muted-foreground">/ mo</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">/ tenancy month</span>
                   </div>
-                  <div className="mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    This bill is paid on
-                  </div>
-                  <CycleDayField
-                    value={b.cycleStartDay}
-                    monthKey={state.currentMonth}
-                    onChange={(day) => {
-                      store.mutate(() => {
-                        const bill = store.state.bills.find((x) => x.id === b.id);
-                        if (bill) bill.cycleStartDay = day;
-                      });
-                    }}
-                  />
                   <div className="mt-3 mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                     Who pays into it{restricted ? "" : " — everyone"}
                   </div>
@@ -540,7 +526,7 @@ export function SetupScreen() {
           <Panel
             id="rent"
             title="Standing rent & shared space"
-            description="The standing rent is what every new month starts from. Splits always follow the calendar month. To change one month only, edit rent on This month."
+            description="The standing rent is what every new tenancy month starts from. Splits follow the tenancy period from the start date. To change one month only, edit rent on This tenancy month."
           >
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm sm:col-span-2">
@@ -562,8 +548,9 @@ export function SetupScreen() {
                   }}
                 />
                 <span className="text-xs text-muted-foreground">
-                  The first calendar month is charged pro rata up to the month's end. The leftover
-                  slice of that month's rent is added to the next month.
+                  Every tenancy month runs from this day of the month to the day before it in the
+                  next calendar month — for example 9 August to 8 September. The full rent for that
+                  period is split; nothing is kicked into the following month.
                 </span>
               </label>
               <label className="grid gap-1.5 text-sm">
@@ -597,22 +584,6 @@ export function SetupScreen() {
                   }}
                 />
               </label>
-            </div>
-            <div className="mb-4">
-              <div className="mb-1.5 text-sm font-medium">Rent is paid on</div>
-              <CycleDayField
-                value={state.rentCycleStartDay}
-                monthKey={state.currentMonth}
-                onChange={(day) => {
-                  store.mutate(() => {
-                    store.state.rentCycleStartDay = day;
-                  });
-                }}
-              />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                This is when the landlord takes the money. Everyone's share is still worked out on
-                the calendar month.
-              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <DimField

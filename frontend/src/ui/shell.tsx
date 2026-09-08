@@ -55,7 +55,7 @@ const NAV: NavItem[] = [
   { id: "home", label: "Home", shortLabel: "Home", icon: <HomeIcon />, group: "work" },
   {
     id: "month",
-    label: "This month",
+    label: "This tenancy month",
     shortLabel: "Month",
     icon: <CalendarDaysIcon />,
     group: "work",
@@ -461,7 +461,7 @@ function pageTitle(tab: TabId, tenant: boolean): string {
     case "home":
       return "Home";
     case "month":
-      return "This month";
+      return "This tenancy month";
     case "stints":
       return "Who's here";
     case "balances":

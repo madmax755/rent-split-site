@@ -1,4 +1,4 @@
-import { monthLabel } from "../domain/dates";
+import { tenancyMonthLabel } from "../domain/dates";
 import { computeMonth, monthAllActual } from "../domain/engine";
 import { money, money0, personName, plural } from "../domain/format";
 import { ensureMonth, sortedMonthKeys } from "../domain/months";
@@ -56,7 +56,7 @@ export function HistoryScreen() {
         <KpiCard
           label="Months on record"
           value={String(keys.length)}
-          sub={`${monthLabel(firstKey, true)} – ${monthLabel(lastKey, true)}`}
+          sub={`${tenancyMonthLabel(firstKey, true)} – ${tenancyMonthLabel(lastKey, true)}`}
         />
         <KpiCard
           label="Total housed cost"
@@ -86,7 +86,7 @@ export function HistoryScreen() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
-                      {monthLabel(k)}
+                      {tenancyMonthLabel(k)}
                       {done ? null : (
                         <span className="ml-1 text-[10px] font-normal text-muted-foreground">
                           est
@@ -143,7 +143,7 @@ export function HistoryScreen() {
                     }}
                   >
                     <TableCell>
-                      {monthLabel(k)}
+                      {tenancyMonthLabel(k)}
                       {done ? null : (
                         <span className="ml-1 text-[10px] text-muted-foreground">est</span>
                       )}
@@ -214,7 +214,7 @@ export function HistoryScreen() {
                       {vals.map((v, i) => (
                         <div
                           key={keys[i]}
-                          title={`${monthLabel(keys[i] ?? "")} — ${state.currency}${v.v.toFixed(2)}${v.actual ? "" : " (estimate)"}`}
+                          title={`${tenancyMonthLabel(keys[i] ?? "")} — ${state.currency}${v.v.toFixed(2)}${v.actual ? "" : " (estimate)"}`}
                           className={`min-h-0.5 flex-1 rounded-t-sm ${
                             v.actual
                               ? v.v >= max
@@ -227,8 +227,8 @@ export function HistoryScreen() {
                       ))}
                     </div>
                     <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                      <span>{monthLabel(firstKey, true)}</span>
-                      <span>{monthLabel(lastKey, true)}</span>
+                      <span>{tenancyMonthLabel(firstKey, true)}</span>
+                      <span>{tenancyMonthLabel(lastKey, true)}</span>
                     </div>
                   </div>
                 );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { monthLabel } from "../domain/dates";
+import { tenancyMonthLabel } from "../domain/dates";
 import { computeBalances, monthHasActuals } from "../domain/engine";
 import {
   money,
@@ -63,7 +63,7 @@ export function BalancesScreen() {
           value={String(reconciledMonths.length)}
           sub={
             reconciledMonths.length
-              ? `${monthLabel(reconciledMonths[0] ?? "", true)} – ${monthLabel(reconciledMonths[reconciledMonths.length - 1] ?? "", true)}`
+              ? `${tenancyMonthLabel(reconciledMonths[0] ?? "", true)} – ${tenancyMonthLabel(reconciledMonths[reconciledMonths.length - 1] ?? "", true)}`
               : "none yet"
           }
         />
@@ -94,7 +94,7 @@ export function BalancesScreen() {
                       .slice(0, 3)
                       .map(
                         (x) =>
-                          `${monthLabel(x.monthKey, true)} ${signedMoney(state.currency, x.amount)}`,
+                          `${tenancyMonthLabel(x.monthKey, true)} ${signedMoney(state.currency, x.amount)}`,
                       )
                       .join(" · ") + (mine.length > 3 ? " · …" : "")
                   : "no differences yet";
@@ -179,7 +179,7 @@ export function BalancesScreen() {
                       <div className="text-sm font-medium">
                         {p ? p.name : "(removed)"}{" "}
                         <span className="font-normal text-muted-foreground">
-                          — {isTrue ? `${monthLabel(x.monthKey)} true-up` : x.note || "settled up"}
+                          — {isTrue ? `${tenancyMonthLabel(x.monthKey)} true-up` : x.note || "settled up"}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
