@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.household import assemble_payload, load_household, put_household
+from app.household import assemble_payload, load_household, put_household, tenancy_period_length
 
 ENVELOPE: dict[str, Any] = {
     "app": "rent-split",
@@ -181,3 +181,9 @@ def test_schema_4_cycle_days_default(db, settings) -> None:
     assembled = assemble_payload(household)
     assert assembled["data"]["rentCycleStartDay"] == 1
     assert assembled["data"]["bills"][0]["cycleStartDay"] == 1
+
+
+def test_tenancy_period_length_from_the_ninth() -> None:
+    assert tenancy_period_length("2026-08", "2026-08-09") == 31
+    assert tenancy_period_length("2026-09", "2026-08-09") == 30
+    assert tenancy_period_length("2026-04", "2026-04-01") == 30

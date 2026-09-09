@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { addMonths, monthLabel, tenancyMonthKey } from "../domain/dates";
+import { addMonths, tenancyMonthKey, tenancyMonthLabel } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import type { MonthStatus } from "../domain/types";
 import { useHousehold } from "../store/household-context";
@@ -48,19 +48,19 @@ export function MonthSwitcher() {
       <Button
         variant="outline"
         size="icon-sm"
-        title="Previous month"
+        title="Previous tenancy month"
         disabled={key <= floor}
         onClick={() => goMonth(store, -1)}
       >
         <ChevronLeftIcon />
       </Button>
-      <div className="relative min-w-28 text-center sm:min-w-36">
-        <div className="pointer-events-none text-sm font-semibold sm:hidden">{monthLabel(key)}</div>
+      <div className="relative flex h-8 min-w-40 items-center justify-center text-center sm:min-w-52">
+        <div className="pointer-events-none text-sm font-semibold">{tenancyMonthLabel(key)}</div>
         <input
           type="month"
-          aria-label="Choose month"
+          aria-label="Choose tenancy month"
           min={floor}
-          className="h-8 cursor-pointer rounded-lg border border-input bg-transparent px-2 text-xs tabular-nums outline-none max-sm:absolute max-sm:inset-0 max-sm:opacity-0 sm:block focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="absolute inset-0 h-8 cursor-pointer opacity-0 outline-none"
           value={key}
           onChange={(e) => {
             if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
@@ -72,7 +72,7 @@ export function MonthSwitcher() {
           }}
         />
       </div>
-      <Button variant="outline" size="icon-sm" title="Next month" onClick={() => goMonth(store, 1)}>
+      <Button variant="outline" size="icon-sm" title="Next tenancy month" onClick={() => goMonth(store, 1)}>
         <ChevronRightIcon />
       </Button>
     </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { chargedFor, computeBalances, computeMonth, monthStatus } from "../domain/engine";
 import { money, money0, payer, personById, signedMoney } from "../domain/format";
-import { monthLabel } from "../domain/dates";
+import { tenancyMonthLabel } from "../domain/dates";
 import { copyText } from "../lib/copy-text";
 import { ensureMonth } from "../domain/months";
 import { useHousehold } from "../store/household-context";
@@ -55,7 +55,7 @@ export function TenantHomeScreen() {
     );
   }
 
-  const paymentLine = `${monthLabel(key)} — ${me.name} ${money(state.currency, ask)}`;
+  const paymentLine = `${tenancyMonthLabel(key)} — ${me.name} ${money(state.currency, ask)}`;
 
   return (
     <Screen id="home" active={activeTab === "home"}>
@@ -76,13 +76,13 @@ export function TenantHomeScreen() {
           sub={myBal === 0 ? "all square" : "true-ups not yet settled"}
         />
         <KpiCard
-          label={M.collected ? "Asked for this month" : "This month so far"}
+          label={M.collected ? "Asked for this tenancy month" : "This tenancy month so far"}
           value={money0(state.currency, ask)}
           sub={statusLabel}
         />
         <KpiCard label="Signed in as" value={me.name} sub={store.session?.username ?? ""} />
       </KpiGrid>
-      <Panel title={monthLabel(key)} description="Your share">
+      <Panel title={tenancyMonthLabel(key)} description="Your share">
         <div className="mb-3 flex flex-wrap gap-2">
           <Button onClick={() => void copyText(paymentLine, (m) => store.announce(m))}>
             Copy payment line
@@ -136,7 +136,7 @@ export function TenantMonthScreen() {
   }
   return (
     <Screen id="month" active={activeTab === "month"}>
-      <PageHeader title={monthLabel(key)} description="Your share only" />
+      <PageHeader title={tenancyMonthLabel(key)} description="Your share only" />
       <PersonStatementCard state={state} personId={personId} monthKey={key} M={M} c={c} open />
     </Screen>
   );
@@ -189,7 +189,7 @@ export function TenantHistoryScreen() {
                   openMonth(k);
                 }}
               >
-                <TableCell>{monthLabel(k)}</TableCell>
+                <TableCell>{tenancyMonthLabel(k)}</TableCell>
                 <TableCell className="tabular-nums text-right">
                   {money(state.currency, c.totals[personId] || 0)}
                 </TableCell>
@@ -267,7 +267,7 @@ export function TenantBalancesScreen() {
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">
-                  {isTrue ? `${monthLabel(x.monthKey)} true-up` : x.note || "settled up"}
+                  {isTrue ? `${tenancyMonthLabel(x.monthKey)} true-up` : x.note || "settled up"}
                 </div>
                 <div className="text-xs text-muted-foreground">{x.date ? `on ${x.date}` : ""}</div>
               </div>

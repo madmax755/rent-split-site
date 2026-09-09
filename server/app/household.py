@@ -481,17 +481,30 @@ def days_in_month_key(key: str) -> int:
     return monthrange(year, month)[1]
 
 
-def first_chargeable_day(key: str, tenancy_start: str) -> int:
-    days = days_in_month_key(key)
+def add_months_key(key: str, delta: int) -> str:
+    year, month = parse_month_key(key)
+    raw = month - 1 + delta
+    year += raw // 12
+    month = raw % 12 + 1
+    return f"{year:04d}-{month:02d}"
+
+
+def tenancy_cycle_day(tenancy_start: str) -> int:
     if not re.match(r"^\d{4}-\d{2}-\d{2}$", tenancy_start or ""):
         return 1
-    start_key = tenancy_start[:7]
-    start_day = int(tenancy_start[8:10])
-    if key < start_key:
-        return days + 1
-    if key == start_key:
-        return min(days, max(1, start_day))
-    return 1
+    return min(31, max(1, int(tenancy_start[8:10])))
+
+
+def cycle_day_in_month(key: str, cycle_day: int) -> int:
+    return min(max(1, cycle_day), days_in_month_key(key))
+
+
+def tenancy_period_length(key: str, tenancy_start: str) -> int:
+    cycle = tenancy_cycle_day(tenancy_start)
+    start_day = cycle_day_in_month(key, cycle)
+    end_key = add_months_key(key, 1)
+    end_day = cycle_day_in_month(end_key, cycle)
+    return days_in_month_key(key) - start_day + 1 + (end_day - 1)
 
 
 def _month_by_key(household: Household, key: str) -> Month | None:
@@ -516,7 +529,7 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
     existing = _month_by_key(household, key)
     if existing is not None:
         return existing
-    new_days = days_in_month_key(key)
+    new_days = tenancy_period_length(key, household.tenancy_start)
     prev = _previous_month(household, key)
     month = Month(
         key=key,
@@ -535,20 +548,14 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
         est = float(prev_line.act) if prev_line is not None and prev_line.act is not None else float(bill.est)
         month.lines.append(MonthLine(month_key=key, bill_id=bill.id, est=est, act=None))
     if prev is not None:
-        prev_days = days_in_month_key(prev.key)
-        start_day = first_chargeable_day(key, household.tenancy_start)
+        prev_days = tenancy_period_length(prev.key, household.tenancy_start)
         copies = [stint for stint in prev.stints if stint.person_id != person_id]
         next_index = 0
         for stint in sorted(copies, key=lambda row: row.sort_index):
-            if stint.to_day >= prev_days:
-                from_day = start_day
-                to_day = new_days
-            else:
-                from_day = min(new_days, max(start_day, stint.from_day))
-                to_day = min(new_days, stint.to_day)
-                to_day = max(from_day, to_day)
-            if from_day > new_days:
+            if stint.to_day < prev_days:
                 continue
+            from_day = 1
+            to_day = new_days
             month.stints.append(
                 Stint(
                     id=_new_stint_id(),
@@ -567,7 +574,7 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
 def replace_person_stints(
     household: Household, month_key: str, person_id: str, stints: list[StintModel]
 ) -> None:
-    days = days_in_month_key(month_key)
+    days = tenancy_period_length(month_key, household.tenancy_start)
     if len(stints) > MAX_OWN_STINTS:
         raise StintWriteError(f"That's more than {MAX_OWN_STINTS} stints.")
     rooms = {room.id: room for room in household.rooms}

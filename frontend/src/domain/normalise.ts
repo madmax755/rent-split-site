@@ -1,5 +1,5 @@
 import { uid } from "./ids";
-import { clampCycleDay, clampTenancyStart, daysInMonth } from "./dates";
+import { clampCycleDay, clampTenancyStart, tenancyPeriodLength } from "./dates";
 import { DEFAULT_BILLS, DEFAULT_ROOMS, DEFAULT_TENANCY_START, MAX_PEOPLE } from "./defaults";
 import { ensureMonth } from "./months";
 import type { HouseholdState, MonthConfig } from "./types";
@@ -83,7 +83,8 @@ export function normalise(state: HouseholdState): void {
       delete (x as { kind?: unknown }).kind;
     });
     if (!Array.isArray(M.stints)) M.stints = [];
-    const D = daysInMonth(k);
+    const tenancyStart = M.config?.tenancyStart ?? state.tenancyStart;
+    const D = tenancyPeriodLength(k, tenancyStart);
     const cfg = M.config && Array.isArray(M.config.rooms) ? M.config : null;
     const validRooms = cfg ? cfg.rooms.map((r) => r.id) : roomIds;
     const validPeople =

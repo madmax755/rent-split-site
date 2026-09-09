@@ -144,7 +144,7 @@ export type DayModel = {
 export type BedroomGap = {
   roomId: string;
   name: string;
-  days: number[];
+  days: Array<{ key: string; d: number }>;
 };
 
 export type ComputeMode = "est" | "eff";
@@ -186,9 +186,6 @@ export type MonthCompute = {
   rentCounts: PeriodCounts;
   rentPence: number;
   rentAmount: number;
-  agreedRentPence: number;
-  carryInPence: number;
-  carryOutPence: number;
   chargeableDays: number;
   bedroom: Record<string, number>;
   shared: Record<string, number>;

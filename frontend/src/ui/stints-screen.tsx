@@ -1,28 +1,23 @@
 import { useState, type CSSProperties } from "react";
 import {
-  cycleDayInMonth,
-  daysInMonth,
   dayDate,
-  firstChargeableDay,
-  monthLabel,
+  daySpanLabel,
+  isoToPeriodDay,
+  periodDayIso,
+  tenancyMonthLabel,
+  tenancyPeriodDays,
+  tenancyPeriodLabel,
+  tenancyPeriodLength,
 } from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
-import { personById, personColor, plural, rangeText } from "../domain/format";
+import { personById, personColor, plural } from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf } from "../domain/months";
 import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
-import {
-  EditableNumber,
-  EmptyState,
-  MonthSwitcher,
-  PageHeader,
-  Panel,
-  Screen,
-  WarnList,
-} from "./kit";
+import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
@@ -35,14 +30,16 @@ export function StintsScreen() {
   const [addingPerson, setAddingPerson] = useState(false);
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
-  const D = daysInMonth(key);
+  const periodDays = tenancyPeriodDays(key, state.tenancyStart);
+  const D = periodDays.length;
   const days = buildDayModel(state, key);
-  const startDay = firstChargeableDay(key, state.tenancyStart);
   const cols = { gridTemplateColumns: `repeat(${D}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
   const gaps = bedroomGaps(state, key);
   const totalDays = days.reduce((s, d) => s + d.liable.length, 0);
   const gapCount = gaps.reduce((s, g) => s + g.days.length, 0);
+  const startIso = periodDayIso(key, state.tenancyStart, 1);
+  const endIso = periodDayIso(key, state.tenancyStart, D);
 
   function clampAll(stints: Stint[]): void {
     stints.forEach((s) => {
@@ -87,13 +84,13 @@ export function StintsScreen() {
     <Screen id="stints" active={activeTab === "stints"}>
       <PageHeader
         title="Who's here"
-        description={`${plural((M.stints || []).length, "stint")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
+        description={`${tenancyPeriodLabel(key, state.tenancyStart)} · ${plural((M.stints || []).length, "stint")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
         actions={<MonthSwitcher />}
       />
       <WarnList
         items={gaps.map(
           (g) =>
-            `${g.name} empty on ${g.days.length === D ? "every day" : "day " + rangeText(g.days)}`,
+            `${g.name} empty on ${g.days.length === D ? "every day" : daySpanLabel(g.days)}`,
         )}
       />
 
@@ -102,23 +99,19 @@ export function StintsScreen() {
           {involved.length ? (
             <div className="min-w-[560px]">
               <div className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
-                {Array.from({ length: D }, (_, i) => {
-                  const d = i + 1;
-                  const dow = dayDate(key, d).getDay();
+                {periodDays.map((date, i) => {
+                  const dow = dayDate(date.key, date.d).getDay();
                   const wk = dow === 0 || dow === 6;
-                  const beforeTenancy = d < startDay;
+                  const monthStart = i === 0 || periodDays[i - 1]?.key !== date.key;
                   return (
                     <div
-                      key={d}
+                      key={`${date.key}-${date.d}`}
                       className={`tabular-nums text-center text-[9px] ${
-                        beforeTenancy
-                          ? "text-muted-foreground/40"
-                          : wk
-                            ? "font-bold text-foreground"
-                            : "text-muted-foreground"
+                        wk ? "font-bold text-foreground" : "text-muted-foreground"
                       }`}
+                      title={`${date.d} ${date.key}`}
                     >
-                      {d % 2 === 1 || D <= 20 ? d : "\u00a0"}
+                      {monthStart ? date.d : date.d % 2 === 1 || D <= 20 ? date.d : "\u00a0"}
                     </div>
                   );
                 })}
@@ -130,21 +123,19 @@ export function StintsScreen() {
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
                   <div className="grid h-6 flex-1 gap-0.5" style={cols}>
-                    {Array.from({ length: D }, (_, i) => {
-                      const day = days[i];
-                      const isHere = day ? day.liable.includes(p.id) : false;
+                    {days.map((day) => {
+                      const isHere = day.liable.includes(p.id);
                       let sharing = false;
-                      if (day) {
-                        Object.keys(day.rooms).forEach((rid) => {
-                          const occ = day.rooms[rid] ?? [];
-                          if (occ.includes(p.id) && occ.length > 1) sharing = true;
-                        });
-                      }
+                      Object.keys(day.rooms).forEach((rid) => {
+                        const occ = day.rooms[rid] ?? [];
+                        if (occ.includes(p.id) && occ.length > 1) sharing = true;
+                      });
                       return (
                         <div
-                          key={i}
-                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${i + 1 < startDay ? "opacity-40" : ""} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
+                          key={`${day.key}-${day.d}`}
+                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
                           style={isHere ? { background: personColor(state, p.id) } : undefined}
+                          title={`${p.name} — ${day.d} ${day.key}${isHere ? "" : " (out)"}`}
                         />
                       );
                     })}
@@ -154,27 +145,8 @@ export function StintsScreen() {
               <div className="mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
                 {days.map((day) => (
                   <div
-                    key={day.d}
-                    title={
-                      day.d === startDay && startDay > 1
-                        ? "Tenancy starts"
-                        : state.rentCycleStartDay !== 1 &&
-                            day.d === cycleDayInMonth(key, state.rentCycleStartDay)
-                          ? "Rent is paid"
-                          : undefined
-                    }
-                    className={`flex h-5 items-center justify-center rounded-[3px] text-[9px] font-bold tabular-nums ${
-                      day.d < startDay
-                        ? "bg-muted/40 text-muted-foreground/40"
-                        : "bg-muted text-muted-foreground"
-                    } ${
-                      day.d === startDay && startDay > 1
-                        ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
-                        : state.rentCycleStartDay !== 1 &&
-                            day.d === cycleDayInMonth(key, state.rentCycleStartDay)
-                          ? "shadow-[inset_0_2px_0_var(--primary)] text-primary"
-                          : ""
-                    }`}
+                    key={`${day.key}-${day.d}`}
+                    className="flex h-5 items-center justify-center rounded-[3px] bg-muted text-[9px] font-bold tabular-nums text-muted-foreground"
                   >
                     {day.liable.length}
                   </div>
@@ -200,20 +172,18 @@ export function StintsScreen() {
                             </span>
                           </div>
                           <div className="grid h-6 flex-1 gap-0.5" style={cols}>
-                            {Array.from({ length: D }, (_, i) => {
-                              const occ = (days[i]?.rooms[room.id] || []).length;
+                            {days.map((day) => {
+                              const occ = (day.rooms[room.id] || []).length;
                               return (
                                 <div
-                                  key={i}
-                                  title={`${room.name} — day ${i + 1}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
+                                  key={`${room.id}-${day.key}-${day.d}`}
+                                  title={`${room.name} — ${day.d} ${day.key}: ${occ ? plural(occ, "person", "people") : "EMPTY"}`}
                                   className={`rounded-[3px] ${
-                                    i + 1 < startDay
-                                      ? "bg-muted/40"
-                                      : occ > 1
-                                        ? "bg-emerald-500 ring-1 ring-inset ring-foreground/60"
-                                        : occ
-                                          ? "bg-emerald-500/80"
-                                          : "bg-destructive/25 ring-1 ring-destructive"
+                                    occ > 1
+                                      ? "bg-emerald-500 ring-1 ring-inset ring-foreground/60"
+                                      : occ
+                                        ? "bg-emerald-500/80"
+                                        : "bg-destructive/25 ring-1 ring-destructive"
                                   }`}
                                 />
                               );
@@ -227,8 +197,8 @@ export function StintsScreen() {
             </div>
           ) : (
             <EmptyState
-              title={`Nobody is down for ${monthLabel(key)} yet`}
-              description="Add a stint below, or reset from the roster on This month."
+              title={`Nobody is down for ${tenancyMonthLabel(key)} yet`}
+              description="Add a stint below, or reset from the roster on This tenancy month."
             />
           )}
         </div>
@@ -252,7 +222,7 @@ export function StintsScreen() {
         description={
           selfOnly
             ? "These dates are when you are paying — usually the same as being in the house."
-            : "A stint is a block of days someone is in the house, in one bedroom. Occupancy lives here and nowhere else."
+            : "A stint is a block of days someone is in the house, in one bedroom, in this tenancy month. Occupancy lives here and nowhere else."
         }
       >
         {!(M.stints || []).length ? (
@@ -298,27 +268,32 @@ export function StintsScreen() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    day
-                    <EditableNumber
-                      className="w-16 text-center tabular-nums"
-                      min={1}
-                      max={D}
-                      value={s.from}
+                    <input
+                      type="date"
+                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      min={startIso}
+                      max={endIso}
+                      value={periodDayIso(key, state.tenancyStart, s.from)}
                       disabled={!editable}
-                      onChange={(from) => {
+                      onChange={(e) => {
+                        const from = isoToPeriodDay(key, state.tenancyStart, e.target.value);
+                        if (from === null) return;
                         patchStint(s.id, (st) => {
                           st.from = from;
                         });
                       }}
                     />
                     →
-                    <EditableNumber
-                      className="w-16 text-center tabular-nums"
-                      min={1}
-                      max={D}
-                      value={s.to}
+                    <input
+                      type="date"
+                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      min={startIso}
+                      max={endIso}
+                      value={periodDayIso(key, state.tenancyStart, s.to)}
                       disabled={!editable}
-                      onChange={(to) => {
+                      onChange={(e) => {
+                        const to = isoToPeriodDay(key, state.tenancyStart, e.target.value);
+                        if (to === null) return;
                         patchStint(s.id, (st) => {
                           st.to = to;
                         });
@@ -418,12 +393,13 @@ export function StintsScreen() {
               }
               commitStints(() => {
                 const month = ensureMonth(store.state, key);
+                const length = tenancyPeriodLength(key, store.state.tenancyStart);
                 month.stints.push({
                   id: uid("st"),
                   personId: p.id,
                   roomId: lastRoomOf(store.state, p.id),
-                  from: firstChargeableDay(key, store.state.tenancyStart),
-                  to: daysInMonth(key),
+                  from: 1,
+                  to: length,
                 });
               });
             }}
@@ -451,7 +427,7 @@ export function StintsScreen() {
           addingPerson
             ? {
                 title: "Add someone new",
-                description: "They will get a short stint this month so you can set the dates.",
+                description: "They will get a short stint this tenancy month so you can set the dates.",
                 label: "Name",
                 defaultValue: "Someone new",
                 confirmLabel: "Add",
@@ -461,7 +437,7 @@ export function StintsScreen() {
         onClose={() => setAddingPerson(false)}
         onConfirm={(name) => {
           commitStints(() => {
-            const daysN = daysInMonth(key);
+            const length = tenancyPeriodLength(key, store.state.tenancyStart);
             const room = store.state.rooms.find((r) => !r.communal)?.id ?? "";
             const person = {
               id: uid("p"),
@@ -470,13 +446,13 @@ export function StintsScreen() {
               archived: false,
             };
             store.state.people.push(person);
-            const mid = Math.max(1, Math.round(daysN / 3));
+            const mid = Math.max(1, Math.round(length / 3));
             ensureMonth(store.state, key).stints.push({
               id: uid("st"),
               personId: person.id,
               roomId: room,
               from: mid,
-              to: Math.min(daysN, mid + 6),
+              to: Math.min(length, mid + 6),
             });
           });
           setAddingPerson(false);

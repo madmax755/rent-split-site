@@ -1,15 +1,4 @@
-import {
-  addMonths,
-  calendarRangeLabel,
-  chargeableDayCount,
-  clampCycleDay,
-  daySpanLabel,
-  daysInMonth,
-  firstChargeableDay,
-  monthLabel,
-  parseIsoDate,
-  periodLabel,
-} from "./dates";
+import { daySpanLabel, tenancyMonthLabel, tenancyPeriodDays, tenancyPeriodLabel } from "./dates";
 import { money, payer, personName, plural } from "./format";
 import { ensureMonth, sortedMonthKeys } from "./months";
 import { deep } from "./clone";
@@ -52,11 +41,6 @@ export function captureConfig(state: HouseholdState): MonthConfig {
   };
 }
 
-export function chargesUseCalendarMonth(state: HouseholdState): boolean {
-  if (clampCycleDay(state.rentCycleStartDay) !== 1) return false;
-  return state.bills.every((b) => clampCycleDay(b.cycleStartDay) === 1);
-}
-
 export function withMonthConfig<T>(
   state: HouseholdState,
   M: MonthRecord | undefined,
@@ -96,26 +80,20 @@ function occupancyFromStints(
 }
 
 export function buildDayModel(state: HouseholdState, key: string): DayModel[] {
-  const D = daysInMonth(key);
   const M = state.months[key];
-  const days: DayModel[] = [];
-  if (!M) return days;
-  const from = firstChargeableDay(key, state.tenancyStart);
-  for (let d = 1; d <= D; d++) {
-    const { liable, rooms } =
-      d >= from ? occupancyFromStints(M.stints || [], d) : { liable: [], rooms: {} };
-    days.push({ key, d, liable, present: liable, rooms });
-  }
-  return days;
+  if (!M) return [];
+  return tenancyPeriodDays(key, state.tenancyStart).map((date, index) => {
+    const { liable, rooms } = occupancyFromStints(M.stints || [], index + 1);
+    return { key: date.key, d: date.d, liable, present: liable, rooms };
+  });
 }
 
 export function chargeableDays(state: HouseholdState, key: string): DayModel[] {
-  const from = firstChargeableDay(key, state.tenancyStart);
-  return buildDayModel(state, key).filter((day) => day.d >= from);
+  return buildDayModel(state, key);
 }
 
-export function calendarCounts(state: HouseholdState, key: string): PeriodCounts {
-  const days = chargeableDays(state, key);
+export function periodCounts(state: HouseholdState, labelledKey: string): PeriodCounts {
+  const days = chargeableDays(state, labelledKey);
   const liableDays: Record<string, number> = {};
   state.people.forEach((p) => {
     liableDays[p.id] = 0;
@@ -129,22 +107,8 @@ export function calendarCounts(state: HouseholdState, key: string): PeriodCounts
     liableDays,
     days,
     cycleStartDay: 1,
-    periodLabel: calendarRangeLabel(key, state.tenancyStart),
+    periodLabel: tenancyPeriodLabel(labelledKey, state.tenancyStart),
     periodLength: days.length,
-  };
-}
-
-export function periodCounts(
-  state: HouseholdState,
-  labelledKey: string,
-  cycleDay: number,
-): PeriodCounts {
-  const clamped = clampCycleDay(cycleDay);
-  if (clamped === 1) return calendarCounts(state, labelledKey);
-  return {
-    ...calendarCounts(state, labelledKey),
-    cycleStartDay: clamped,
-    periodLabel: periodLabel(labelledKey, clamped),
   };
 }
 
@@ -154,9 +118,9 @@ export function bedroomGapsInner(state: HouseholdState, key: string): BedroomGap
   state.rooms
     .filter((r) => !r.communal)
     .forEach((room) => {
-      const empty: number[] = [];
+      const empty: Array<{ key: string; d: number }> = [];
       days.forEach((day) => {
-        if (!(day.rooms[room.id] || []).length) empty.push(day.d);
+        if (!(day.rooms[room.id] || []).length) empty.push({ key: day.key, d: day.d });
       });
       if (empty.length) out.push({ roomId: room.id, name: room.name, days: empty });
     });
@@ -220,66 +184,9 @@ export function distribute(
   return out;
 }
 
-export type RentAllocation = {
-  agreedPence: number;
-  chargedPence: number;
-  carryInPence: number;
-  carryOutPence: number;
-  chargeableDays: number;
-  calendarDays: number;
-};
-
 export function monthAgreedRent(state: HouseholdState, key: string): number {
   const M = state.months[key];
   return typeof M?.rent === "number" ? M.rent : state.rent;
-}
-
-function startMonthCarry(state: HouseholdState, startKey: string, startDay: number): number {
-  const calendarDays = daysInMonth(startKey);
-  const chargeableDays = calendarDays - startDay + 1;
-  if (chargeableDays <= 0 || chargeableDays >= calendarDays) return 0;
-  const agreedPence = Math.round(monthAgreedRent(state, startKey) * 100);
-  const ownPence = Math.round((agreedPence * chargeableDays) / calendarDays);
-  return agreedPence - ownPence;
-}
-
-export function allocateCalendarRent(state: HouseholdState, key: string): RentAllocation {
-  const calendarDays = daysInMonth(key);
-  const chargeableDays = chargeableDayCount(key, state.tenancyStart);
-  const agreedPence = Math.round(monthAgreedRent(state, key) * 100);
-  const start = parseIsoDate(state.tenancyStart);
-
-  if (chargeableDays <= 0) {
-    return {
-      agreedPence,
-      chargedPence: 0,
-      carryInPence: 0,
-      carryOutPence: 0,
-      chargeableDays: 0,
-      calendarDays,
-    };
-  }
-
-  let ownPence = agreedPence;
-  let carryOutPence = 0;
-  if (start && start.key === key && start.day > 1) {
-    ownPence = Math.round((agreedPence * chargeableDays) / calendarDays);
-    carryOutPence = agreedPence - ownPence;
-  }
-
-  const carryInPence =
-    start && start.day > 1 && key === addMonths(start.key, 1)
-      ? startMonthCarry(state, start.key, start.day)
-      : 0;
-
-  return {
-    agreedPence,
-    chargedPence: ownPence + carryInPence,
-    carryInPence,
-    carryOutPence,
-    chargeableDays,
-    calendarDays,
-  };
 }
 
 export function computeRent(
@@ -294,7 +201,7 @@ export function computeRent(
 } {
   const days = chargeableDays(state, key);
   const D = days.length;
-  const scope = "this month";
+  const scope = "this tenancy month";
   const { rooms, ca, total } = weightedAreas(state);
   const rawBed: Record<string, number> = {};
   const rawShare: Record<string, number> = {};
@@ -432,14 +339,12 @@ export function amountOf(line: MonthLine | undefined, mode: ComputeMode): number
 
 export function monthHasActuals(M: MonthRecord | undefined): boolean {
   if (!M) return false;
-  const anyLine = Object.values(M.lines || {}).some((l) => typeof l.act === "number");
-  const anyOne = (M.oneOffs || []).some((l) => typeof l.act === "number");
-  return anyLine || anyOne;
+  return Object.values(M.lines || {}).some((l) => typeof l.act === "number");
 }
 
 export function monthAllActual(state: HouseholdState, M: MonthRecord | undefined): boolean {
   if (!M) return false;
-  const lines = state.bills.map((b) => M.lines[b.id]).concat(M.oneOffs || []);
+  const lines = state.bills.map((b) => M.lines[b.id]);
   return lines.length > 0 && lines.every((l) => l && typeof l.act === "number");
 }
 
@@ -461,10 +366,9 @@ export function computeMonthInner(
   M: MonthRecord,
 ): MonthCompute {
   const counts = dayCounts(state, key);
-  const rentCounts = calendarCounts(state, key);
-  const allocation = allocateCalendarRent(state, key);
-  const rentPence = allocation.chargedPence;
-  const rentAmount = rentPence / 100;
+  const rentCounts = periodCounts(state, key);
+  const rentAmount = monthAgreedRent(state, key);
+  const rentPence = Math.round(rentAmount * 100);
   const r = computeRent(state, key, rentPence);
 
   const totals: Record<string, number> = {};
@@ -486,18 +390,14 @@ export function computeMonthInner(
   });
 
   const lines: MonthCompute["lines"] = [];
-  const allLines = state.bills
-    .map((b) => ({
-      def: b,
-      line: M.lines[b.id] || { est: b.est ?? 0, act: null },
-      oneOff: false,
-    }))
-    .concat((M.oneOffs || []).map((x) => ({ def: x, line: x, oneOff: true })));
+  const allLines = state.bills.map((b) => ({
+    def: b,
+    line: M.lines[b.id] || { est: b.est ?? 0, act: null },
+  }));
 
-  allLines.forEach(({ def, line, oneOff }) => {
+  allLines.forEach(({ def, line }) => {
     const amt = Math.round(amountOf(line, mode) * 100);
-    const cycleDay = oneOff ? 1 : clampCycleDay("cycleStartDay" in def ? def.cycleStartDay : 1);
-    const lineCounts = calendarCounts(state, key);
+    const lineCounts = periodCounts(state, key);
     const u = billUnits(state, def.payers, lineCounts);
     const shares = distribute(u.units, amt);
     Object.keys(shares).forEach((id) => {
@@ -512,7 +412,7 @@ export function computeMonthInner(
     lines.push({
       id: def.id,
       name: def.name,
-      oneOff,
+      oneOff: false,
       amount: amt,
       shares,
       units: u.units,
@@ -522,8 +422,8 @@ export function computeMonthInner(
       isActual: typeof line.act === "number",
       est: Math.round((+line.est || 0) * 100),
       act: typeof line.act === "number" ? Math.round(line.act * 100) : null,
-      cycleStartDay: cycleDay,
-      periodLabel: cycleDay === 1 ? lineCounts.periodLabel : periodLabel(key, cycleDay),
+      cycleStartDay: 1,
+      periodLabel: lineCounts.periodLabel,
       periodLength: lineCounts.periodLength,
     });
   });
@@ -536,10 +436,7 @@ export function computeMonthInner(
     rentCounts,
     rentPence,
     rentAmount,
-    agreedRentPence: allocation.agreedPence,
-    carryInPence: allocation.carryInPence,
-    carryOutPence: allocation.carryOutPence,
-    chargeableDays: allocation.chargeableDays,
+    chargeableDays: rentCounts.periodLength,
     bedroom: r.bedroom,
     shared: r.shared,
     rentShare: r.raw,
@@ -666,7 +563,7 @@ export function monthSummaryText(state: HouseholdState, key: string): string {
   const c = computeMonth(state, key, "eff");
   const pay = payer(state);
   const lines: string[] = [];
-  lines.push(`${monthLabel(key)} — rent & bills`);
+  lines.push(`${tenancyMonthLabel(key)} — rent & bills`);
   lines.push("");
   lines.push(`Rent ${money(state.currency, c.rentPence)}`);
   c.lines.forEach((l) =>
@@ -678,10 +575,10 @@ export function monthSummaryText(state: HouseholdState, key: string): string {
     const t = c.totals[p.id] || 0;
     if (!t) return;
     const n = c.counts.liableDays[p.id] || 0;
-    const denom = daysInMonth(key);
-    const span =
-      c.chargeableDays < denom ? ` · ${c.rentCounts.periodLabel}` : "";
-    lines.push(`${p.name}: ${money(state.currency, t)}  (${n} of ${denom} days here${span})`);
+    const denom = c.chargeableDays;
+    lines.push(
+      `${p.name}: ${money(state.currency, t)}  (${n} of ${denom} days here · ${c.rentCounts.periodLabel})`,
+    );
   });
   const { bal } = computeBalances(state);
   const owing = state.people.filter((p) => !p.isPayer && Math.abs(bal[p.id] || 0) >= 1);

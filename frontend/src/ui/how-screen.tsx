@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { daysInMonth, monthLabel, periodLabel } from "../domain/dates";
+import { tenancyMonthLabel } from "../domain/dates";
 import { computeMonth, runChecks, weightedAreas } from "../domain/engine";
 import { fmtNum, money, payer, personById, plural } from "../domain/format";
 import { ensureMonth, lastRoomOf } from "../domain/months";
@@ -28,8 +28,8 @@ export function HowScreen() {
   const { store, state, activeTab } = useHousehold();
   const [check, setCheck] = useState<CheckView>({ kind: "idle" });
   const key = state.currentMonth;
-  const D = daysInMonth(key);
   const c = computeMonth(state, key, "eff");
+  const D = c.chargeableDays;
   const { rooms, ca, total } = weightedAreas(state);
   const pay = payer(state);
   const totDays = Object.values(c.counts.liableDays).reduce((a, v) => a + v, 0);
@@ -61,11 +61,11 @@ export function HowScreen() {
           <h2 id="how-what">What this is</h2>
           <p>
             A house is rented as one thing but lived in by several people, in different rooms, for
-            different amounts of time. This app turns that into a number per person per month. It
-            files everything under <b>calendar months</b>, one at a time, using the bills that{" "}
-            <em>actually</em> arrived rather than what anyone guessed at the start. The landlord or
-            a bill may be paid on a different day — the 9th, say — but the split always uses that
-            calendar month's stints, so August can be finished on the 1st of September.
+            different amounts of time. This app turns that into a number per person per tenancy
+            month. It files everything under <b>tenancy months</b>, one at a time, using the bills
+            that <em>actually</em> arrived rather than what anyone guessed at the start. A tenancy
+            month runs from the tenancy start day to the day before it in the next calendar month —
+            9 August to 8 September, for example — and that whole window is what the split uses.
           </p>
           <p>
             Two people can disagree about what is fair. They cannot really disagree about what the
@@ -89,11 +89,10 @@ export function HowScreen() {
           </ul>
           <p>
             Occupancy comes from your <b>stints</b> on the <b>Who's here</b> tab. A stint is a block
-            of days in one bedroom in a calendar month. Payment dates (when rent or a bill leaves
-            the account) do not change which days count — only that month's stints do. There is no
-            second occupancy record, so nothing can fall out of step. If the tenancy starts mid-month,
-            the first month is charged pro rata up to the 31st and the leftover slice of that month's
-            rent is added to the next calendar month.
+            of days in one bedroom in a tenancy month, including the early days of the next calendar
+            month that belong to that period. The full rent for that period is split; none of it is
+            kicked into the following month. There is no second occupancy record, so nothing can
+            fall out of step.
           </p>
           <div className="callout">
             <p>
@@ -113,7 +112,7 @@ export function HowScreen() {
             <p style={{ marginBottom: 0 }}>
               <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
               bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere to
-              go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
+              go: it gets spread across everyone and a warning appears on <b>This tenancy month</b> and{" "}
               <b>Who's here</b>, with the exact days listed. The <em>Bedroom cover</em> strip under
               the timeline shows this at a glance.
             </p>
@@ -259,7 +258,8 @@ export function HowScreen() {
 
           <h2 id="how-bills">How each bill splits</h2>
           <p>
-            Every bill is one of two kinds, and that is the only thing you have to decide about it:
+            Every bill splits the same way: your days in the tenancy month, divided by everyone's
+            days.
           </p>
           <div className="htable-wrap" style={{ marginBottom: 14 }}>
             <table className="htable">
@@ -279,8 +279,7 @@ export function HowScreen() {
                       {(+b.est || 0).toLocaleString()}
                     </td>
                     <td style={{ textAlign: "left" }}>
-                      Split across this calendar month
-                      {b.cycleStartDay === 1 ? "" : ` · paid ${periodLabel(key, b.cycleStartDay)}`}
+                      Split across this tenancy month
                     </td>
                   </tr>
                 ))}
@@ -288,8 +287,8 @@ export function HowScreen() {
             </table>
           </div>
           <p>
-            Every bill splits the same way: <b>your days divided by everyone's days</b> in that
-            bill's period. Energy is worked out exactly like council tax. The current bills are:
+            Every bill splits the same way: <b>your days divided by everyone's days</b> in the
+            tenancy month. Energy is worked out exactly like council tax. The current bills are:
           </p>
           <div className="htable-wrap" style={{ marginBottom: 14 }}>
             <table className="htable">
@@ -333,7 +332,7 @@ export function HowScreen() {
               </tbody>
             </table>
           </div>
-          <p>And this month's days work out as:</p>
+          <p>And this tenancy month's days work out as:</p>
 
           <h2 id="how-trueup">Estimates, real bills and true-ups</h2>
           <p>
@@ -406,7 +405,7 @@ export function HowScreen() {
               currency={state.currency}
               name={personById(state, exId)?.name ?? ""}
               isPayer={!!personById(state, exId)?.isPayer}
-              month={monthLabel(key)}
+              month={tenancyMonthLabel(key)}
               days={D}
               liable={c.counts.liableDays[exId] || 0}
               nights={c.counts.nights[exId] || 0}
@@ -466,13 +465,9 @@ export function HowScreen() {
               step, and eventually wouldn't be.
             </li>
             <li>
-              <b>Splits follow the calendar month.</b> Payment dates can wander; August's figures
-              only ever need August's stints.
-            </li>
-            <li>
-              <b>A mid-month tenancy start is pro rata.</b> Charge the days from the start date to
-              the month's end, and move the leftover slice of that month's rent into the next
-              calendar month.
+              <b>Splits follow the tenancy month.</b> The window is taken from the tenancy start
+              day. The full rent and each bill for that period are split by who was here on those
+              days.
             </li>
             <li>
               <b>A stint means paying, not present.</b> Being away doesn't reduce your share; ending
@@ -535,7 +530,7 @@ export function HowScreen() {
           <p>No. Balances survive leaving. You stay on the Balances tab until you are paid.</p>
           <h3>Can I see how a number was reached?</h3>
           <p>
-            Yes — tap your name on the <b>This month</b> tab. Every line shows the amount, the basis
+            Yes — tap your name on the <b>This tenancy month</b> tab. Every line shows the amount, the basis
             it was split on, and how many nights or liable-days you were counted for.
           </p>
           <h3>Somebody is moving out. What do I do?</h3>
@@ -648,7 +643,7 @@ function CheckOut(props: { results: CheckResult[] }) {
         </p>
         {bad.map((r) => (
           <p key={r.key}>
-            {monthLabel(r.key)}: {r.problems.join("; ")}
+            {tenancyMonthLabel(r.key)}: {r.problems.join("; ")}
           </p>
         ))}
       </div>
@@ -659,7 +654,7 @@ function CheckOut(props: { results: CheckResult[] }) {
           </p>
           {warns.map((r) => (
             <p key={r.key}>
-              {monthLabel(r.key)}: {r.warn.join(" ")}
+              {tenancyMonthLabel(r.key)}: {r.warn.join(" ")}
             </p>
           ))}
         </div>
@@ -692,7 +687,7 @@ function RentFlow() {
           Daily cost of this room =
         </text>
         <text className="t-sm" x="390" y="119" textAnchor="middle">
-          rent × (its weighted area ÷ total weighted area) ÷ days in month
+          rent × (its weighted area ÷ total weighted area) ÷ days in the tenancy month
         </text>
         <path className="ln" d="M390 132 L390 158" markerEnd="url(#fa)" />
         <rect className="n-dec" x="230" y="160" width="320" height="42" rx="10" />

@@ -35,6 +35,11 @@ export function monthLabel(key: string, short = false): string {
   return short ? `${nm.slice(0, 3)} ${String(y).slice(2)}` : `${nm} ${y}`;
 }
 
+export function tenancyMonthLabel(key: string, short = false): string {
+  const label = monthLabel(key, short);
+  return label === "—" ? label : `Tenancy ${label}`;
+}
+
 export function addMonths(key: string, n: number): string {
   const { y, m } = parseKey(key);
   const d = new Date(y, m - 1 + n, 1);
@@ -112,6 +117,65 @@ export function calendarRangeLabel(monthKey: string, tenancyStart: string): stri
   const from = firstChargeableDay(monthKey, tenancyStart);
   if (from > dim) return monthLabel(monthKey);
   return `${dayMonthLabel(monthKey, from)} – ${dayMonthLabel(monthKey, dim)}`;
+}
+
+export function tenancyCycleDay(tenancyStart: string): number {
+  return parseIsoDate(tenancyStart)?.day ?? 1;
+}
+
+export function tenancyPeriodBounds(monthKey: string, tenancyStart: string): PeriodBounds {
+  return periodBounds(monthKey, tenancyCycleDay(tenancyStart));
+}
+
+export function tenancyPeriodLength(monthKey: string, tenancyStart: string): number {
+  return tenancyPeriodBounds(monthKey, tenancyStart).length;
+}
+
+export function tenancyPeriodDays(
+  monthKey: string,
+  tenancyStart: string,
+): Array<{ key: string; d: number }> {
+  return iteratePeriodDays(tenancyPeriodBounds(monthKey, tenancyStart));
+}
+
+export function periodDayAt(
+  monthKey: string,
+  tenancyStart: string,
+  periodDay: number,
+): { key: string; d: number } | null {
+  const days = tenancyPeriodDays(monthKey, tenancyStart);
+  return days[periodDay - 1] ?? null;
+}
+
+export function periodDayIso(monthKey: string, tenancyStart: string, periodDay: number): string {
+  const at = periodDayAt(monthKey, tenancyStart, periodDay);
+  return at ? isoOf(at.key, at.d) : "";
+}
+
+export function isoToPeriodDay(monthKey: string, tenancyStart: string, iso: string): number | null {
+  const parts = parseIsoDate(iso);
+  if (!parts) return null;
+  const days = tenancyPeriodDays(monthKey, tenancyStart);
+  const index = days.findIndex((day) => day.key === parts.key && day.d === parts.day);
+  return index < 0 ? null : index + 1;
+}
+
+export function tenancyOwnerKey(dateKey: string, day: number, tenancyStart: string): string {
+  const start = cycleDayInMonth(dateKey, tenancyCycleDay(tenancyStart));
+  return day >= start ? dateKey : addMonths(dateKey, -1);
+}
+
+export function dayMonthOrdinalLabel(key: string, day: number, withYear = false): string {
+  const { y } = parseKey(key);
+  const base = `${ordinal(day)} ${monthNameShort(key)}`;
+  return withYear ? `${base} ${y}` : base;
+}
+
+export function tenancyPeriodLabel(monthKey: string, tenancyStart: string): string {
+  const bounds = tenancyPeriodBounds(monthKey, tenancyStart);
+  const end = inclusivePeriodEnd(bounds);
+  const crossYear = parseKey(bounds.startKey).y !== parseKey(end.key).y;
+  return `Tenancy period ${dayMonthOrdinalLabel(bounds.startKey, bounds.startDay, crossYear)} to ${dayMonthOrdinalLabel(end.key, end.day, crossYear)}`;
 }
 
 export function periodBounds(monthKey: string, cycleDay: number): PeriodBounds {

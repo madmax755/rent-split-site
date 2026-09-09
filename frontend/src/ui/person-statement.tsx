@@ -1,5 +1,5 @@
 import { ChevronDownIcon } from "lucide-react";
-import { daysInMonth, monthLabel } from "../domain/dates";
+import { tenancyMonthLabel } from "../domain/dates";
 import { chargedFor, monthAllActual, monthHasActuals } from "../domain/engine";
 import { money, personById, plural, signedMoney } from "../domain/format";
 import type { HouseholdState, MonthCompute, MonthRecord } from "../domain/types";
@@ -21,7 +21,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
   const { state, personId, monthKey, M, c, open } = props;
   const p = personById(state, personId);
   if (!p) return null;
-  const D = daysInMonth(monthKey);
+  const D = c.chargeableDays;
   const liable = c.counts.liableDays[personId] || 0;
   const nights = liable;
   const total = c.totals[personId] || 0;
@@ -68,7 +68,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             {p.isPayer ? <Badge variant="secondary">pays the bills</Badge> : null}
           </div>
           <div className="tabular-nums text-xs text-muted-foreground">
-            {`here ${liable} of ${D} days${c.chargeableDays < D ? ` · ${c.rentCounts.periodLabel}` : ""}`}
+            {`here ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
             {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
           </div>
         </div>
@@ -107,8 +107,8 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
               u === 0
                 ? l.how[personId] === "not a payer"
                   ? "not a payer on this bill"
-                  : "not here this month"
-                : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days${l.cycleStartDay === 1 ? "" : ` · ${l.periodLabel}`}`;
+                  : "not here this tenancy month"
+                : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days`;
             return (
               <Line
                 key={l.id}
@@ -120,7 +120,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             );
           })}
           <Line
-            name={`Total for ${monthLabel(monthKey)}`}
+            name={`Total for ${tenancyMonthLabel(monthKey)}`}
             how=""
             amount={money(state.currency, total)}
             strong

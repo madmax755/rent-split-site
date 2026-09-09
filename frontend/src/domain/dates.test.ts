@@ -5,10 +5,16 @@ import {
   clampCycleDay,
   firstChargeableDay,
   inclusivePeriodEnd,
+  isoToPeriodDay,
   iteratePeriodDays,
   parseIsoDate,
   periodBounds,
+  periodDayIso,
   periodLabel,
+  tenancyMonthLabel,
+  tenancyOwnerKey,
+  tenancyPeriodLabel,
+  tenancyPeriodLength,
 } from "./dates";
 
 describe("cycle day helpers", () => {
@@ -75,5 +81,18 @@ describe("tenancy start helpers", () => {
     expect(chargeableDayCount("2026-08", "2026-08-09")).toBe(23);
     expect(chargeableDayCount("2026-09", "2026-08-09")).toBe(30);
     expect(calendarRangeLabel("2026-08", "2026-08-09")).toBe("9 Aug – 31 Aug");
+  });
+
+  test("tenancy August 2026 runs 9 Aug to 8 Sep", () => {
+    expect(tenancyMonthLabel("2026-08")).toBe("Tenancy August 2026");
+    expect(tenancyPeriodLabel("2026-08", "2026-08-09")).toBe("Tenancy period 9th Aug to 8th Sep");
+    expect(tenancyPeriodLength("2026-08", "2026-08-09")).toBe(31);
+    expect(tenancyPeriodLength("2026-09", "2026-08-09")).toBe(30);
+    expect(tenancyOwnerKey("2026-08", 9, "2026-08-09")).toBe("2026-08");
+    expect(tenancyOwnerKey("2026-09", 8, "2026-08-09")).toBe("2026-08");
+    expect(tenancyOwnerKey("2026-09", 9, "2026-08-09")).toBe("2026-09");
+    expect(periodDayIso("2026-08", "2026-08-09", 1)).toBe("2026-08-09");
+    expect(periodDayIso("2026-08", "2026-08-09", 31)).toBe("2026-09-08");
+    expect(isoToPeriodDay("2026-08", "2026-08-09", "2026-09-08")).toBe(31);
   });
 });

@@ -1,15 +1,7 @@
-import {
-  addMonths,
-  calendarRangeLabel,
-  clampCycleDay,
-  daysInMonth,
-  monthLabel,
-  periodLabel,
-} from "../domain/dates";
+import { addMonths, daySpanLabel, tenancyMonthLabel, tenancyPeriodLabel } from "../domain/dates";
 import {
   bedroomGaps,
   captureConfig,
-  chargesUseCalendarMonth,
   computeMonth,
   computeMonthInner,
   monthAllActual,
@@ -18,24 +10,13 @@ import {
   monthSummaryText,
   weightedAreas,
 } from "../domain/engine";
-import {
-  fmtNum,
-  money,
-  money0,
-  personName,
-  plural,
-  rangeText,
-  signedMoney,
-} from "../domain/format";
-import { uid } from "../domain/ids";
+import { fmtNum, money, money0, personName, plural, signedMoney } from "../domain/format";
 import { ensureMonth, seedStints } from "../domain/months";
 import type { HouseholdState, MonthCompute, MonthLine, MonthRecord } from "../domain/types";
 import { copyText } from "../lib/copy-text";
 import { useHousehold } from "../store/household-context";
 import type { HouseholdStore } from "../store/household-store";
-import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   EmptyState,
@@ -56,23 +37,11 @@ import { useConfirm } from "./confirm-dialog";
 export { goMonth };
 
 function rentSplitNote(state: HouseholdState, c: MonthCompute): string {
-  const bits = [
-    `${c.rentCounts.periodLabel} · ${fmtNum(weightedAreas(state).total, 1)} m² weighted`,
-  ];
-  if (c.carryOutPence > 0) {
-    bits.push(
-      `${money(state.currency, c.rentPence)} of ${money(state.currency, c.agreedRentPence)} this month · ${money(state.currency, c.carryOutPence)} carries into ${monthLabel(addMonths(c.key, 1))}`,
-    );
-  } else if (c.carryInPence > 0) {
-    bits.push(
-      `${money(state.currency, c.agreedRentPence)} plus ${money(state.currency, c.carryInPence)} from ${monthLabel(addMonths(c.key, -1))}`,
-    );
-  }
-  return bits.join(" · ");
+  return `${c.rentCounts.periodLabel} · ${fmtNum(weightedAreas(state).total, 1)} m² weighted`;
 }
 
-function lineOf(M: MonthRecord, id: string, isOneOff: boolean): MonthLine | undefined {
-  return isOneOff ? (M.oneOffs || []).find((x) => x.id === id) : M.lines[id];
+function lineOf(M: MonthRecord, id: string): MonthLine | undefined {
+  return M.lines[id];
 }
 
 export function MonthScreen() {
@@ -80,18 +49,17 @@ export function MonthScreen() {
   const ask = useConfirm();
   const key = state.currentMonth;
   const M = ensureMonth(state, key);
-  const D = daysInMonth(key);
   const c = computeMonth(state, key, "eff");
+  const D = c.chargeableDays;
   const status = monthStatus(state, key);
   const totalNights = Object.values(c.counts.liableDays).reduce((s, v) => s + v, 0);
   const liableIds = state.people.filter((p) => (c.counts.liableDays[p.id] || 0) > 0);
-  const pending =
-    state.bills.length + (M.oneOffs || []).length - c.lines.filter((l) => l.isActual).length;
+  const pending = state.bills.length - c.lines.filter((l) => l.isActual).length;
   const warns: string[] = [...c.warn];
-  if (!liableIds.length) warns.push("Nobody is down as living here this month.");
+  if (!liableIds.length) warns.push("Nobody is down as living here this tenancy month.");
   bedroomGaps(state, key).forEach((g) => {
     warns.push(
-      `${g.name} has nobody in it on ${g.days.length === D ? "any day" : "day " + rangeText(g.days)} — every bedroom should be occupied every day. Its rent is being spread across everyone instead.`,
+      `${g.name} has nobody in it on ${g.days.length === D ? "any day" : daySpanLabel(g.days)} — every bedroom should be occupied every day. Its rent is being spread across everyone instead.`,
     );
   });
   c.lines
@@ -101,7 +69,7 @@ export function MonthScreen() {
         .filter((id) => (l.units[id] ?? 0) > 0)
         .map((id) => personName(state, id));
       warns.push(
-        `Nobody who pays ${l.name} was here ${l.cycleStartDay === 1 ? "this month" : `in ${l.periodLabel}`}, so the whole ${money(state.currency, l.amount)} went to ${eligible.join(" and ") || "no-one"} anyway — check that's still right.`,
+        `Nobody who pays ${l.name} was here in ${l.periodLabel}, so the whole ${money(state.currency, l.amount)} went to ${eligible.join(" and ") || "no-one"} anyway — check that's still right.`,
       );
     });
 
@@ -113,8 +81,8 @@ export function MonthScreen() {
   return (
     <Screen id="month" active={activeTab === "month"}>
       <PageHeader
-        title="This month"
-        description={`${D} days · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`}
+        title="This tenancy month"
+        description={`${tenancyPeriodLabel(key, state.tenancyStart)} · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
@@ -125,7 +93,7 @@ export function MonthScreen() {
       <WarnList items={warns} />
       <KpiGrid>
         <KpiCard
-          label="Total this month"
+          label="Total this tenancy month"
           value={money0(state.currency, c.grand)}
           sub={`${money(state.currency, c.rentPence)} rent + ${money(state.currency, c.billsTotalPence)} bills`}
         />
@@ -155,7 +123,7 @@ export function MonthScreen() {
       <div className="grid gap-5">
         <Panel
           title="What it cost"
-          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}. Type the estimate when the month starts, and the realised figure when the bill lands.`}
+          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}. Type the estimate when the tenancy month starts, and the realised figure when the bill lands.`}
         >
           <div className="hidden grid-cols-[1fr_118px_118px_92px] gap-2 px-1 pb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid">
             <span>Line</span>
@@ -199,46 +167,16 @@ export function MonthScreen() {
                 state={state}
                 def={b}
                 line={M.lines[b.id] ?? { est: b.est ?? 0, act: null }}
-                oneOff={false}
-              />
-            ))}
-            {(M.oneOffs || []).map((x) => (
-              <BillRow
-                key={x.id}
-                monthKey={key}
-                store={store}
-                state={state}
-                def={x}
-                line={x}
-                oneOff
               />
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              variant="outline"
-              onClick={() => {
-                store.mutate(() => {
-                  const month = ensureMonth(store.state, key);
-                  month.oneOffs = month.oneOffs || [];
-                  month.oneOffs.push({
-                    id: uid("oo"),
-                    name: "One-off charge",
-                    est: 0,
-                    act: null,
-                    payers: null,
-                  });
-                });
-              }}
-            >
-              Add one-off charge
-            </Button>
-            <Button
               variant="ghost"
               onClick={() => {
                 const prev = state.months[addMonths(key, -1)];
                 if (!prev) {
-                  store.announce("There's no previous month on record.");
+                  store.announce("There's no previous tenancy month on record.");
                   return;
                 }
                 let n = 0;
@@ -258,19 +196,13 @@ export function MonthScreen() {
                   });
                 });
                 store.announce(
-                  `${plural(n, "estimate")} pulled from ${monthLabel(addMonths(key, -1))}.`,
+                  `${plural(n, "estimate")} pulled from ${tenancyMonthLabel(addMonths(key, -1))}.`,
                 );
               }}
             >
               Estimates from last month
             </Button>
           </div>
-          {chargesUseCalendarMonth(state) ? null : (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Everyone's share is worked out on the calendar month. Date ranges under bills are when
-              that payment runs, not the days the split uses.
-            </p>
-          )}
         </Panel>
 
         <Panel
@@ -311,7 +243,7 @@ export function MonthScreen() {
                   if (month.collected) {
                     if (
                       !(await ask({
-                        title: "Unlock this month?",
+                        title: "Unlock this tenancy month?",
                         description:
                           "It goes back to following the current rent, rooms and bills. True-ups come off the balances until you lock it again.",
                         confirmLabel: "Unlock",
@@ -328,7 +260,7 @@ export function MonthScreen() {
                       m.collected = true;
                       m.chargedAt = new Date().toISOString().slice(0, 10);
                       store.announce(
-                        "Locked — this month's rent, rooms, bills and people are now frozen.",
+                        "Locked — this tenancy month's rent, rooms, bills and people are now frozen.",
                       );
                     } else {
                       m.collected = false;
@@ -354,11 +286,11 @@ export function MonthScreen() {
 
         <Panel
           title="Notes"
-          description="This month only — a boiler repair, a rent review, who had guests."
+          description="This tenancy month only — a boiler repair, a rent review, who had guests."
         >
           <Textarea
             className="min-h-20"
-            placeholder="Anything worth remembering about this month…"
+            placeholder="Anything worth remembering about this tenancy month…"
             value={M.note || ""}
             onChange={(e) => {
               store.mutate(() => {
@@ -373,9 +305,9 @@ export function MonthScreen() {
               onClick={async () => {
                 if (
                   !(await ask({
-                    title: "Rebuild this month's stints?",
+                    title: "Rebuild this tenancy month's stints?",
                     description:
-                      "Any visitor stays and away periods you've entered for this month are lost.",
+                      "Any visitor stays and away periods you've entered for this tenancy month are lost.",
                     confirmLabel: "Rebuild",
                     destructive: true,
                   }))
@@ -396,7 +328,7 @@ export function MonthScreen() {
               onClick={async () => {
                 if (
                   !(await ask({
-                    title: `Delete ${monthLabel(key)}?`,
+                    title: `Delete ${tenancyMonthLabel(key)}?`,
                     description: "Its bills, stints and true-ups all go.",
                     confirmLabel: "Delete month",
                     destructive: true,
@@ -410,7 +342,7 @@ export function MonthScreen() {
                 });
               }}
             >
-              Delete this month
+              Delete this tenancy month
             </Button>
           </div>
         </Panel>
@@ -423,60 +355,22 @@ type BillRowProps = {
   store: HouseholdStore;
   state: HouseholdState;
   monthKey: string;
-  def: { id: string; name: string; cycleStartDay?: number };
+  def: { id: string; name: string };
   line: MonthLine;
-  oneOff: boolean;
 };
 
 function BillRow(props: BillRowProps) {
-  const { store, state, def, line, oneOff } = props;
-  const cycleDay = oneOff ? 1 : clampCycleDay(def.cycleStartDay ?? 1);
-  const calendar = calendarRangeLabel(props.monthKey, state.tenancyStart);
-  const range =
-    cycleDay === 1 ? calendar : `${calendar} · paid ${periodLabel(props.monthKey, cycleDay)}`;
+  const { store, state, def, line } = props;
+  const range = tenancyPeriodLabel(props.monthKey, state.tenancyStart);
   const estP = Math.round((+line.est || 0) * 100);
   const actP = typeof line.act === "number" ? Math.round(line.act * 100) : null;
   const delta = actP === null ? null : actP - estP;
   const dTxt =
     delta === null ? "not in yet" : delta === 0 ? "spot on" : signedMoney(state.currency, delta);
   return (
-    <div
-      className={`grid grid-cols-2 items-center gap-2 rounded-xl p-3 md:grid-cols-[1fr_118px_118px_92px] ${oneOff ? "bg-primary/5" : "bg-muted/50"}`}
-    >
+    <div className="grid grid-cols-2 items-center gap-2 rounded-xl bg-muted/50 p-3 md:grid-cols-[1fr_118px_118px_92px]">
       <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 md:col-span-1">
-        {oneOff ? (
-          <Input
-            type="text"
-            className="min-w-32 flex-1 border-transparent bg-transparent px-1 font-medium shadow-none"
-            value={def.name}
-            onChange={(e) => {
-              store.mutate(() => {
-                const x = (ensureMonth(store.state, props.monthKey).oneOffs || []).find(
-                  (o) => o.id === def.id,
-                );
-                if (x) x.name = e.target.value;
-              });
-            }}
-          />
-        ) : (
-          <span className="font-medium">{def.name}</span>
-        )}
-        {oneOff ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="max-sm:size-10"
-            title="Remove"
-            onClick={() => {
-              store.mutate(() => {
-                const month = ensureMonth(store.state, props.monthKey);
-                month.oneOffs = (month.oneOffs || []).filter((x) => x.id !== def.id);
-              });
-            }}
-          >
-            <XIcon />
-          </Button>
-        ) : null}
+        <span className="font-medium">{def.name}</span>
         <span className="basis-full text-xs text-muted-foreground">{range}</span>
       </div>
       <div>
@@ -486,11 +380,11 @@ function BillRow(props: BillRowProps) {
         <MoneyInput
           currency={state.currency}
           className="w-full"
-          min={oneOff ? undefined : 0}
+          min={0}
           value={+line.est || 0}
           onChange={(v) => {
             store.mutate(() => {
-              const L = lineOf(ensureMonth(store.state, props.monthKey), def.id, oneOff);
+              const L = lineOf(ensureMonth(store.state, props.monthKey), def.id);
               if (L) L.est = typeof v === "number" ? v : 0;
             });
           }}
@@ -503,12 +397,12 @@ function BillRow(props: BillRowProps) {
         <MoneyInput
           currency={state.currency}
           className="w-full"
-          min={oneOff ? undefined : 0}
+          min={0}
           placeholder="—"
           value={typeof line.act === "number" ? line.act : ""}
           onChange={(v) => {
             store.mutate(() => {
-              const L = lineOf(ensureMonth(store.state, props.monthKey), def.id, oneOff);
+              const L = lineOf(ensureMonth(store.state, props.monthKey), def.id);
               if (!L) return;
               L.act = v === "" ? null : v;
             });
@@ -544,7 +438,7 @@ function Statements(props: {
   if (!ids.length) {
     return (
       <EmptyState
-        title="Nobody is living here this month"
+        title="Nobody is living here this tenancy month"
         description="Add a stint on Who's here."
         action={
           <Button variant="outline" onClick={() => store.setTab("stints")}>
