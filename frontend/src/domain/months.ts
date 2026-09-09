@@ -39,17 +39,6 @@ export function blankMonth(state: HouseholdState, key: string): MonthRecord {
   };
 }
 
-export function projectStintRange(
-  stint: Pick<Stint, "from" | "to">,
-  fromLength: number,
-  toLength: number,
-): { from: number; to: number } {
-  return {
-    from: Math.min(toLength, Math.max(1, stint.from)),
-    to: stint.to >= fromLength ? toLength : Math.min(toLength, Math.max(1, stint.to)),
-  };
-}
-
 export function seedStints(state: HouseholdState, key: string, fromScratch = false): void {
   const M = state.months[key];
   if (!M) return;
@@ -68,15 +57,14 @@ export function seedStints(state: HouseholdState, key: string, fromScratch = fal
     M.stints = prev.stints
       .filter((st) => state.people.some((p) => p.id === st.personId && !p.archived))
       .flatMap((st): Stint[] => {
-        const range = projectStintRange(st, prevLength, length);
-        if (range.from > range.to) return [];
+        if (st.to < prevLength) return [];
         return [
           {
             id: uid("st"),
             personId: st.personId,
             roomId: st.roomId,
-            from: range.from,
-            to: range.to,
+            from: 1,
+            to: length,
           },
         ];
       });

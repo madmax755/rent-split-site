@@ -100,7 +100,7 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
     Object.entries(oldStints).forEach(([key, stints]) => {
       const dim = daysInMonth(key);
       const nextKey = addMonths(key, 1);
-      const nextExists = Boolean(oldStints[nextKey]);
+      const nextHasStints = (oldStints[nextKey] ?? []).length > 0;
       stints.forEach((stint) => {
         const last = Math.min(dim, Math.max(stint.from, stint.to));
         const first = Math.min(last, Math.max(1, stint.from));
@@ -118,7 +118,7 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
             id: stint.id,
           });
         }
-        if (!nextExists && stint.to >= dim) {
+        if (!nextHasStints && stint.to >= dim) {
           const period = tenancyPeriodDays(key, tenancyStart);
           period.forEach((day, index) => {
             if (day.key === key) return;

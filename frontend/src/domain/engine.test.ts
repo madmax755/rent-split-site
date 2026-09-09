@@ -160,4 +160,22 @@ describe("tenancy-month split maths", () => {
     seedStints(state, "2026-08", true);
     expect(state.months["2026-08"]?.stints.every((s) => s.from === 1 && s.to === 31)).toBe(true);
   });
+
+  test("a stint that ends before the period does not seed into the next tenancy month", () => {
+    const state = twoPersonState();
+    state.tenancyStart = "2026-08-09";
+    state.months = {
+      "2026-08": blankMonthRecord(
+        "2026-08",
+        [stint("s1", "p1", "bed1", 1, 31), stint("s2", "p2", "bed2", 1, 24)],
+        ["energy"],
+      ),
+    };
+    ensureMonth(state, "2026-09");
+    const september = state.months["2026-09"]?.stints ?? [];
+    expect(september).toEqual([
+      expect.objectContaining({ personId: "p1", roomId: "bed1", from: 1, to: 30 }),
+    ]);
+    expect(september.some((s) => s.personId === "p2")).toBe(false);
+  });
 });

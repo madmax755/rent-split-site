@@ -552,15 +552,10 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
         copies = [stint for stint in prev.stints if stint.person_id != person_id]
         next_index = 0
         for stint in sorted(copies, key=lambda row: row.sort_index):
-            if stint.to_day >= prev_days:
-                from_day = 1
-                to_day = new_days
-            else:
-                from_day = min(new_days, max(1, stint.from_day))
-                to_day = min(new_days, stint.to_day)
-                to_day = max(from_day, to_day)
-            if from_day > new_days:
+            if stint.to_day < prev_days:
                 continue
+            from_day = 1
+            to_day = new_days
             month.stints.append(
                 Stint(
                     id=_new_stint_id(),

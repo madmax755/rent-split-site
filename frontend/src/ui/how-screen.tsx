@@ -258,7 +258,8 @@ export function HowScreen() {
 
           <h2 id="how-bills">How each bill splits</h2>
           <p>
-            Every bill is one of two kinds, and that is the only thing you have to decide about it:
+            Every bill splits the same way: your days in the tenancy month, divided by everyone's
+            days.
           </p>
           <div className="htable-wrap" style={{ marginBottom: 14 }}>
             <table className="htable">
@@ -286,8 +287,8 @@ export function HowScreen() {
             </table>
           </div>
           <p>
-            Every bill splits the same way: <b>your days divided by everyone's days</b> in that
-            bill's period. Energy is worked out exactly like council tax. The current bills are:
+            Every bill splits the same way: <b>your days divided by everyone's days</b> in the
+            tenancy month. Energy is worked out exactly like council tax. The current bills are:
           </p>
           <div className="htable-wrap" style={{ marginBottom: 14 }}>
             <table className="htable">
