@@ -56,20 +56,16 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
         type="button"
         aria-expanded={clickable ? open : undefined}
         className={cn(
-          "flex w-full items-center gap-3 px-4 py-3 text-left",
-          clickable ? "hover:bg-muted/50" : "cursor-default",
+          "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 text-left",
+          clickable ? "grid-cols-[auto_minmax(0,1fr)_auto_auto] hover:bg-muted/50" : "cursor-default",
         )}
         onClick={clickable ? props.onToggle : undefined}
       >
         <Avatar state={state} person={p} size={34} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 font-medium">
             {p.name}
             {p.isPayer ? <Badge variant="secondary">pays the bills</Badge> : null}
-          </div>
-          <div className="tabular-nums text-xs text-muted-foreground">
-            {`here ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
-            {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
           </div>
         </div>
         <div className="text-right">
@@ -88,6 +84,15 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
             )}
           />
         ) : null}
+        <div
+          className={cn(
+            "col-start-2 text-pretty tabular-nums text-xs text-muted-foreground",
+            clickable ? "col-end-4" : "col-span-2",
+          )}
+        >
+          {`here ${liable} of ${D} days · ${c.rentCounts.periodLabel}`}
+          {perNight ? ` · ${money(state.currency, perNight)} per day` : ""}
+        </div>
       </button>
       {open ? (
         <div className="border-t px-4 py-2">
@@ -167,24 +172,28 @@ function Line(props: LineProps) {
   return (
     <div
       className={cn(
-        "flex items-baseline gap-3 border-t py-2 text-sm first:border-t-0",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5 border-t py-2.5 text-sm first:border-t-0 md:flex md:gap-3",
         props.inset && "pl-3",
         props.strong && "border-t-2 font-semibold",
       )}
     >
-      <span className={cn("font-medium", props.inset && "font-normal text-foreground/80")}>
+      <span className={cn("min-w-0 font-medium", props.inset && "font-normal text-foreground/80")}>
         {props.name}
       </span>
-      <span className="min-w-0 flex-1 text-xs text-muted-foreground">{props.how}</span>
       <span
         className={cn(
-          "tabular-nums whitespace-nowrap font-medium",
+          "tabular-nums whitespace-nowrap font-medium md:order-last",
           props.tone === "credit" && "text-emerald-600 dark:text-emerald-400",
           props.tone === "debit" && "text-destructive",
         )}
       >
         {props.amount}
       </span>
+      {props.how ? (
+        <span className="col-span-2 min-w-0 text-pretty text-xs leading-snug text-muted-foreground md:col-auto md:flex-1">
+          {props.how}
+        </span>
+      ) : null}
     </div>
   );
 }
