@@ -80,7 +80,6 @@ export function TenantHomeScreen() {
           value={money0(state.currency, ask)}
           sub={statusLabel}
         />
-        <KpiCard label="Signed in as" value={me.name} sub={store.session?.username ?? ""} />
       </KpiGrid>
       <Panel title={tenancyMonthLabel(key)} description="Your share">
         <div className="mb-3 flex flex-wrap gap-2">
