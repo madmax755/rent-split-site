@@ -1,0 +1,46 @@
+# Production compose for server1 (tms.maxkendall.com).
+#
+# Expects:
+#   - Image already in the Tailscale registry (see .github/workflows/build-push.yml)
+#   - Env file /etc/rent-split.env (same secrets as the legacy systemd unit)
+#   - Existing SQLite tree at /opt/rent-split-site/data (bind-mounted; preserved)
+#
+# Usage on server1:
+#   export IMAGE=100.81.62.22:5000/rent-split:<tag>
+#   docker compose -f /opt/rent-split-site/docker-compose.prod.yml pull
+#   docker compose -f /opt/rent-split-site/docker-compose.prod.yml up -d
+
+services:
+  rent-split:
+    image: ${IMAGE:-100.81.62.22:5000/rent-split:latest}
+    container_name: rent-split
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file:
+      - /etc/rent-split.env
+    environment:
+      # Compose wins over env_file so container paths stay correct even if the
+      # host env still has legacy DATA_DIR=/opt/rent-split-site/data.
+      PORT: "8080"
+      DATA_DIR: /data
+      PUBLIC_DIR: /app/public
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - /opt/rent-split-site/data:/data
+    # Match the image USER (uid 1000). If host data/ is owned by another uid,
+    # either chown it or set RENT_SPLIT_UID/GID — see deploy/CUTOVER.md.
+    user: "${RENT_SPLIT_UID:-1000}:${RENT_SPLIT_GID:-1000}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=4)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

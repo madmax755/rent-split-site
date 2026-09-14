@@ -1,6 +1,10 @@
-# systemd unit for Rent Split on server1 (tms.maxkendall.com).
+# LEGACY — systemd unit for Rent Split on server1 (tms.maxkendall.com).
 #
-# Install / refresh:
+# Production now runs via Docker Compose (see docker-compose.prod.yml,
+# deploy/remote-deploy.sh, and deploy/CUTOVER.md). Do not install this unit on
+# new hosts. The deploy script stops and disables rent-split.service on cutover.
+#
+# Kept in-tree only as a rollback reference:
 #   sudo cp deploy/rent-split.service /etc/systemd/system/rent-split.service
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now rent-split
@@ -13,10 +17,11 @@
 #   RENT_SPLIT_ADMIN_PASSWORD=...
 #   RENT_SPLIT_SECRET=...
 #
-# Logs: journalctl -u rent-split -f
+# Logs (legacy): journalctl -u rent-split -f
+# Logs (current): docker compose -f /opt/rent-split-site/docker-compose.prod.yml logs -f
 
 [Unit]
-Description=Rent Split (tms.maxkendall.com)
+Description=Rent Split (tms.maxkendall.com) [LEGACY]
 After=network.target
 
 [Service]

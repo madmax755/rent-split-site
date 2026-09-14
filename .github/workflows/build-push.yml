@@ -1,0 +1,82 @@
+name: build-push
+
+# Build the production image on the self-hosted action-runner (Tailscale) and
+# push to the private registry at 100.81.62.22:5000 (no auth on the tailnet).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: build-push-rent-split
+  cancel-in-progress: true
+
+env:
+  REGISTRY: 100.81.62.22:5000
+  IMAGE_NAME: rent-split
+
+jobs:
+  build-push:
+    runs-on: self-hosted
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.tags.outputs.sha_tag }}
+      image_ref: ${{ steps.tags.outputs.primary }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Compute image tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA_TAG="$(echo '${{ github.sha }}' | cut -c1-12)"
+          PRIMARY="${REGISTRY}/${IMAGE_NAME}:${SHA_TAG}"
+          {
+            echo "sha_tag=${SHA_TAG}"
+            echo "primary=${PRIMARY}"
+          } >> "${GITHUB_OUTPUT}"
+
+          TAGS=("${PRIMARY}")
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            TAGS+=("${REGISTRY}/${IMAGE_NAME}:latest")
+          fi
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+            TAGS+=("${REGISTRY}/${IMAGE_NAME}:${VERSION}")
+          fi
+
+          echo "Building tags: ${TAGS[*]}"
+          printf '%s\n' "${TAGS[@]}" > /tmp/rent-split-image-tags.txt
+
+      - name: Ensure buildx builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx version
+          docker buildx inspect rent-split >/dev/null 2>&1 \
+            || docker buildx create --name rent-split --driver docker-container --use
+          docker buildx use rent-split
+          docker buildx inspect --bootstrap
+
+      - name: Build and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG_ARGS=()
+          while IFS= read -r tag; do
+            [[ -n "${tag}" ]] || continue
+            TAG_ARGS+=(-t "${tag}")
+          done < /tmp/rent-split-image-tags.txt
+
+          # amd64 matches server1; buildx keeps the door open for multi-arch later.
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            "${TAG_ARGS[@]}" \
+            --push \
+            .
