@@ -1,25 +1,63 @@
 name: deploy
 
+# Pull the registry image onto server1 and bring it up with compose.
+# Triggered after a successful build-push on main, or manually.
+
 on:
-  push:
+  workflow_run:
+    workflows: [build-push]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
-      ref:
-        description: "Git ref to deploy (branch, tag, or SHA). Empty = this workflow's commit / main tip."
+      image_tag:
+        description: "Image tag to deploy (git sha short, version tag, or latest). Empty = latest."
         required: false
-        default: ""
+        default: "latest"
 
 concurrency:
   group: deploy-server1
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  actions: read
+
+env:
+  REGISTRY: 100.81.62.22:5000
+  IMAGE_NAME: rent-split
+  DEPLOY_DIR: /opt/rent-split-site
+
 jobs:
   deploy:
     runs-on: self-hosted
+    # workflow_run only proceeds when build-push succeeded; dispatch always runs.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # For workflow_run, check out the commit that was built.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Resolve image tag
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG='${{ inputs.image_tag }}'
+            if [[ -z "${TAG}" ]]; then
+              TAG=latest
+            fi
+          else
+            TAG="$(echo '${{ github.event.workflow_run.head_sha }}' | cut -c1-12)"
+          fi
+          IMAGE="${REGISTRY}/${IMAGE_NAME}:${TAG}"
+          echo "image=${IMAGE}" >> "${GITHUB_OUTPUT}"
+          echo "Deploying ${IMAGE}"
 
       - name: Add SSH host key
         shell: bash
@@ -29,14 +67,19 @@ jobs:
           chmod 700 ~/.ssh
           ssh-keyscan -H server1 >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Sync compose + nginx to server1
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh server1 "sudo mkdir -p '${DEPLOY_DIR}' && sudo chgrp rent-split '${DEPLOY_DIR}' && sudo chmod 2771 '${DEPLOY_DIR}'"
+          scp docker-compose.prod.yml "server1:/tmp/rent-split-compose.yml"
+          scp deploy/tms.maxkendall.com.conf "server1:/tmp/rent-split-nginx.conf"
+          scp deploy/remote-deploy.sh "server1:/tmp/rent-split-remote-deploy.sh"
+          ssh server1 "sudo cp /tmp/rent-split-compose.yml '${DEPLOY_DIR}/docker-compose.prod.yml' && chmod +x /tmp/rent-split-remote-deploy.sh"
+
       - name: Deploy over SSH
         shell: bash
         run: |
           set -euo pipefail
-          REF='${{ inputs.ref }}'
-          if [[ -z "${REF}" ]]; then
-            REF='${{ github.sha }}'
-          fi
-          echo "Deploying ref: ${REF}"
-          chmod +x deploy/remote-deploy.sh
-          ssh server1 "REF='${REF}' bash -s" < deploy/remote-deploy.sh
+          ssh server1 \
+            "IMAGE='${{ steps.image.outputs.image }}' DEPLOY_DIR='${DEPLOY_DIR}' bash /tmp/rent-split-remote-deploy.sh"
