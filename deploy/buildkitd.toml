@@ -1,0 +1,5 @@
+# The Tailscale registry is plain HTTP (no TLS, no auth on the tailnet).
+# buildx's docker-container driver does not inherit daemon.json insecure-registries.
+[registry."100.81.62.22:5000"]
+  http = true
+  insecure = true

@@ -58,9 +58,14 @@ jobs:
         run: |
           set -euo pipefail
           docker buildx version
-          docker buildx inspect rent-split >/dev/null 2>&1 \
-            || docker buildx create --name rent-split --driver docker-container --use
-          docker buildx use rent-split
+          # Recreate each run so a hung BuildKit container cannot stick, and so
+          # deploy/buildkitd.toml (plain HTTP to the tailnet registry) is applied.
+          docker buildx rm -f rent-split >/dev/null 2>&1 || true
+          docker buildx create \
+            --name rent-split \
+            --driver docker-container \
+            --config deploy/buildkitd.toml \
+            --use
           docker buildx inspect --bootstrap
 
       - name: Build and push
