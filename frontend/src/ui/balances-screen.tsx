@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { tenancyMonthLabel } from "../domain/dates";
-import { computeBalances, monthHasActuals } from "../domain/engine";
+import { computeBalances } from "../domain/engine";
 import {
   money,
   money0,
@@ -10,7 +10,6 @@ import {
   plural,
   signedMoney,
 } from "../domain/format";
-import { sortedMonthKeys } from "../domain/months";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
@@ -32,10 +31,6 @@ export function BalancesScreen() {
   const owedByPayer = ids
     .filter((id) => (bal[id] ?? 0) < 0)
     .reduce((s, id) => s - (bal[id] ?? 0), 0);
-  const reconciledMonths = sortedMonthKeys(state).filter((k) => {
-    const month = state.months[k];
-    return month?.collected && monthHasActuals(month);
-  });
   const everyone = [...new Set([...state.people.map((p) => p.id), ...Object.keys(bal)])].filter(
     (id) => id !== pay.id,
   );
@@ -57,15 +52,6 @@ export function BalancesScreen() {
           label={`${pay.name} owes out`}
           value={money0(state.currency, owedByPayer)}
           sub="refunds for over-payments"
-        />
-        <KpiCard
-          label="Months trued up"
-          value={String(reconciledMonths.length)}
-          sub={
-            reconciledMonths.length
-              ? `${tenancyMonthLabel(reconciledMonths[0] ?? "", true)} – ${tenancyMonthLabel(reconciledMonths[reconciledMonths.length - 1] ?? "", true)}`
-              : "none yet"
-          }
         />
       </KpiGrid>
 
@@ -157,7 +143,7 @@ export function BalancesScreen() {
           {!items.length ? (
             <EmptyState
               title="Nothing to show yet"
-              description="Lock a month and enter its realised bills."
+              description="Lock a month, then enter its realised bills."
             />
           ) : (
             <div className="grid gap-2">
@@ -179,7 +165,10 @@ export function BalancesScreen() {
                       <div className="text-sm font-medium">
                         {p ? p.name : "(removed)"}{" "}
                         <span className="font-normal text-muted-foreground">
-                          — {isTrue ? `${tenancyMonthLabel(x.monthKey)} true-up` : x.note || "settled up"}
+                          —{" "}
+                          {isTrue
+                            ? `${tenancyMonthLabel(x.monthKey)} adjustment`
+                            : x.note || "settled up"}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">

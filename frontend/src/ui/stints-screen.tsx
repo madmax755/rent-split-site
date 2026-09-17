@@ -4,20 +4,22 @@ import {
   daySpanLabel,
   isoToPeriodDay,
   periodDayIso,
+  periodLabel,
+  tenancyCycleDay,
   tenancyMonthLabel,
   tenancyPeriodDays,
-  tenancyPeriodLabel,
   tenancyPeriodLength,
 } from "../domain/dates";
 import { MAX_PEOPLE } from "../domain/defaults";
 import { bedroomGaps, buildDayModel } from "../domain/engine";
 import { personById, personColor, plural } from "../domain/format";
 import { uid } from "../domain/ids";
-import { ensureMonth, lastRoomOf } from "../domain/months";
+import { ensureMonth, lastRoomOf, seedStints } from "../domain/months";
 import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
+import { useConfirm } from "./confirm-dialog";
 import { TextPromptDialog } from "./text-prompt-dialog";
 import { Button } from "@/components/ui/button";
 import { XIcon } from "lucide-react";
@@ -25,6 +27,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 
 export function StintsScreen() {
   const { store, state, activeTab, version } = useHousehold();
+  const ask = useConfirm();
   const selfOnly = store.isTenant();
   const myId = store.linkedPersonId();
   const [addingPerson, setAddingPerson] = useState(false);
@@ -84,13 +87,12 @@ export function StintsScreen() {
     <Screen id="stints" active={activeTab === "stints"}>
       <PageHeader
         title="Who's here"
-        description={`${tenancyPeriodLabel(key, state.tenancyStart)} · ${plural((M.stints || []).length, "stint")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
+        description={`${periodLabel(key, tenancyCycleDay(state.tenancyStart))} · ${plural(involved.length, "person", "people")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
         actions={<MonthSwitcher />}
       />
       <WarnList
         items={gaps.map(
-          (g) =>
-            `${g.name} empty on ${g.days.length === D ? "every day" : daySpanLabel(g.days)}`,
+          (g) => `${g.name} empty on ${g.days.length === D ? "every day" : daySpanLabel(g.days)}`,
         )}
       />
 
@@ -198,7 +200,7 @@ export function StintsScreen() {
           ) : (
             <EmptyState
               title={`Nobody is down for ${tenancyMonthLabel(key)} yet`}
-              description="Add a stint below, or reset from the roster on This tenancy month."
+              description="Add dates below, or reset from last month."
             />
           )}
         </div>
@@ -218,15 +220,15 @@ export function StintsScreen() {
       </div>
 
       <Panel
-        title="Stints"
+        title="Dates"
         description={
           selfOnly
             ? "These dates are when you are paying — usually the same as being in the house."
-            : "A stint is a block of days someone is in the house, in one bedroom, in this tenancy month. Occupancy lives here and nowhere else."
+            : "Each row is a stretch of days someone is paying, in one bedroom. Occupancy lives here and nowhere else."
         }
       >
         {!(M.stints || []).length ? (
-          <EmptyState title="No stints yet" />
+          <EmptyState title="No dates yet" />
         ) : (
           <div className="grid gap-2">
             {(M.stints || []).map((s) => {
@@ -329,7 +331,7 @@ export function StintsScreen() {
                           size="sm"
                           onClick={() => {
                             if (s.to - s.from < 1) {
-                              store.announce("A one-day stint can't be split.");
+                              store.announce("A one-day stay can't be split.");
                               return;
                             }
                             commitStints(() => {
@@ -404,8 +406,34 @@ export function StintsScreen() {
               });
             }}
           >
-            Add a stint
+            Add dates
           </Button>
+          {selfOnly ? null : (
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                if ((M.stints || []).length) {
+                  if (
+                    !(await ask({
+                      title: "Reset this month's dates?",
+                      description:
+                        "Visitor stays and away periods you've entered for this month are lost.",
+                      confirmLabel: "Reset",
+                      destructive: true,
+                    }))
+                  ) {
+                    return;
+                  }
+                }
+                store.mutate(() => {
+                  seedStints(store.state, key);
+                });
+                store.announce("Reset from last month.");
+              }}
+            >
+              Reset from last month
+            </Button>
+          )}
           {selfOnly ? null : (
             <Button
               variant="ghost"
@@ -427,7 +455,7 @@ export function StintsScreen() {
           addingPerson
             ? {
                 title: "Add someone new",
-                description: "They will get a short stint this tenancy month so you can set the dates.",
+                description: "They will get a short stay this month so you can set the dates.",
                 label: "Name",
                 defaultValue: "Someone new",
                 confirmLabel: "Add",

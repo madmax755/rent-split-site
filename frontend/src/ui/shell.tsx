@@ -55,7 +55,7 @@ const NAV: NavItem[] = [
   { id: "home", label: "Home", shortLabel: "Home", icon: <HomeIcon />, group: "work" },
   {
     id: "month",
-    label: "This tenancy month",
+    label: "This month",
     shortLabel: "Month",
     icon: <CalendarDaysIcon />,
     group: "work",
@@ -90,16 +90,16 @@ export function AppShell(props: AppShellProps) {
     ? visible.filter(
         (item) =>
           item.id === "home" ||
-          item.id === "month" ||
           item.id === "stints" ||
-          item.id === "balances",
+          item.id === "balances" ||
+          item.id === "history",
       )
     : visible.filter(
         (item) =>
           item.id === "month" ||
           item.id === "stints" ||
           item.id === "balances" ||
-          item.id === "setup",
+          item.id === "history",
       );
 
   const M = ensureMonth(state, state.currentMonth);
@@ -226,17 +226,11 @@ export function AppShell(props: AppShellProps) {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
-          <NavGroup title="Work" items={work} active={activeTab} alert={tabAlert} onGo={go} />
+          <NavGroup title="" items={work} active={activeTab} alert={tabAlert} onGo={go} />
           {house.length ? (
-            <NavGroup
-              title="The house"
-              items={house}
-              active={activeTab}
-              alert={tabAlert}
-              onGo={go}
-            />
+            <NavGroup title="Setup" items={house} active={activeTab} alert={tabAlert} onGo={go} />
           ) : null}
-          <NavGroup title="Help" items={help} active={activeTab} alert={tabAlert} onGo={go} />
+          <NavGroup title="" items={help} active={activeTab} alert={tabAlert} onGo={go} />
         </nav>
         <div className="mt-auto grid gap-2 border-t px-3 py-3">
           <div className="flex items-center justify-between gap-2 px-1">
@@ -307,9 +301,7 @@ export function AppShell(props: AppShellProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">Rent Split</div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              {pageTitle(activeTab, tenant)}
-            </div>
+            <div className="truncate text-[11px] text-muted-foreground">{pageTitle(activeTab)}</div>
           </div>
           <Button
             variant="ghost"
@@ -373,7 +365,7 @@ export function AppShell(props: AppShellProps) {
         >
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
-            <SheetDescription>History, settings and how the split works.</SheetDescription>
+            <SheetDescription>Household setup, settings and how the split works.</SheetDescription>
           </SheetHeader>
           <div className="grid gap-1 px-4 pb-6">
             {visible
@@ -416,7 +408,7 @@ export function AppShell(props: AppShellProps) {
   );
 }
 
-const tenantTabs = new Set<TabId>(["home", "month", "stints", "history", "balances", "how"]);
+const tenantTabs = new Set<TabId>(["home", "stints", "history", "balances", "how"]);
 
 type NavGroupProps = {
   title: string;
@@ -430,9 +422,11 @@ function NavGroup(props: NavGroupProps) {
   if (!props.items.length) return null;
   return (
     <div>
-      <div className="px-2 pb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-        {props.title}
-      </div>
+      {props.title ? (
+        <div className="px-2 pb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          {props.title}
+        </div>
+      ) : null}
       <div className="grid gap-0.5">
         {props.items.map((item) => (
           <button
@@ -456,16 +450,16 @@ function NavGroup(props: NavGroupProps) {
   );
 }
 
-function pageTitle(tab: TabId, tenant: boolean): string {
+function pageTitle(tab: TabId): string {
   switch (tab) {
     case "home":
       return "Home";
     case "month":
-      return "This tenancy month";
+      return "This month";
     case "stints":
       return "Who's here";
     case "balances":
-      return tenant ? "Settle" : "Settle";
+      return "Settle";
     case "history":
       return "History";
     case "setup":

@@ -63,7 +63,7 @@ describe("tenancy-month split maths", () => {
     const state = twoPersonState();
     const c = computeMonth(state, "2026-04", "eff");
     expect(c.rentCounts.periodLength).toBe(30);
-    expect(c.rentCounts.periodLabel).toBe("Tenancy period 1st Apr to 30th Apr");
+    expect(c.rentCounts.periodLabel).toBe("1st Apr to 30th Apr");
     expect(c.rentCounts.liableDays.p1).toBe(30);
     expect(c.rentCounts.liableDays.p2).toBe(30);
     expect(c.rentShare.p1).toBe(150000);
@@ -91,7 +91,7 @@ describe("tenancy-month split maths", () => {
     state.months["2026-08"]!.rent = 3500;
 
     const aug = computeMonth(state, "2026-08", "eff");
-    expect(aug.rentCounts.periodLabel).toBe("Tenancy period 9th Aug to 8th Sep");
+    expect(aug.rentCounts.periodLabel).toBe("9th Aug to 8th Sep");
     expect(aug.rentCounts.periodLength).toBe(31);
     expect(aug.rentPence).toBe(350000);
     expect(aug.counts.days[0]).toMatchObject({ key: "2026-08", d: 9 });

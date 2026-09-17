@@ -112,7 +112,7 @@ export function HowScreen() {
             <p style={{ marginBottom: 0 }}>
               <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
               bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere to
-              go: it gets spread across everyone and a warning appears on <b>This tenancy month</b> and{" "}
+              go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
               <b>Who's here</b>, with the exact days listed. The <em>Bedroom cover</em> strip under
               the timeline shows this at a glance.
             </p>
@@ -252,43 +252,14 @@ export function HowScreen() {
           <MonthFlow />
           <p className="flow-cap">
             A month's own figure always describes that month alone. Differences never quietly move
-            next month's number — they sit on the Balances tab until somebody settles them, in full
-            or in part.
+            next month's number — they sit on Settle until somebody settles them, in full or in
+            part.
           </p>
 
           <h2 id="how-bills">How each bill splits</h2>
           <p>
-            Every bill splits the same way: your days in the tenancy month, divided by everyone's
-            days.
-          </p>
-          <div className="htable-wrap" style={{ marginBottom: 14 }}>
-            <table className="htable">
-              <thead>
-                <tr>
-                  <th>Bill</th>
-                  <th>Usual amount</th>
-                  <th>How it splits</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.bills.map((b) => (
-                  <tr key={b.id}>
-                    <td style={{ textAlign: "left" }}>{b.name}</td>
-                    <td style={{ textAlign: "left" }}>
-                      {state.currency}
-                      {(+b.est || 0).toLocaleString()}
-                    </td>
-                    <td style={{ textAlign: "left" }}>
-                      Split across this tenancy month
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p>
             Every bill splits the same way: <b>your days divided by everyone's days</b> in the
-            tenancy month. Energy is worked out exactly like council tax. The current bills are:
+            month. Energy is worked out exactly like council tax. This month that is:
           </p>
           <div className="htable-wrap" style={{ marginBottom: 14 }}>
             <table className="htable">
@@ -332,8 +303,6 @@ export function HowScreen() {
               </tbody>
             </table>
           </div>
-          <p>And this tenancy month's days work out as:</p>
-
           <h2 id="how-trueup">Estimates, real bills and true-ups</h2>
           <p>
             Bills are paid by direct debit at an estimated amount, and the real figure only shows up
@@ -347,8 +316,8 @@ export function HowScreen() {
               most of the time there's nothing to type.
             </li>
             <li>
-              Everyone pays against that. Press <b>Lock these as the amounts collected</b> and the
-              app records exactly what each person was asked for.
+              Everyone pays against that. Press <b>Lock what people were asked</b> and the app
+              records exactly what each person was asked for.
             </li>
             <li>
               When the real bills arrive you type them into the <b>realised</b> column. Every split
@@ -371,10 +340,10 @@ export function HowScreen() {
           <div className="callout warn">
             <p>
               Nothing is silently changed. A month's own figure always reflects that month alone;
-              the difference sits visibly on the Balances tab until it is settled. If a realised
-              figure was typed in wrong and you correct it, the true-up simply recomputes — there is
-              no double-counting, because the true-up is derived from the numbers rather than stored
-              as an event.
+              the difference sits visibly on Settle until it is settled. If a realised figure was
+              typed in wrong and you correct it, the true-up simply recomputes — there is no
+              double-counting, because the true-up is derived from the numbers rather than stored as
+              an event.
             </p>
           </div>
 
@@ -387,8 +356,8 @@ export function HowScreen() {
           <p>
             A negative balance means an over-payment: the person paid more than their share turned
             out to be, and is owed a refund. This keeps working for people who have <b>moved out</b>{" "}
-            — they stay on the Balances tab with whatever they are owed until it is paid, even
-            though they no longer appear in any month.
+            — they stay on Settle with whatever they are owed until it is paid, even though they no
+            longer appear in any month.
           </p>
           <p>
             Pressing <b>Settle…</b> asks how much actually changed hands. Accept the suggested
@@ -523,15 +492,16 @@ export function HowScreen() {
           <h3>The number changed after I'd already paid. Why?</h3>
           <p>
             The real bill came in different from the direct-debit estimate. The month's figure was
-            recomputed on the real number, and the difference is on your balance — either you owe a
-            little more or you are due a refund.
+            recomputed on the real number, and the difference is on Settle — either you owe a little
+            more or you are due a refund.
           </p>
           <h3>I've moved out and I'm owed money. Will it get lost?</h3>
-          <p>No. Balances survive leaving. You stay on the Balances tab until you are paid.</p>
+          <p>No. Balances survive leaving. You stay on Settle until you are paid.</p>
           <h3>Can I see how a number was reached?</h3>
           <p>
-            Yes — tap your name on the <b>This tenancy month</b> tab. Every line shows the amount, the basis
-            it was split on, and how many nights or liable-days you were counted for.
+            Yes — open the statement on <b>This month</b> (or Home, if you are a tenant). Every line
+            shows the amount, the basis it was split on, and how many nights or liable-days you were
+            counted for.
           </p>
           <h3>Somebody is moving out. What do I do?</h3>
           <p>

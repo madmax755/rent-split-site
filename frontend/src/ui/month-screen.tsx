@@ -1,4 +1,10 @@
-import { addMonths, daySpanLabel, tenancyMonthLabel, tenancyPeriodLabel } from "../domain/dates";
+import {
+  addMonths,
+  daySpanLabel,
+  periodLabel,
+  tenancyCycleDay,
+  tenancyMonthLabel,
+} from "../domain/dates";
 import {
   bedroomGaps,
   captureConfig,
@@ -11,7 +17,7 @@ import {
   weightedAreas,
 } from "../domain/engine";
 import { fmtNum, money, money0, personName, plural, signedMoney } from "../domain/format";
-import { ensureMonth, seedStints } from "../domain/months";
+import { ensureMonth } from "../domain/months";
 import type { HouseholdState, MonthCompute, MonthLine, MonthRecord } from "../domain/types";
 import { copyText } from "../lib/copy-text";
 import { useHousehold } from "../store/household-context";
@@ -36,8 +42,8 @@ import { useConfirm } from "./confirm-dialog";
 
 export { goMonth };
 
-function rentSplitNote(state: HouseholdState, c: MonthCompute): string {
-  return `${c.rentCounts.periodLabel} · ${fmtNum(weightedAreas(state).total, 1)} m² weighted`;
+function rentSplitNote(state: HouseholdState): string {
+  return `${fmtNum(weightedAreas(state).total, 1)} m² weighted`;
 }
 
 function lineOf(M: MonthRecord, id: string): MonthLine | undefined {
@@ -56,7 +62,7 @@ export function MonthScreen() {
   const liableIds = state.people.filter((p) => (c.counts.liableDays[p.id] || 0) > 0);
   const pending = state.bills.length - c.lines.filter((l) => l.isActual).length;
   const warns: string[] = [...c.warn];
-  if (!liableIds.length) warns.push("Nobody is down as living here this tenancy month.");
+  if (!liableIds.length) warns.push("Nobody is down as living here this month.");
   bedroomGaps(state, key).forEach((g) => {
     warns.push(
       `${g.name} has nobody in it on ${g.days.length === D ? "any day" : daySpanLabel(g.days)} — every bedroom should be occupied every day. Its rent is being spread across everyone instead.`,
@@ -81,8 +87,8 @@ export function MonthScreen() {
   return (
     <Screen id="month" active={activeTab === "month"}>
       <PageHeader
-        title="This tenancy month"
-        description={`${tenancyPeriodLabel(key, state.tenancyStart)} · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`}
+        title="This month"
+        description={`${periodLabel(key, tenancyCycleDay(state.tenancyStart))} · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
@@ -93,14 +99,9 @@ export function MonthScreen() {
       <WarnList items={warns} />
       <KpiGrid>
         <KpiCard
-          label="Total this tenancy month"
+          label="Total this month"
           value={money0(state.currency, c.grand)}
           sub={`${money(state.currency, c.rentPence)} rent + ${money(state.currency, c.billsTotalPence)} bills`}
-        />
-        <KpiCard
-          label="Per person"
-          value={liableIds.length ? money0(state.currency, c.grand / liableIds.length) : "—"}
-          sub="average, before any split"
         />
         <KpiCard
           label="Bills"
@@ -113,17 +114,12 @@ export function MonthScreen() {
                 : "still estimated"
           }
         />
-        <KpiCard
-          label="Cost per person-day"
-          value={totalNights ? money(state.currency, c.grand / totalNights) : "—"}
-          sub={`${totalNights} person-days in total`}
-        />
       </KpiGrid>
 
       <div className="grid gap-5">
         <Panel
           title="What it cost"
-          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}. Type the estimate when the tenancy month starts, and the realised figure when the bill lands.`}
+          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}. Type the estimate at the start of the month, and the realised figure when the bill lands.`}
         >
           <div className="hidden grid-cols-[1fr_118px_118px_92px] gap-2 px-1 pb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid">
             <span>Line</span>
@@ -135,9 +131,7 @@ export function MonthScreen() {
             <div className="grid items-center gap-2 rounded-xl bg-muted/50 p-3 md:grid-cols-[1fr_118px_118px_92px]">
               <div>
                 <div className="font-medium">Rent</div>
-                <div className="text-xs text-muted-foreground">
-                  {rentSplitNote(state, c)}
-                </div>
+                <div className="text-xs text-muted-foreground">{rentSplitNote(state)}</div>
               </div>
               <div>
                 <div className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase md:hidden">
@@ -176,7 +170,7 @@ export function MonthScreen() {
               onClick={() => {
                 const prev = state.months[addMonths(key, -1)];
                 if (!prev) {
-                  store.announce("There's no previous tenancy month on record.");
+                  store.announce("There's no previous month on record.");
                   return;
                 }
                 let n = 0;
@@ -196,7 +190,7 @@ export function MonthScreen() {
                   });
                 });
                 store.announce(
-                  `${plural(n, "estimate")} pulled from ${tenancyMonthLabel(addMonths(key, -1))}.`,
+                  `${plural(n, "estimate")} pulled from ${periodLabel(addMonths(key, -1), tenancyCycleDay(state.tenancyStart))}.`,
                 );
               }}
             >
@@ -212,6 +206,43 @@ export function MonthScreen() {
             <div className="flex flex-wrap gap-2" data-print-hide>
               <Button
                 size="sm"
+                variant={M.collected ? "outline" : "default"}
+                onClick={async () => {
+                  const month = ensureMonth(state, key);
+                  if (month.collected) {
+                    if (
+                      !(await ask({
+                        title: "Unlock this month?",
+                        description:
+                          "It goes back to following the current rent, rooms and bills. Adjustments come off the balances until you lock it again.",
+                        confirmLabel: "Unlock",
+                      }))
+                    ) {
+                      return;
+                    }
+                  }
+                  store.mutate(() => {
+                    const m = ensureMonth(store.state, key);
+                    if (!m.collected) {
+                      m.config = captureConfig(store.state);
+                      m.charged = computeMonthInner(store.state, key, "est", m).totals;
+                      m.collected = true;
+                      m.chargedAt = new Date().toISOString().slice(0, 10);
+                      store.announce("Locked — what each person was asked for is now frozen.");
+                    } else {
+                      m.collected = false;
+                      m.charged = null;
+                      m.chargedAt = "";
+                      m.config = null;
+                    }
+                  });
+                }}
+              >
+                {M.collected ? "Unlock this month" : "Lock what people were asked"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => {
                   void copyText(monthSummaryText(state, key), (m) => store.announce(m));
                 }}
@@ -220,7 +251,7 @@ export function MonthScreen() {
               </Button>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 onClick={() => {
                   store.mutate(
                     () => {
@@ -235,44 +266,6 @@ export function MonthScreen() {
               >
                 Print / PDF
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={async () => {
-                  const month = ensureMonth(state, key);
-                  if (month.collected) {
-                    if (
-                      !(await ask({
-                        title: "Unlock this tenancy month?",
-                        description:
-                          "It goes back to following the current rent, rooms and bills. True-ups come off the balances until you lock it again.",
-                        confirmLabel: "Unlock",
-                      }))
-                    ) {
-                      return;
-                    }
-                  }
-                  store.mutate(() => {
-                    const m = ensureMonth(store.state, key);
-                    if (!m.collected) {
-                      m.config = captureConfig(store.state);
-                      m.charged = computeMonthInner(store.state, key, "est", m).totals;
-                      m.collected = true;
-                      m.chargedAt = new Date().toISOString().slice(0, 10);
-                      store.announce(
-                        "Locked — this tenancy month's rent, rooms, bills and people are now frozen.",
-                      );
-                    } else {
-                      m.collected = false;
-                      m.charged = null;
-                      m.chargedAt = "";
-                      m.config = null;
-                    }
-                  });
-                }}
-              >
-                {M.collected ? "Unlock collected amounts" : "Lock as collected"}
-              </Button>
             </div>
           }
         >
@@ -280,17 +273,17 @@ export function MonthScreen() {
           <p className="mt-3 text-xs text-muted-foreground">
             {M.collected
               ? `Locked${M.chargedAt ? ` on ${M.chargedAt}` : ""}. Differences against realised bills sit on Settle.`
-              : "Locking records what everyone was actually asked for. Until you lock, the figures just move with the estimates."}
+              : "Locking records what everyone was asked for. Until you lock, the figures just move with the estimates."}
           </p>
         </Panel>
 
         <Panel
           title="Notes"
-          description="This tenancy month only — a boiler repair, a rent review, who had guests."
+          description="This month only — a boiler repair, a rent review, who had guests."
         >
           <Textarea
             className="min-h-20"
-            placeholder="Anything worth remembering about this tenancy month…"
+            placeholder="Anything worth remembering about this month…"
             value={M.note || ""}
             onChange={(e) => {
               store.mutate(() => {
@@ -298,54 +291,33 @@ export function MonthScreen() {
               });
             }}
           />
-          <div className="mt-3 flex flex-wrap gap-2" data-print-hide>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                if (
-                  !(await ask({
-                    title: "Rebuild this tenancy month's stints?",
-                    description:
-                      "Any visitor stays and away periods you've entered for this tenancy month are lost.",
-                    confirmLabel: "Rebuild",
-                    destructive: true,
-                  }))
-                ) {
-                  return;
-                }
-                store.mutate(() => {
-                  seedStints(store.state, key);
-                });
-                store.announce("Rebuilt from the roster.");
-              }}
-            >
-              Reset who's here from the roster
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={async () => {
-                if (
-                  !(await ask({
-                    title: `Delete ${tenancyMonthLabel(key)}?`,
-                    description: "Its bills, stints and true-ups all go.",
-                    confirmLabel: "Delete month",
-                    destructive: true,
-                  }))
-                ) {
-                  return;
-                }
-                store.mutate(() => {
-                  delete store.state.months[key];
-                  ensureMonth(store.state, key);
-                });
-              }}
-            >
-              Delete this tenancy month
-            </Button>
-          </div>
         </Panel>
+
+        <div className="flex justify-end" data-print-hide>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={async () => {
+              if (
+                !(await ask({
+                  title: `Delete ${tenancyMonthLabel(key)}?`,
+                  description: "Its bills, dates and adjustments all go.",
+                  confirmLabel: "Delete month",
+                  destructive: true,
+                }))
+              ) {
+                return;
+              }
+              store.mutate(() => {
+                delete store.state.months[key];
+                ensureMonth(store.state, key);
+              });
+            }}
+          >
+            Delete this month
+          </Button>
+        </div>
       </div>
     </Screen>
   );
@@ -361,7 +333,6 @@ type BillRowProps = {
 
 function BillRow(props: BillRowProps) {
   const { store, state, def, line } = props;
-  const range = tenancyPeriodLabel(props.monthKey, state.tenancyStart);
   const estP = Math.round((+line.est || 0) * 100);
   const actP = typeof line.act === "number" ? Math.round(line.act * 100) : null;
   const delta = actP === null ? null : actP - estP;
@@ -371,7 +342,6 @@ function BillRow(props: BillRowProps) {
     <div className="grid grid-cols-2 items-center gap-2 rounded-xl bg-muted/50 p-3 md:grid-cols-[1fr_118px_118px_92px]">
       <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-2 md:col-span-1">
         <span className="font-medium">{def.name}</span>
-        <span className="basis-full text-xs text-muted-foreground">{range}</span>
       </div>
       <div>
         <div className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase md:hidden">
@@ -438,8 +408,8 @@ function Statements(props: {
   if (!ids.length) {
     return (
       <EmptyState
-        title="Nobody is living here this tenancy month"
-        description="Add a stint on Who's here."
+        title="Nobody is living here this month"
+        description="Add their dates on Who's here."
         action={
           <Button variant="outline" onClick={() => store.setTab("stints")}>
             Open Who's here

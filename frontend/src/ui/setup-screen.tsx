@@ -68,7 +68,7 @@ export function SetupScreen() {
         <TabsContent value="people">
           <Panel
             id="people"
-            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}. When they are here, and which bedroom they are in, is recorded on Who's here.`}
+            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}. When they are here, and which bedroom they are in, lives on Who's here.`}
           >
             <div className="grid gap-2">
               {ordered.map((p) => {
@@ -77,7 +77,7 @@ export function SetupScreen() {
                 );
                 const where = months.length
                   ? `in ${plural(months.length, "month")} · ${tenancyMonthLabel(months[0] ?? "", true)}–${tenancyMonthLabel(months[months.length - 1] ?? "", true)}`
-                  : "no stints yet";
+                  : "no dates yet";
                 return (
                   <div
                     key={p.id}
@@ -108,7 +108,7 @@ export function SetupScreen() {
                               const person = personById(store.state, p.id);
                               if (person) person.archived = false;
                             });
-                            store.announce(`${p.name} is back — give them a stint on Who's here.`);
+                            store.announce(`${p.name} is back — give them dates on Who's here.`);
                           }}
                         >
                           Bring back
@@ -462,7 +462,7 @@ export function SetupScreen() {
                     <span className="shrink-0 text-xs text-muted-foreground">/ tenancy month</span>
                   </div>
                   <div className="mt-3 mb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Who pays into it{restricted ? "" : " — everyone"}
+                    Who is on this bill{restricted ? "" : " — everyone"}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {state.people
@@ -526,7 +526,7 @@ export function SetupScreen() {
           <Panel
             id="rent"
             title="Standing rent & shared space"
-            description="The standing rent is what every new tenancy month starts from. Splits follow the tenancy period from the start date. To change one month only, edit rent on This tenancy month."
+            description="The standing rent is what every new month starts from. Splits follow the period from the start date. To change one month only, edit rent on This month."
           >
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm sm:col-span-2">
@@ -548,9 +548,9 @@ export function SetupScreen() {
                   }}
                 />
                 <span className="text-xs text-muted-foreground">
-                  Every tenancy month runs from this day of the month to the day before it in the
-                  next calendar month — for example 9 August to 8 September. The full rent for that
-                  period is split; nothing is kicked into the following month.
+                  Each month runs from this day to the day before it in the next calendar month —
+                  for example 9 August to 8 September. The full rent for that period is split;
+                  nothing is kicked into the following month.
                 </span>
               </label>
               <label className="grid gap-1.5 text-sm">

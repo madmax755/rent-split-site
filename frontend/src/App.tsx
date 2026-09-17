@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { todayKey } from "./domain/dates";
+import { currentTenancyMonthKey } from "./domain/dates";
 import { ensureMonth } from "./domain/months";
 import { normalise } from "./domain/normalise";
 import { HouseholdProvider, useHousehold } from "./store/household-context";
@@ -14,12 +14,7 @@ import { SetupScreen } from "./ui/setup-screen";
 import { AppShell } from "./ui/shell";
 import { StintsScreen } from "./ui/stints-screen";
 import { ConfirmProvider, useConfirm } from "./ui/confirm-dialog";
-import {
-  TenantBalancesScreen,
-  TenantHistoryScreen,
-  TenantHomeScreen,
-  TenantMonthScreen,
-} from "./ui/tenant-screens";
+import { TenantBalancesScreen, TenantHistoryScreen, TenantHomeScreen } from "./ui/tenant-screens";
 
 export function App() {
   const [store] = useState(() => new HouseholdStore());
@@ -96,6 +91,7 @@ function RentSplitApp() {
     store.applySession(session);
     const data = await store.loadRaw();
     if (data) store.applyHydrate(data);
+    store.state.currentMonth = currentTenancyMonthKey(store.state.tenancyStart);
     ensureMonth(store.state, store.state.currentMonth);
     if (store.isTenant()) store.state.activeTab = "home";
     store.saveLocal();
@@ -180,7 +176,6 @@ function RentSplitApp() {
       {store.isTenant() ? (
         <>
           <TenantHomeScreen />
-          <TenantMonthScreen />
           <StintsScreen />
           <TenantHistoryScreen />
           <TenantBalancesScreen />
@@ -261,12 +256,13 @@ async function boot(store: HouseholdStore): Promise<void> {
   } else {
     changed = true;
     normalise(store.state);
-    store.state.currentMonth = store.state.currentMonth || todayKey();
+    store.state.currentMonth = currentTenancyMonthKey(store.state.tenancyStart);
     ensureMonth(store.state, store.state.currentMonth);
   }
+  store.state.currentMonth = currentTenancyMonthKey(store.state.tenancyStart);
   ensureMonth(store.state, store.state.currentMonth);
   if (store.isTenant()) {
-    const allowed = new Set(["home", "month", "stints", "history", "balances", "how"]);
+    const allowed = new Set(["home", "stints", "history", "balances", "how"]);
     if (!allowed.has(store.state.activeTab)) store.state.activeTab = "home";
   }
   if (!store.readOnly && !store.isTenant()) {

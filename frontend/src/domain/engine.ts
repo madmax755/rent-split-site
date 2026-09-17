@@ -201,7 +201,7 @@ export function computeRent(
 } {
   const days = chargeableDays(state, key);
   const D = days.length;
-  const scope = "this tenancy month";
+  const scope = "this month";
   const { rooms, ca, total } = weightedAreas(state);
   const rawBed: Record<string, number> = {};
   const rawShare: Record<string, number> = {};
@@ -227,7 +227,7 @@ export function computeRent(
       bedroom: {},
       shared: {},
       raw: {},
-      warn: [`Nobody is down as being here ${scope} — add a stint on the Who's here tab.`],
+      warn: [`Nobody is down as being here ${scope} — add dates on Who's here.`],
     };
   }
 

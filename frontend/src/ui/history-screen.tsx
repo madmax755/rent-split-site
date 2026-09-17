@@ -39,10 +39,13 @@ export function HistoryScreen() {
   const lastKey = keys[keys.length - 1] ?? "";
 
   function goToMonth(k: string): void {
-    store.mutate(() => {
-      store.state.currentMonth = k;
-      ensureMonth(store.state, k);
-    });
+    store.mutate(
+      () => {
+        store.state.currentMonth = k;
+        ensureMonth(store.state, k);
+      },
+      { persist: false },
+    );
     store.setTab("month");
   }
 
@@ -50,7 +53,7 @@ export function HistoryScreen() {
     <Screen id="history" active={activeTab === "history"}>
       <PageHeader
         title="History"
-        description="Open a month to see the split. Lighter figures are still estimates."
+        description="Open a month to see the split. Faded figures are still estimates."
       />
       <KpiGrid>
         <KpiCard
@@ -61,12 +64,7 @@ export function HistoryScreen() {
         <KpiCard
           label="Total housed cost"
           value={money0(state.currency, grand)}
-          sub="rent and bills, all months"
-        />
-        <KpiCard
-          label="Average month"
-          value={money0(state.currency, grand / keys.length)}
-          sub={`${realised.length} fully realised`}
+          sub={`${realised.length} with real bills in`}
         />
       </KpiGrid>
 
@@ -113,73 +111,73 @@ export function HistoryScreen() {
           </div>
           <div className="hidden md:block">
             <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Month</TableHead>
-                {ids.map((id) => (
-                  <TableHead key={id} className="text-right">
-                    {personName(state, id)}
-                  </TableHead>
-                ))}
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((k) => {
-                const c = cache[k];
-                const done = monthAllActual(state, state.months[k]);
-                const tot = ids.reduce((s, id) => s + (c?.totals[id] || 0), 0);
-                return (
-                  <TableRow
-                    key={k}
-                    tabIndex={0}
-                    className={`cursor-pointer ${done ? "" : "opacity-60"}`}
-                    onClick={() => goToMonth(k)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        goToMonth(k);
-                      }
-                    }}
-                  >
-                    <TableCell>
-                      {tenancyMonthLabel(k)}
-                      {done ? null : (
-                        <span className="ml-1 text-[10px] text-muted-foreground">est</span>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  {ids.map((id) => (
+                    <TableHead key={id} className="text-right">
+                      {personName(state, id)}
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keys.map((k) => {
+                  const c = cache[k];
+                  const done = monthAllActual(state, state.months[k]);
+                  const tot = ids.reduce((s, id) => s + (c?.totals[id] || 0), 0);
+                  return (
+                    <TableRow
+                      key={k}
+                      tabIndex={0}
+                      className={`cursor-pointer ${done ? "" : "opacity-60"}`}
+                      onClick={() => goToMonth(k)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          goToMonth(k);
+                        }
+                      }}
+                    >
+                      <TableCell>
+                        {tenancyMonthLabel(k)}
+                        {done ? null : (
+                          <span className="ml-1 text-[10px] text-muted-foreground">est</span>
+                        )}
+                      </TableCell>
+                      {ids.map((id) => (
+                        <TableCell key={id} className="tabular-nums text-right">
+                          {c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}
+                        </TableCell>
+                      ))}
+                      <TableCell className="tabular-nums text-right font-semibold">
+                        {money(state.currency, tot)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                <TableRow>
+                  <TableCell className="font-semibold">All months</TableCell>
+                  {ids.map((id) => (
+                    <TableCell key={id} className="tabular-nums text-right font-semibold">
+                      {money(
+                        state.currency,
+                        keys.reduce((s, k) => s + (cache[k]?.totals[id] || 0), 0),
                       )}
                     </TableCell>
-                    {ids.map((id) => (
-                      <TableCell key={id} className="tabular-nums text-right">
-                        {c?.totals[id] ? money(state.currency, c.totals[id] ?? 0) : "—"}
-                      </TableCell>
-                    ))}
-                    <TableCell className="tabular-nums text-right font-semibold">
-                      {money(state.currency, tot)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              <TableRow>
-                <TableCell className="font-semibold">All months</TableCell>
-                {ids.map((id) => (
-                  <TableCell key={id} className="tabular-nums text-right font-semibold">
+                  ))}
+                  <TableCell className="tabular-nums text-right font-semibold">
                     {money(
                       state.currency,
-                      keys.reduce((s, k) => s + (cache[k]?.totals[id] || 0), 0),
+                      keys.reduce(
+                        (s, k) => s + ids.reduce((a, id) => a + (cache[k]?.totals[id] || 0), 0),
+                        0,
+                      ),
                     )}
                   </TableCell>
-                ))}
-                <TableCell className="tabular-nums text-right font-semibold">
-                  {money(
-                    state.currency,
-                    keys.reduce(
-                      (s, k) => s + ids.reduce((a, id) => a + (cache[k]?.totals[id] || 0), 0),
-                      0,
-                    ),
-                  )}
-                </TableCell>
-              </TableRow>
-            </TableBody>
+                </TableRow>
+              </TableBody>
             </Table>
           </div>
         </Panel>

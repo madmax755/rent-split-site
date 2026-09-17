@@ -149,4 +149,29 @@ describe("schema 5 cycle days", () => {
       expect.objectContaining({ personId: "p1", roomId: "bed1", from: 1, to: 31 }),
     ]);
   });
+
+  test("hydrate leaves the viewing month alone", () => {
+    const state = freshHousehold();
+    state.currentMonth = "2026-09";
+    const envelope = {
+      app: "rent-split",
+      schema: SCHEMA,
+      savedAt: "2026-09-01T00:00:00.000Z",
+      data: {
+        currency: "£",
+        rent: 1000,
+        tenancyStart: "2026-08-09",
+        catchall: 0,
+        catchallWeight: 0,
+        rooms: [{ id: "bed1", name: "Bed", w: 3, l: 3, weight: 1, communal: false }],
+        people: [{ id: "p1", name: "Ann", isPayer: true, archived: false }],
+        bills: [{ id: "energy", name: "Energy", est: 10, payers: null, cycleStartDay: 1 }],
+        months: {},
+        ledger: [],
+        currentMonth: "2026-08",
+      },
+    };
+    expect(hydrate(state, envelope).outcome).toBe(true);
+    expect(state.currentMonth).toBe("2026-09");
+  });
 });
