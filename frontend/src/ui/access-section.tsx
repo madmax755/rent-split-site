@@ -56,7 +56,7 @@ export function AccessSection() {
       <Panel
         id="logins"
         title="Who can sign in"
-        description={`Each housemate gets their own login. Admin sees the whole household. Tenant sees only their dashboard and can settle with ${payerName}. There is exactly one admin. ${plural(accounts.filter((a) => a.enabled).length, "login")}.`}
+        description={`One admin. Tenants only see their own numbers and can settle with ${payerName}. ${plural(accounts.filter((a) => a.enabled).length, "login")}.`}
       >
         {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
         {!accounts.length ? <EmptyState title="No logins yet" /> : null}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { clampTenancyStart, tenancyMonthKey, tenancyMonthLabel } from "../domain/dates";
 import { DEFAULT_TENANCY_START } from "../domain/defaults";
 import { MAX_PEOPLE } from "../domain/defaults";
@@ -7,6 +8,7 @@ import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf, sortedMonthKeys } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import type { CurrencySymbol } from "../domain/types";
+import type { PublicAccount } from "../lib/api-types";
 import { XIcon } from "lucide-react";
 import { useHousehold } from "../store/household-context";
 import { AccessSection } from "./access-section";
@@ -35,12 +37,25 @@ export function SetupScreen() {
     state.rooms.reduce((s, r) => s + (+r.w || 0) * (+r.l || 0), 0) + (+state.catchall || 0);
   const monthly = state.bills.reduce((s, b) => s + (+b.est || 0), 0);
   const hallPct = total > 0 ? ((ca / total) * 100).toFixed(1) + "%" : "—";
+  const [accounts, setAccounts] = useState<PublicAccount[] | null>(null);
+
+  useEffect(() => {
+    if (!store.adapter.listAccounts) return;
+    void store.adapter
+      .listAccounts()
+      .then(setAccounts)
+      .catch(() => setAccounts(null));
+  }, [store, store.needAuth, store.session?.accountId]);
 
   return (
     <Screen id="setup" active={activeTab === "setup"}>
       <PageHeader
         title="Household"
-        description="People, rooms, bills and the standing rent — the house as it is set up, not this month's figures."
+        description={
+          store.adapter.listAccounts
+            ? "People, rooms, bills, rent and who can sign in."
+            : "People, rooms, bills and rent."
+        }
       />
       <Tabs defaultValue="people" className="gap-5">
         <TabsList
@@ -68,7 +83,7 @@ export function SetupScreen() {
         <TabsContent value="people">
           <Panel
             id="people"
-            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}. When they are here, and which bedroom they are in, lives on Who's here.`}
+            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}`}
           >
             <div className="grid gap-2">
               {ordered.map((p) => {
@@ -78,6 +93,15 @@ export function SetupScreen() {
                 const where = months.length
                   ? `in ${plural(months.length, "month")} · ${tenancyMonthLabel(months[0] ?? "", true)}–${tenancyMonthLabel(months[months.length - 1] ?? "", true)}`
                   : "no dates yet";
+                const login = accounts?.find((a) => a.personId === p.id && a.enabled);
+                const loginNote =
+                  accounts === null
+                    ? ""
+                    : login
+                      ? ` · ${login.username}`
+                      : p.archived
+                        ? ""
+                        : " · no login";
                 return (
                   <div
                     key={p.id}
@@ -95,7 +119,10 @@ export function SetupScreen() {
                           });
                         }}
                       />
-                      <div className="px-1 text-xs text-muted-foreground">{where}</div>
+                      <div className="px-1 text-xs text-muted-foreground">
+                        {where}
+                        {loginNote}
+                      </div>
                     </div>
                     {p.archived ? (
                       <>
@@ -394,7 +421,7 @@ export function SetupScreen() {
         <TabsContent value="bills">
           <Panel
             id="bills"
-            description={`${state.bills.length} bills · ~${state.currency}${Math.round(monthly).toLocaleString()}/mo. The usual amount is only the starting figure for months you haven't filled in yet.`}
+            description={`${state.bills.length} bills · ~${state.currency}${Math.round(monthly).toLocaleString()}/mo starting figure`}
           >
             {state.bills.map((b) => {
               const restricted = Array.isArray(b.payers) && b.payers.length > 0;
@@ -525,8 +552,8 @@ export function SetupScreen() {
         <TabsContent value="rent">
           <Panel
             id="rent"
-            title="Standing rent & shared space"
-            description="The standing rent is what every new month starts from. Splits follow the period from the start date. To change one month only, edit rent on This month."
+            title="Rent and shared space"
+            description="New months start from this rent. To change one month only, edit it on This month."
           >
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm sm:col-span-2">

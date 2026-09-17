@@ -1,10 +1,10 @@
 import { tenancyMonthLabel } from "../domain/dates";
 import { computeMonth, monthAllActual } from "../domain/engine";
-import { money, money0, personName, plural } from "../domain/format";
+import { money, money0, personName } from "../domain/format";
 import { ensureMonth, sortedMonthKeys } from "../domain/months";
 import type { MonthCompute } from "../domain/types";
 import { useHousehold } from "../store/household-context";
-import { KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
+import { PageHeader, Panel, Screen } from "./kit";
 import {
   Table,
   TableBody,
@@ -53,23 +53,11 @@ export function HistoryScreen() {
     <Screen id="history" active={activeTab === "history"}>
       <PageHeader
         title="History"
-        description="Open a month to see the split. Faded figures are still estimates."
+        description={`${tenancyMonthLabel(firstKey, true)} – ${tenancyMonthLabel(lastKey, true)} · ${money0(state.currency, grand)} · ${realised.length} with real bills in`}
       />
-      <KpiGrid>
-        <KpiCard
-          label="Months on record"
-          value={String(keys.length)}
-          sub={`${tenancyMonthLabel(firstKey, true)} – ${tenancyMonthLabel(lastKey, true)}`}
-        />
-        <KpiCard
-          label="Total housed cost"
-          value={money0(state.currency, grand)}
-          sub={`${realised.length} with real bills in`}
-        />
-      </KpiGrid>
 
       <div className="grid gap-5">
-        <Panel title="Every month, every person" description={plural(keys.length, "month")}>
+        <Panel>
           <div className="grid gap-2 md:hidden">
             {keys.map((k) => {
               const c = cache[k];
@@ -182,7 +170,7 @@ export function HistoryScreen() {
           </div>
         </Panel>
 
-        <Panel title="How the bills have moved">
+        <Panel title="Bills over time">
           {state.bills.length ? (
             <div className="grid gap-3">
               {state.bills.map((b) => {

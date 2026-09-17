@@ -4,8 +4,6 @@ import {
   daySpanLabel,
   isoToPeriodDay,
   periodDayIso,
-  periodLabel,
-  tenancyCycleDay,
   tenancyMonthLabel,
   tenancyPeriodDays,
   tenancyPeriodLength,
@@ -39,7 +37,6 @@ export function StintsScreen() {
   const cols = { gridTemplateColumns: `repeat(${D}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
   const gaps = bedroomGaps(state, key);
-  const totalDays = days.reduce((s, d) => s + d.liable.length, 0);
   const gapCount = gaps.reduce((s, g) => s + g.days.length, 0);
   const startIso = periodDayIso(key, state.tenancyStart, 1);
   const endIso = periodDayIso(key, state.tenancyStart, D);
@@ -87,7 +84,7 @@ export function StintsScreen() {
     <Screen id="stints" active={activeTab === "stints"}>
       <PageHeader
         title="Who's here"
-        description={`${periodLabel(key, tenancyCycleDay(state.tenancyStart))} · ${plural(involved.length, "person", "people")} · ${totalDays} person-days${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
+        description={`${plural(involved.length, "person", "people")} here${gapCount ? ` · ${gapCount} empty bedroom-days` : ""}`}
         actions={<MonthSwitcher />}
       />
       <WarnList
@@ -96,8 +93,13 @@ export function StintsScreen() {
         )}
       />
 
-      <div className="mb-5 overflow-hidden rounded-xl border bg-card" data-store-version={version}>
-        <div className="overflow-x-auto p-4">
+      <div className="flex flex-col gap-5">
+      <div
+        className="order-2 overflow-hidden rounded-xl border bg-card lg:order-1"
+        data-store-version={version}
+      >
+        <div className="px-4 pt-4 text-sm font-medium">In the house</div>
+        <div className="overflow-x-auto p-4 pt-2">
           {involved.length ? (
             <div className="min-w-[560px]">
               <div className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
@@ -160,7 +162,7 @@ export function StintsScreen() {
               {state.rooms.some((r) => !r.communal) ? (
                 <div className="mt-4 border-t pt-3">
                   <div className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Bedroom cover
+                    Bedrooms
                   </div>
                   {state.rooms
                     .filter((r) => !r.communal)
@@ -200,7 +202,7 @@ export function StintsScreen() {
           ) : (
             <EmptyState
               title={`Nobody is down for ${tenancyMonthLabel(key)} yet`}
-              description="Add dates below, or reset from last month."
+              description="Add dates, or reset from last month."
             />
           )}
         </div>
@@ -219,12 +221,13 @@ export function StintsScreen() {
         </div>
       </div>
 
+      <div className="order-1 lg:order-2">
       <Panel
         title="Dates"
         description={
           selfOnly
-            ? "These dates are when you are paying — usually the same as being in the house."
-            : "Each row is a stretch of days someone is paying, in one bedroom. Occupancy lives here and nowhere else."
+            ? "Days you are paying — usually the same as being in the house."
+            : "Who is paying, which bedroom, which days."
         }
       >
         {!(M.stints || []).length ? (
@@ -428,7 +431,7 @@ export function StintsScreen() {
                 store.mutate(() => {
                   seedStints(store.state, key);
                 });
-                store.announce("Reset from last month.");
+                store.announce("Dates reset.");
               }}
             >
               Reset from last month
@@ -450,6 +453,8 @@ export function StintsScreen() {
           )}
         </div>
       </Panel>
+      </div>
+      </div>
       <TextPromptDialog
         request={
           addingPerson
