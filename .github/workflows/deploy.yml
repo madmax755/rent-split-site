@@ -27,6 +27,8 @@ env:
   REGISTRY: 100.81.62.22:5000
   IMAGE_NAME: rent-split
   DEPLOY_DIR: /opt/rent-split-site
+  DEPLOY_USER: max-kendall
+  DEPLOY_HOST_FALLBACK: 100.100.126.125
 
 jobs:
   deploy:
@@ -65,9 +67,10 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x deploy/resolve-tailscale-host.sh
-          HOST="$(./deploy/resolve-tailscale-host.sh server1 100.81.62.22)"
+          HOST="$(./deploy/resolve-tailscale-host.sh server1 "${DEPLOY_HOST_FALLBACK}")"
           echo "host=${HOST}" >> "${GITHUB_OUTPUT}"
-          echo "Resolved server1 -> ${HOST}"
+          echo "user=${DEPLOY_USER}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved server1 -> ${DEPLOY_USER}@${HOST}"
 
       - name: Add SSH host key
         shell: bash
@@ -81,17 +84,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          HOST='${{ steps.host.outputs.host }}'
-          ssh "${HOST}" "sudo mkdir -p '${DEPLOY_DIR}' && sudo chgrp rent-split '${DEPLOY_DIR}' && sudo chmod 2771 '${DEPLOY_DIR}'"
-          scp docker-compose.prod.yml "${HOST}:/tmp/rent-split-compose.yml"
-          scp deploy/tms.maxkendall.com.conf "${HOST}:/tmp/rent-split-nginx.conf"
-          scp deploy/remote-deploy.sh "${HOST}:/tmp/rent-split-remote-deploy.sh"
-          ssh "${HOST}" "sudo cp /tmp/rent-split-compose.yml '${DEPLOY_DIR}/docker-compose.prod.yml' && chmod +x /tmp/rent-split-remote-deploy.sh"
+          TARGET='${{ steps.host.outputs.user }}@${{ steps.host.outputs.host }}'
+          ssh "${TARGET}" "sudo mkdir -p '${DEPLOY_DIR}' && sudo chgrp rent-split '${DEPLOY_DIR}' && sudo chmod 2771 '${DEPLOY_DIR}'"
+          scp docker-compose.prod.yml "${TARGET}:/tmp/rent-split-compose.yml"
+          scp deploy/tms.maxkendall.com.conf "${TARGET}:/tmp/rent-split-nginx.conf"
+          scp deploy/remote-deploy.sh "${TARGET}:/tmp/rent-split-remote-deploy.sh"
+          ssh "${TARGET}" "sudo cp /tmp/rent-split-compose.yml '${DEPLOY_DIR}/docker-compose.prod.yml' && chmod +x /tmp/rent-split-remote-deploy.sh"
 
       - name: Deploy over SSH
         shell: bash
         run: |
           set -euo pipefail
-          HOST='${{ steps.host.outputs.host }}'
-          ssh "${HOST}" \
+          TARGET='${{ steps.host.outputs.user }}@${{ steps.host.outputs.host }}'
+          ssh "${TARGET}" \
             "IMAGE='${{ steps.image.outputs.image }}' DEPLOY_DIR='${DEPLOY_DIR}' bash /tmp/rent-split-remote-deploy.sh"
