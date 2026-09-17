@@ -17,10 +17,6 @@ def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     directory.mkdir()
     monkeypatch.setenv("DATA_DIR", str(directory))
     monkeypatch.setenv("PUBLIC_DIR", str(tmp_path / "public"))
-    monkeypatch.setenv("RENT_SPLIT_ADMIN_USER", "asoni")
-    monkeypatch.setenv("RENT_SPLIT_ADMIN_PASSWORD", "secret")
-    monkeypatch.setenv("RENT_SPLIT_SECRET", "test-secret-value")
-    monkeypatch.setenv("SECURE_COOKIE", "0")
     reset_settings()
     reset_engine()
     yield directory

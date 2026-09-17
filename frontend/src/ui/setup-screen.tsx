@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { clampTenancyStart, tenancyMonthKey, tenancyMonthLabel } from "../domain/dates";
 import { DEFAULT_TENANCY_START } from "../domain/defaults";
 import { MAX_PEOPLE } from "../domain/defaults";
@@ -8,10 +7,8 @@ import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf, sortedMonthKeys } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import type { CurrencySymbol } from "../domain/types";
-import type { PublicAccount } from "../lib/api-types";
 import { XIcon } from "lucide-react";
 import { useHousehold } from "../store/household-context";
-import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
 import { useConfirm } from "./confirm-dialog";
 import { EditableText, MoneyInput, PageHeader, Panel, Screen } from "./kit";
@@ -37,26 +34,10 @@ export function SetupScreen() {
     state.rooms.reduce((s, r) => s + (+r.w || 0) * (+r.l || 0), 0) + (+state.catchall || 0);
   const monthly = state.bills.reduce((s, b) => s + (+b.est || 0), 0);
   const hallPct = total > 0 ? ((ca / total) * 100).toFixed(1) + "%" : "—";
-  const [accounts, setAccounts] = useState<PublicAccount[] | null>(null);
-
-  useEffect(() => {
-    if (!store.adapter.listAccounts) return;
-    void store.adapter
-      .listAccounts()
-      .then(setAccounts)
-      .catch(() => setAccounts(null));
-  }, [store, store.needAuth, store.session?.accountId]);
 
   return (
     <Screen id="setup" active={activeTab === "setup"}>
-      <PageHeader
-        title="Household"
-        description={
-          store.adapter.listAccounts
-            ? "People, rooms, bills, rent and who can sign in."
-            : "People, rooms, bills and rent."
-        }
-      />
+      <PageHeader title="Household" description="People, rooms, bills and rent." />
       <Tabs defaultValue="people" className="gap-5">
         <TabsList
           variant="line"
@@ -74,11 +55,6 @@ export function SetupScreen() {
           <TabsTrigger value="rent" className="px-3">
             Rent
           </TabsTrigger>
-          {store.adapter.listAccounts ? (
-            <TabsTrigger value="logins" className="px-3">
-              Logins
-            </TabsTrigger>
-          ) : null}
         </TabsList>
         <TabsContent value="people">
           <Panel
@@ -93,15 +69,6 @@ export function SetupScreen() {
                 const where = months.length
                   ? `in ${plural(months.length, "month")} · ${tenancyMonthLabel(months[0] ?? "", true)}–${tenancyMonthLabel(months[months.length - 1] ?? "", true)}`
                   : "no dates yet";
-                const login = accounts?.find((a) => a.personId === p.id && a.enabled);
-                const loginNote =
-                  accounts === null
-                    ? ""
-                    : login
-                      ? ` · ${login.username}`
-                      : p.archived
-                        ? ""
-                        : " · no login";
                 return (
                   <div
                     key={p.id}
@@ -119,10 +86,7 @@ export function SetupScreen() {
                           });
                         }}
                       />
-                      <div className="px-1 text-xs text-muted-foreground">
-                        {where}
-                        {loginNote}
-                      </div>
+                      <div className="px-1 text-xs text-muted-foreground">{where}</div>
                     </div>
                     {p.archived ? (
                       <>
@@ -224,7 +188,6 @@ export function SetupScreen() {
                                 normalise(store.state);
                               });
                             }
-                            void store.adapter.disablePersonLogin?.(p.id);
                           })();
                         }}
                       >
@@ -641,12 +604,6 @@ export function SetupScreen() {
             </p>
           </Panel>
         </TabsContent>
-
-        {store.adapter.listAccounts ? (
-          <TabsContent value="logins" keepMounted>
-            <AccessSection />
-          </TabsContent>
-        ) : null}
       </Tabs>
     </Screen>
   );

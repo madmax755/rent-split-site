@@ -12,8 +12,6 @@
 #   sudo ln -s /etc/nginx/sites-available/rent-split /etc/nginx/sites-enabled/
 #   sudo nginx -t && sudo systemctl reload nginx
 #
-# Once this is live over https, set SECURE_COOKIE=1 in /etc/rent-split.env.
-
 server {
     listen 80;
     server_name your-domain.example;

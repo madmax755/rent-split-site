@@ -4,53 +4,22 @@
 export type AccountRole = "admin" | "tenant";
 
 export type SessionInfo = {
-  accountId: string;
-  username: string;
+  personId: string;
+  personName: string;
   role: AccountRole;
-  personId: string | null;
-  personName: string | null;
 };
 
-export type PublicAccount = {
+export type PickerPerson = {
   id: string;
-  username: string;
-  personId: string | null;
-  role: AccountRole;
-  enabled: boolean;
-  passwordSetAt: string | null;
+  name: string;
+  isPayer: boolean;
+  archived: boolean;
 };
 
 export type HealthResponse = {
   app: "rent-split";
   version: number;
-  authRequired: boolean;
-  authed: boolean;
-  session: SessionInfo | null;
-};
-
-export type LoginRequest = {
-  username: string;
-  password: string;
-};
-
-export type LoginResponse = {
-  ok: true;
-  session: SessionInfo;
-};
-
-export type CreateAccountRequest = {
-  username: string;
-  password: string;
-  personId: string | null;
-  role: AccountRole;
-};
-
-export type PatchAccountRequest = {
-  username?: string;
-  password?: string;
-  personId?: string | null;
-  role?: AccountRole;
-  enabled?: boolean;
+  people: PickerPerson[];
 };
 
 export type SettleRequest = {
@@ -66,6 +35,7 @@ export type SettleRequest = {
 
 export type PutStintsRequest = {
   monthKey: string;
+  personId: string;
   stints: Array<{
     id: string;
     personId: string;

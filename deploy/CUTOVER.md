@@ -26,7 +26,7 @@ Run after the first successful `build-push` (or build locally and push).
    ```bash
    docker pull 100.81.62.22:5000/rent-split:latest
    ```
-2. Ensure `/etc/rent-split.env` still has `SECURE_COOKIE=1` and secrets.
+2. `/etc/rent-split.env` only needs paths if you still keep them there.
    You may leave a host-style `DATA_DIR=/opt/rent-split-site/data` in that file;
    compose overrides `DATA_DIR` / `PUBLIC_DIR` / `PORT` for the container.
 3. Place compose (Actions does this) or copy manually:

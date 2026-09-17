@@ -150,32 +150,6 @@ class PutDataRequest(BaseModel):
     force: bool = False
 
 
-class LoginRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    username: str = ""
-    password: str = ""
-
-
-class CreateAccountRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    username: str
-    password: str
-    personId: str | None = None
-    role: Literal["admin", "tenant"] = "tenant"
-
-
-class PatchAccountRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    username: str | None = None
-    password: str | None = None
-    personId: str | None = None
-    role: Literal["admin", "tenant"] | None = None
-    enabled: bool | None = None
-
-
 class SettleRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -193,29 +167,7 @@ class PutStintsRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     monthKey: str = ""
+    personId: str = ""
     stints: list[StintModel] = Field(default_factory=list)
     rev: int | None = None
     force: bool = False
-
-
-class DisablePersonRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    personId: str = ""
-
-
-class PublicAccount(BaseModel):
-    id: str
-    username: str
-    personId: str | None
-    role: Literal["admin", "tenant"]
-    enabled: bool
-    passwordSetAt: str | None
-
-
-class SessionInfo(BaseModel):
-    accountId: str
-    username: str
-    role: Literal["admin", "tenant"]
-    personId: str | None
-    personName: str | None

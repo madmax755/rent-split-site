@@ -72,10 +72,7 @@ export function StintsScreen() {
   if (selfOnly && !myId) {
     return (
       <Screen id="stints" active={activeTab === "stints"}>
-        <EmptyState
-          title="This login is not linked to a person yet"
-          description="Ask the household admin to link your account."
-        />
+        <EmptyState title="Pick who you are" description="Sign out and choose your name." />
       </Screen>
     );
   }
@@ -390,9 +387,7 @@ export function StintsScreen() {
                 : state.people.find((x) => !x.archived);
               if (!p) {
                 store.announce(
-                  selfOnly
-                    ? "This login is not linked to a person yet."
-                    : "Add someone on the Household page first.",
+                  selfOnly ? "Pick who you are first." : "Add someone on the Household page first.",
                 );
                 return;
               }
