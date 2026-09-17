@@ -1,5 +1,11 @@
 import { PERSON_COLORS } from "./defaults";
-import type { HouseholdState, Person } from "./types";
+import type { HouseholdState, MonthStatus, Person } from "./types";
+
+export const MONTH_STATUS_LABEL: Record<MonthStatus, string> = {
+  projected: "Estimates only",
+  collecting: "Waiting for real bills",
+  reconciled: "Real bills in",
+};
 
 export function fmtNum(n: number, d = 2): string {
   if (!Number.isFinite(n)) return "—";

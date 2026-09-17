@@ -1,4 +1,4 @@
-import { todayKey } from "./dates";
+import { currentTenancyMonthKey } from "./dates";
 import type { Bill, HouseholdState, Person, Room } from "./types";
 
 export const MAX_PEOPLE = 8;
@@ -89,7 +89,7 @@ export function freshHousehold(): HouseholdState {
     ledger: [],
     presets: [],
     activePresetName: null,
-    currentMonth: todayKey(),
+    currentMonth: currentTenancyMonthKey(DEFAULT_TENANCY_START),
     activeTab: "month",
     sectionsOpen: { ...DEFAULT_SECTIONS_OPEN },
     openStatements: {},

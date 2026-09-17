@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { chargedFor, computeBalances, computeMonth, monthStatus } from "../domain/engine";
-import { money, money0, payer, personById, signedMoney } from "../domain/format";
-import { tenancyMonthLabel } from "../domain/dates";
+import {
+  MONTH_STATUS_LABEL,
+  money,
+  money0,
+  payer,
+  personById,
+  signedMoney,
+} from "../domain/format";
+import { periodLabel, tenancyCycleDay, tenancyMonthLabel } from "../domain/dates";
 import { copyText } from "../lib/copy-text";
 import { ensureMonth } from "../domain/months";
 import { useHousehold } from "../store/household-context";
 import { PersonStatementCard } from "./person-statement";
-import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
+import { EmptyState, KpiCard, KpiGrid, MonthSwitcher, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
 import { useConfirm } from "./confirm-dialog";
 import { XIcon } from "lucide-react";
@@ -37,11 +44,7 @@ export function TenantHomeScreen() {
       ? chargedFor(state, key)[personId] || 0
       : c.totals[personId] || 0
     : 0;
-  const statusLabel = {
-    projected: "Projected",
-    collecting: "Awaiting real bills",
-    reconciled: "Reconciled",
-  }[status];
+  const statusLabel = MONTH_STATUS_LABEL[status];
   const [settle, setSettle] = useState<SettleRequest | null>(null);
 
   if (!personId || !me) {
@@ -55,13 +58,14 @@ export function TenantHomeScreen() {
     );
   }
 
-  const paymentLine = `${tenancyMonthLabel(key)} — ${me.name} ${money(state.currency, ask)}`;
+  const paymentLine = `${periodLabel(key, tenancyCycleDay(state.tenancyStart))} — ${me.name} ${money(state.currency, ask)}`;
 
   return (
     <Screen id="home" active={activeTab === "home"}>
       <PageHeader
         title={`Hello ${me.name}`}
-        description={`${pay.name} pays the landlord and the bills. You settle with them. This page is only your numbers.`}
+        description={`${pay.name} pays the landlord and the bills. You settle with them.`}
+        actions={<MonthSwitcher />}
       />
       <KpiGrid>
         <KpiCard
@@ -73,15 +77,15 @@ export function TenantHomeScreen() {
                 : "Running balance"
           }
           value={money0(state.currency, Math.abs(myBal))}
-          sub={myBal === 0 ? "all square" : "true-ups not yet settled"}
+          sub={myBal === 0 ? "all square" : "still outstanding"}
         />
         <KpiCard
-          label={M.collected ? "Asked for this tenancy month" : "This tenancy month so far"}
+          label={M.collected ? "Asked for this month" : "This month so far"}
           value={money0(state.currency, ask)}
           sub={statusLabel}
         />
       </KpiGrid>
-      <Panel title={tenancyMonthLabel(key)} description="Your share">
+      <Panel title="Your share" description={periodLabel(key, tenancyCycleDay(state.tenancyStart))}>
         <div className="mb-3 flex flex-wrap gap-2">
           <Button onClick={() => void copyText(paymentLine, (m) => store.announce(m))}>
             Copy payment line
@@ -102,7 +106,7 @@ export function TenantHomeScreen() {
                 });
               }}
             >
-              I paid / was refunded
+              Record a payment
             </Button>
           ) : null}
         </div>
@@ -116,27 +120,6 @@ export function TenantHomeScreen() {
           setSettle(null);
         }}
       />
-    </Screen>
-  );
-}
-
-export function TenantMonthScreen() {
-  const { store, state, activeTab } = useHousehold();
-  const personId = store.session?.personId;
-  const key = state.currentMonth;
-  const M = ensureMonth(state, key);
-  const c = computeMonth(state, key, "eff");
-  if (!personId) {
-    return (
-      <Screen id="month" active={activeTab === "month"}>
-        <EmptyState title="This login is not linked to a person yet." />
-      </Screen>
-    );
-  }
-  return (
-    <Screen id="month" active={activeTab === "month"}>
-      <PageHeader title={tenancyMonthLabel(key)} description="Your share only" />
-      <PersonStatementCard state={state} personId={personId} monthKey={key} M={M} c={c} open />
     </Screen>
   );
 }
@@ -156,12 +139,12 @@ export function TenantHistoryScreen() {
       },
       { persist: false },
     );
-    store.setTab("month");
+    store.setTab("home");
   }
 
   return (
     <Screen id="history" active={activeTab === "history"}>
-      <PageHeader title="History" description="Open a month to see your share." />
+      <PageHeader title="History" description="Open a month to see what you were asked for." />
       <Table>
         <TableHeader>
           <TableRow>
@@ -236,7 +219,7 @@ export function TenantBalancesScreen() {
             myBal > 0 ? `You owe ${pay.name}` : myBal < 0 ? `${pay.name} owes you` : "All square"
           }
           value={money0(state.currency, Math.abs(myBal))}
-          sub="running balance after true-ups"
+          sub="running balance after adjustments"
         />
       </KpiGrid>
       {myBal !== 0 ? (
@@ -266,7 +249,7 @@ export function TenantBalancesScreen() {
             >
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">
-                  {isTrue ? `${tenancyMonthLabel(x.monthKey)} true-up` : x.note || "settled up"}
+                  {isTrue ? `${tenancyMonthLabel(x.monthKey)} adjustment` : x.note || "settled up"}
                 </div>
                 <div className="text-xs text-muted-foreground">{x.date ? `on ${x.date}` : ""}</div>
               </div>

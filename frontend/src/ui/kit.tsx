@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { addMonths, tenancyMonthKey, tenancyMonthLabel } from "../domain/dates";
+import { addMonths, periodLabel, tenancyCycleDay, tenancyMonthKey } from "../domain/dates";
+import { MONTH_STATUS_LABEL } from "../domain/format";
 import { ensureMonth } from "../domain/months";
 import type { MonthStatus } from "../domain/types";
 import { useHousehold } from "../store/household-context";
@@ -48,31 +49,36 @@ export function MonthSwitcher() {
       <Button
         variant="outline"
         size="icon-sm"
-        title="Previous tenancy month"
+        title="Previous month"
         disabled={key <= floor}
         onClick={() => goMonth(store, -1)}
       >
         <ChevronLeftIcon />
       </Button>
       <div className="relative flex h-8 min-w-40 items-center justify-center text-center sm:min-w-52">
-        <div className="pointer-events-none text-sm font-semibold">{tenancyMonthLabel(key)}</div>
+        <div className="pointer-events-none text-sm font-semibold">
+          {periodLabel(key, tenancyCycleDay(state.tenancyStart))}
+        </div>
         <input
           type="month"
-          aria-label="Choose tenancy month"
+          aria-label="Choose month"
           min={floor}
           className="absolute inset-0 h-8 cursor-pointer opacity-0 outline-none"
           value={key}
           onChange={(e) => {
             if (!/^\d{4}-\d{2}$/.test(e.target.value)) return;
             const next = e.target.value < floor ? floor : e.target.value;
-            store.mutate(() => {
-              store.state.currentMonth = next;
-              ensureMonth(store.state, store.state.currentMonth);
-            });
+            store.mutate(
+              () => {
+                store.state.currentMonth = next;
+                ensureMonth(store.state, store.state.currentMonth);
+              },
+              { persist: false },
+            );
           }}
         />
       </div>
-      <Button variant="outline" size="icon-sm" title="Next tenancy month" onClick={() => goMonth(store, 1)}>
+      <Button variant="outline" size="icon-sm" title="Next month" onClick={() => goMonth(store, 1)}>
         <ChevronRightIcon />
       </Button>
     </div>
@@ -80,13 +86,16 @@ export function MonthSwitcher() {
 }
 
 export function goMonth(store: HouseholdStore, delta: number): void {
-  store.mutate(() => {
-    const next = addMonths(store.state.currentMonth, delta);
-    const floor = tenancyMonthKey(store.state.tenancyStart);
-    if (delta < 0 && next < floor) return;
-    store.state.currentMonth = next;
-    ensureMonth(store.state, store.state.currentMonth);
-  });
+  store.mutate(
+    () => {
+      const next = addMonths(store.state.currentMonth, delta);
+      const floor = tenancyMonthKey(store.state.tenancyStart);
+      if (delta < 0 && next < floor) return;
+      store.state.currentMonth = next;
+      ensureMonth(store.state, store.state.currentMonth);
+    },
+    { persist: false },
+  );
 }
 
 export type KpiCardProps = {
@@ -154,11 +163,7 @@ export function MoneyInput(props: MoneyInputProps) {
 }
 
 export function StatusBadge(props: { status: MonthStatus }) {
-  const label = {
-    projected: "Projected",
-    collecting: "Awaiting real bills",
-    reconciled: "Reconciled",
-  }[props.status];
+  const label = MONTH_STATUS_LABEL[props.status];
   const variant = {
     projected: "outline" as const,
     collecting: "secondary" as const,

@@ -57,7 +57,9 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
         aria-expanded={clickable ? open : undefined}
         className={cn(
           "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3 text-left",
-          clickable ? "grid-cols-[auto_minmax(0,1fr)_auto_auto] hover:bg-muted/50" : "cursor-default",
+          clickable
+            ? "grid-cols-[auto_minmax(0,1fr)_auto_auto] hover:bg-muted/50"
+            : "cursor-default",
         )}
         onClick={clickable ? props.onToggle : undefined}
       >
@@ -112,7 +114,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
               u === 0
                 ? l.how[personId] === "not a payer"
                   ? "not a payer on this bill"
-                  : "not here this tenancy month"
+                  : "not here this month"
                 : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days`;
             return (
               <Line

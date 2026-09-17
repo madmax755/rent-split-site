@@ -36,8 +36,14 @@ export function monthLabel(key: string, short = false): string {
 }
 
 export function tenancyMonthLabel(key: string, short = false): string {
-  const label = monthLabel(key, short);
-  return label === "—" ? label : `Tenancy ${label}`;
+  return monthLabel(key, short);
+}
+
+export function currentTenancyMonthKey(tenancyStart: string, now: Date = new Date()): string {
+  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const owner = tenancyOwnerKey(key, now.getDate(), tenancyStart);
+  const floor = tenancyMonthKey(tenancyStart);
+  return owner < floor ? floor : owner;
 }
 
 export function addMonths(key: string, n: number): string {
@@ -175,7 +181,7 @@ export function tenancyPeriodLabel(monthKey: string, tenancyStart: string): stri
   const bounds = tenancyPeriodBounds(monthKey, tenancyStart);
   const end = inclusivePeriodEnd(bounds);
   const crossYear = parseKey(bounds.startKey).y !== parseKey(end.key).y;
-  return `Tenancy period ${dayMonthOrdinalLabel(bounds.startKey, bounds.startDay, crossYear)} to ${dayMonthOrdinalLabel(end.key, end.day, crossYear)}`;
+  return `${dayMonthOrdinalLabel(bounds.startKey, bounds.startDay, crossYear)} to ${dayMonthOrdinalLabel(end.key, end.day, crossYear)}`;
 }
 
 export function periodBounds(monthKey: string, cycleDay: number): PeriodBounds {
@@ -241,11 +247,6 @@ export function periodLabel(monthKey: string, cycleDay: number): string {
   const endYear = parseKey(end.key).y;
   const crossYear = startYear !== endYear;
   return `${dayMonthLabel(bounds.startKey, bounds.startDay, crossYear)} – ${dayMonthLabel(end.key, end.day, crossYear)}`;
-}
-
-export function cyclePhrase(cycleDay: number): string {
-  const day = clampCycleDay(cycleDay);
-  return `${ordinal(day)}–${ordinal(day)}`;
 }
 
 export function daySpanLabel(days: Array<{ key: string; d: number }>): string {

@@ -51,7 +51,9 @@ export function hydrate(
   });
   state.presets = readPresets(d.presets);
   if (typeof d.activePresetName === "string") state.activePresetName = d.activePresetName;
-  if (typeof d.currentMonth === "string") state.currentMonth = d.currentMonth;
+  // Viewing month is local UI state. A saved currentMonth is leftover
+  // household metadata and must not yank everyone onto whichever month
+  // someone last opened.
   if (d.sectionsOpen && typeof d.sectionsOpen === "object") {
     state.sectionsOpen = { ...state.sectionsOpen, ...(d.sectionsOpen as Record<string, boolean>) };
   }

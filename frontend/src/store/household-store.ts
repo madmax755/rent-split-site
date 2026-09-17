@@ -1,6 +1,6 @@
 import { deep } from "../domain/clone";
 import { freshHousehold } from "../domain/defaults";
-import { todayKey } from "../domain/dates";
+import { currentTenancyMonthKey } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import { normalise } from "../domain/normalise";
 import { hydrate, serializeEnvelope } from "../domain/hydrate";
@@ -331,7 +331,7 @@ export class HouseholdStore {
 
   resetToDefaults(): void {
     resetHousehold(this.state);
-    this.state.currentMonth = todayKey();
+    this.state.currentMonth = currentTenancyMonthKey(this.state.tenancyStart);
     ensureMonth(this.state, this.state.currentMonth);
     normalise(this.state);
     this.save();

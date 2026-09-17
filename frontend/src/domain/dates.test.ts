@@ -3,6 +3,7 @@ import {
   calendarRangeLabel,
   chargeableDayCount,
   clampCycleDay,
+  currentTenancyMonthKey,
   firstChargeableDay,
   inclusivePeriodEnd,
   isoToPeriodDay,
@@ -84,8 +85,12 @@ describe("tenancy start helpers", () => {
   });
 
   test("tenancy August 2026 runs 9 Aug to 8 Sep", () => {
-    expect(tenancyMonthLabel("2026-08")).toBe("Tenancy August 2026");
-    expect(tenancyPeriodLabel("2026-08", "2026-08-09")).toBe("Tenancy period 9th Aug to 8th Sep");
+    expect(tenancyMonthLabel("2026-08")).toBe("August 2026");
+    expect(tenancyPeriodLabel("2026-08", "2026-08-09")).toBe("9th Aug to 8th Sep");
+    expect(currentTenancyMonthKey("2026-08-09", new Date(2026, 8, 17))).toBe("2026-09");
+    expect(currentTenancyMonthKey("2026-08-09", new Date(2026, 9, 5))).toBe("2026-09");
+    expect(currentTenancyMonthKey("2026-08-09", new Date(2026, 7, 9))).toBe("2026-08");
+    expect(currentTenancyMonthKey("2026-08-09", new Date(2026, 7, 8))).toBe("2026-08");
     expect(tenancyPeriodLength("2026-08", "2026-08-09")).toBe(31);
     expect(tenancyPeriodLength("2026-09", "2026-08-09")).toBe(30);
     expect(tenancyOwnerKey("2026-08", 9, "2026-08-09")).toBe("2026-08");
