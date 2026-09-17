@@ -14,6 +14,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { computeBalances, monthAllActual } from "../domain/engine";
+import { personById } from "../domain/format";
 import { ensureMonth } from "../domain/months";
 import type { TabId } from "../domain/types";
 import { useHousehold } from "../store/household-context";
@@ -82,6 +83,8 @@ export function AppShell(props: AppShellProps) {
   const [signingIn, setSigningIn] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const tenant = store.isTenant();
+  const linkedId = store.linkedPersonId();
+  const linkedName = linkedId ? (personById(state, linkedId)?.name ?? undefined) : undefined;
   const visible = NAV.filter((item) => (tenant ? tenantTabs.has(item.id) : item.id !== "home"));
   const work = visible.filter((item) => item.group === "work");
   const house = visible.filter((item) => item.group === "house");
@@ -301,7 +304,9 @@ export function AppShell(props: AppShellProps) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">Rent Split</div>
-            <div className="truncate text-[11px] text-muted-foreground">{pageTitle(activeTab)}</div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {pageTitle(activeTab, linkedName)}
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -365,7 +370,11 @@ export function AppShell(props: AppShellProps) {
         >
           <SheetHeader>
             <SheetTitle>More</SheetTitle>
-            <SheetDescription>Household setup, settings and how the split works.</SheetDescription>
+            <SheetDescription>
+              {tenant
+                ? "How the split is worked out."
+                : "Household setup, settings and how the split works."}
+            </SheetDescription>
           </SheetHeader>
           <div className="grid gap-1 px-4 pb-6">
             {visible
@@ -450,10 +459,10 @@ function NavGroup(props: NavGroupProps) {
   );
 }
 
-function pageTitle(tab: TabId): string {
+function pageTitle(tab: TabId, personName?: string): string {
   switch (tab) {
     case "home":
-      return "Home";
+      return personName ? `Hello ${personName}` : "Home";
     case "month":
       return "This month";
     case "stints":
