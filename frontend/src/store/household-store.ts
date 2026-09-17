@@ -7,15 +7,9 @@ import { hydrate, serializeEnvelope } from "../domain/hydrate";
 import { APP_ID } from "../domain/schema";
 import { applySnapshot, resetHousehold, snapshotCurrent } from "../domain/snapshot";
 import type { DataEnvelope, HouseholdState, LedgerEntry, TabId } from "../domain/types";
-import type { SessionInfo } from "../lib/api-types";
+import type { PickerPerson, SessionInfo } from "../lib/api-types";
 import type { ConfirmAsk } from "../ui/confirm-dialog";
-import {
-  ConflictError,
-  NeedAuthError,
-  localAdapter,
-  pickAdapter,
-  type StorageAdapter,
-} from "../storage/adapters";
+import { ConflictError, localAdapter, pickAdapter, type StorageAdapter } from "../storage/adapters";
 
 export type ToastFn = (msg: string) => void;
 
@@ -23,6 +17,7 @@ export class HouseholdStore {
   state: HouseholdState = freshHousehold();
   adapter: StorageAdapter = localAdapter();
   session: SessionInfo | null = null;
+  pickerPeople: PickerPerson[] = [];
   dirty = false;
   lastError = "";
   needAuth = false;
@@ -122,6 +117,7 @@ export class HouseholdStore {
     this.adapter = picked.adapter;
     this.needAuth = picked.needAuth;
     this.session = picked.session;
+    this.pickerPeople = picked.people;
     if (this.session) this.adapter.setRole?.(this.session.role);
     this.notify();
   }
@@ -197,11 +193,6 @@ export class HouseholdStore {
       this.dirty = false;
       this.lastError = "";
     } catch (e) {
-      if (e instanceof NeedAuthError) {
-        this.needAuth = true;
-        this.lastError = "Signed out.";
-        throw e;
-      }
       if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
         this.pushing = false;
@@ -243,7 +234,7 @@ export class HouseholdStore {
         const mine = (this.state.months[monthKey]?.stints || []).filter(
           (s) => s.personId === personId,
         );
-        await saveMyStints(monthKey, mine, force);
+        await saveMyStints(monthKey, personId, mine, force);
         this.pendingOwnStints.delete(monthKey);
       }
       this.dirty = this.pendingOwnStints.size > 0;
@@ -251,11 +242,6 @@ export class HouseholdStore {
       const fresh = await this.adapter.load();
       if (fresh) this.applyHydrate(fresh);
     } catch (e) {
-      if (e instanceof NeedAuthError) {
-        this.needAuth = true;
-        this.lastError = "Signed out.";
-        throw e;
-      }
       if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
         this.pushing = false;

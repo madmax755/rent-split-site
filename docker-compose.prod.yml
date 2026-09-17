@@ -2,7 +2,7 @@
 #
 # Expects:
 #   - Image already in the Tailscale registry (see .github/workflows/build-push.yml)
-#   - Env file /etc/rent-split.env (same secrets as the legacy systemd unit)
+#   - Env file /etc/rent-split.env (optional leftover host paths)
 #   - Existing SQLite tree at /opt/rent-split-site/data (bind-mounted; preserved)
 #
 # Usage on server1:

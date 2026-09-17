@@ -9,13 +9,9 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now rent-split
 #
-# Credentials live in a root-only env file (chmod 600), e.g.:
+# Env file (chmod 600), e.g.:
 #   PORT=8080
 #   DATA_DIR=/opt/rent-split-site/data
-#   SECURE_COOKIE=1
-#   RENT_SPLIT_ADMIN_USER=asoni
-#   RENT_SPLIT_ADMIN_PASSWORD=...
-#   RENT_SPLIT_SECRET=...
 #
 # Logs (legacy): journalctl -u rent-split -f
 # Logs (current): docker compose -f /opt/rent-split-site/docker-compose.prod.yml logs -f

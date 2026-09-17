@@ -20,13 +20,11 @@ def bootstrap(settings: Settings) -> None:
     settings.backup_dir.mkdir(parents=True, exist_ok=True)
     configure_engine(settings)
     run_migrations(settings)
-    from app.accounts import ensure_seeded
     from app.import_json import import_legacy_json
 
     factory = get_session_factory()
     with factory() as session:
         import_legacy_json(session, settings)
-        ensure_seeded(session, settings)
         session.commit()
 
 

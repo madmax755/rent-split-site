@@ -3,7 +3,7 @@
 Self-hosted household rent & bill splitter.
 
 - **Frontend:** Vite 8 + React 19 + React Compiler + Tailwind 4 + TypeScript
-- **Server:** FastAPI + SQLAlchemy 2 + Alembic + SQLite (`server/`) — per-person logins, backups
+- **Server:** FastAPI + SQLAlchemy 2 + Alembic + SQLite (`server/`) — shared household, backups
 - **Tooling:** Bun (frontend) and uv (Python API); oxfmt / oxlint
 - **Production:** Docker image on the Tailscale registry + compose on server1
 
@@ -59,7 +59,7 @@ whole site to `127.0.0.1:8080` — it no longer serves static files from disk.
 docker build -t rent-split:local .
 docker run --rm -p 127.0.0.1:8080:8080 \
   -v "$(pwd)/data:/data" \
-  -e DATA_DIR=/data -e PUBLIC_DIR=/app/public -e SECURE_COOKIE=0 \
+  -e DATA_DIR=/data -e PUBLIC_DIR=/app/public \
   rent-split:local
 curl -fsS http://127.0.0.1:8080/api/health
 ```
@@ -81,21 +81,19 @@ GitHub Actions:
 
 Cutover details and rollback notes: [`deploy/CUTOVER.md`](deploy/CUTOVER.md).
 
-Important env vars (host file `/etc/rent-split.env`; never commit secrets):
+Important env vars (host file `/etc/rent-split.env`):
 
-- `RENT_SPLIT_ADMIN_USER` / `RENT_SPLIT_ADMIN_PASSWORD` — seeded into SQLite if the account table is empty
 - `DATA_DIR` — on the host historically `/opt/rent-split-site/data`; compose forces `/data` inside the container
-- `SECURE_COOKIE=1` — once on https
 
-Disable or reset a person's login to revoke them. Changing `RENT_SPLIT_SECRET` signs everyone out.
+Who you are is stored in the browser (`localStorage`). There are no server-side sessions or passwords — pick Ach, Max, Joe or Alice on the first visit. The payer sees household setup; everyone else sees their own dashboard.
 
 The systemd unit in `deploy/rent-split.service` is **legacy** (rollback only).
 
 ## Data
 
-Household numbers are stored relationally in SQLite (`people`, `rooms`, `bills`, `months`, `ledger`, …) behind the same JSON document API the React app already uses. Logins live in the `account` table; password hashes never go to the browser. Every household write keeps a timestamped JSON backup (capped at 200). Concurrent edits: last write with matching `rev` wins; conflicts ask the user to keep/overwrite. Admins can edit the household; tenants see only their own dashboard and can record a settlement.
+Household numbers are stored relationally in SQLite (`people`, `rooms`, `bills`, `months`, `ledger`, …) behind the same JSON document API the React app already uses. Every household write keeps a timestamped JSON backup (capped at 200). Concurrent edits: last write with matching `rev` wins; conflicts ask the user to keep/overwrite. The payer can edit the household; everyone else sees their own dashboard and can record a settlement.
 
-On first boot, if `data/` still has the old `rent-split.json` / `accounts.json` and the database is empty, they are imported. The JSON files are left in place.
+On first boot, if `data/` still has the old `rent-split.json` and the database is empty, it is imported. The JSON file is left in place.
 
 ## New features
 
