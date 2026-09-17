@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x deploy/resolve-tailscale-host.sh
-          HOST="$(./deploy/resolve-tailscale-host.sh server1)"
+          HOST="$(./deploy/resolve-tailscale-host.sh server1 100.81.62.22)"
           echo "host=${HOST}" >> "${GITHUB_OUTPUT}"
           echo "Resolved server1 -> ${HOST}"
 
