@@ -70,7 +70,7 @@ const NAV: NavItem[] = [
     label: "Settings",
     shortLabel: "Settings",
     icon: <SettingsIcon />,
-    group: "house",
+    group: "help",
   },
   { id: "how", label: "How it works", shortLabel: "Help", icon: <BookOpenIcon />, group: "help" },
 ];
@@ -176,7 +176,7 @@ export function AppShell(props: AppShellProps) {
         <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
           <NavGroup title="" items={work} active={activeTab} alert={tabAlert} onGo={go} />
           {house.length ? (
-            <NavGroup title="Setup" items={house} active={activeTab} alert={tabAlert} onGo={go} />
+            <NavGroup title="" items={house} active={activeTab} alert={tabAlert} onGo={go} />
           ) : null}
           <NavGroup title="" items={help} active={activeTab} alert={tabAlert} onGo={go} />
         </nav>

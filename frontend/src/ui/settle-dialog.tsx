@@ -95,7 +95,7 @@ export function SettleDialog(props: SettleDialogProps) {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Record a settlement</DialogTitle>
+          <DialogTitle>Record a payment</DialogTitle>
           <DialogDescription>
             {direction}. {money(req.currency, outstanding)} is outstanding.
           </DialogDescription>

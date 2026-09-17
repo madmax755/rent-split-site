@@ -584,7 +584,7 @@ export function monthSummaryText(state: HouseholdState, key: string): string {
   const owing = state.people.filter((p) => !p.isPayer && Math.abs(bal[p.id] || 0) >= 1);
   if (owing.length) {
     lines.push("");
-    lines.push("Running balances:");
+    lines.push("Still outstanding:");
     owing.forEach((p) => {
       const v = bal[p.id] ?? 0;
       lines.push(

@@ -115,7 +115,7 @@ export function PersonStatementCard(props: PersonStatementCardProps) {
                 ? l.how[personId] === "not a payer"
                   ? "not a payer on this bill"
                   : "not here this month"
-                : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} person-days`;
+                : `${money(state.currency, l.amount)} × ${u} of ${l.unitSum} days`;
             return (
               <Line
                 key={l.id}

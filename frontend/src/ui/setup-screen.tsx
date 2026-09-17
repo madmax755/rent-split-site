@@ -37,10 +37,7 @@ export function SetupScreen() {
 
   return (
     <Screen id="setup" active={activeTab === "setup"}>
-      <PageHeader
-        title="Household"
-        description="People, rooms, bills and the standing rent — the house as it is set up, not this month's figures."
-      />
+      <PageHeader title="Household" description="People, rooms, bills and rent." />
       <Tabs defaultValue="people" className="gap-5">
         <TabsList
           variant="line"
@@ -62,7 +59,7 @@ export function SetupScreen() {
         <TabsContent value="people">
           <Panel
             id="people"
-            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}. When they are here, and which bedroom they are in, lives on Who's here.`}
+            description={`${plural(live.length, "person", "people")}${arch ? ` · ${arch} archived` : ""}`}
           >
             <div className="grid gap-2">
               {ordered.map((p) => {
@@ -387,7 +384,7 @@ export function SetupScreen() {
         <TabsContent value="bills">
           <Panel
             id="bills"
-            description={`${state.bills.length} bills · ~${state.currency}${Math.round(monthly).toLocaleString()}/mo. The usual amount is only the starting figure for months you haven't filled in yet.`}
+            description={`${state.bills.length} bills · ~${state.currency}${Math.round(monthly).toLocaleString()}/mo starting figure`}
           >
             {state.bills.map((b) => {
               const restricted = Array.isArray(b.payers) && b.payers.length > 0;
@@ -518,8 +515,8 @@ export function SetupScreen() {
         <TabsContent value="rent">
           <Panel
             id="rent"
-            title="Standing rent & shared space"
-            description="The standing rent is what every new month starts from. Splits follow the period from the start date. To change one month only, edit rent on This month."
+            title="Rent and shared space"
+            description="New months start from this rent. To change one month only, edit it on This month."
           >
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm sm:col-span-2">

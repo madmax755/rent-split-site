@@ -113,8 +113,8 @@ export function HowScreen() {
               <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
               bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere to
               go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
-              <b>Who's here</b>, with the exact days listed. The <em>Bedroom cover</em> strip under
-              the timeline shows this at a glance.
+              <b>Who's here</b>, with the exact days listed. The <em>Bedrooms</em> strip under the
+              timeline shows this at a glance.
             </p>
           </div>
 
@@ -316,8 +316,8 @@ export function HowScreen() {
               most of the time there's nothing to type.
             </li>
             <li>
-              Everyone pays against that. Press <b>Lock what people were asked</b> and the app
-              records exactly what each person was asked for.
+              Everyone pays against that. Press <b>Lock these amounts</b> and the app records
+              exactly what each person was asked for.
             </li>
             <li>
               When the real bills arrive you type them into the <b>realised</b> column. Every split
@@ -363,7 +363,7 @@ export function HowScreen() {
             Pressing <b>Settle…</b> asks how much actually changed hands. Accept the suggested
             figure to clear the balance in full, or type a smaller amount to record a{" "}
             <b>partial payment</b> — the remainder stays outstanding, ready to settle again later.
-            Every payment, full or partial, is listed under <em>Every adjustment</em> exactly as
+            Every payment, full or partial, is listed under <em>What changed</em> exactly as
             recorded, and any of them can be undone (which puts the balance back to what it was
             before).
           </p>
