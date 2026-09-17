@@ -36,26 +36,8 @@ MIME = {
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     bootstrap(settings)
-    admin = _first_admin_name()
     print(f"Rent Split listening (FastAPI)  data: {settings.database_path}")
-    print(f"  admin:    {admin or '(none)'}")
-    if not settings.secure_cookie:
-        print("  note:     set SECURE_COOKIE=1 once you are serving over https")
     yield
-
-
-def _first_admin_name() -> str | None:
-    from sqlalchemy import select
-
-    from app.db import get_session_factory
-    from app.models import Account
-
-    factory = get_session_factory()
-    with factory() as session:
-        account = session.scalar(
-            select(Account).where(Account.role == "admin", Account.enabled.is_(True))
-        )
-        return account.username if account else None
 
 
 app = FastAPI(title="Rent Split", docs_url=None, redoc_url=None, lifespan=lifespan)

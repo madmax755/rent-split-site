@@ -76,8 +76,8 @@ export function StintsScreen() {
     return (
       <Screen id="stints" active={activeTab === "stints"}>
         <EmptyState
-          title="This login is not linked to a person yet"
-          description="Ask the household admin to link your account."
+          title="Pick who you are"
+          description="Sign out and choose your name."
         />
       </Screen>
     );
@@ -388,7 +388,7 @@ export function StintsScreen() {
               if (!p) {
                 store.announce(
                   selfOnly
-                    ? "This login is not linked to a person yet."
+                    ? "Pick who you are first."
                     : "Add someone on the Household page first.",
                 );
                 return;

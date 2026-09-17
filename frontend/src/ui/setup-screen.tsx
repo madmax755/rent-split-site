@@ -9,7 +9,6 @@ import { normalise } from "../domain/normalise";
 import type { CurrencySymbol } from "../domain/types";
 import { XIcon } from "lucide-react";
 import { useHousehold } from "../store/household-context";
-import { AccessSection } from "./access-section";
 import { Avatar } from "./avatar";
 import { useConfirm } from "./confirm-dialog";
 import { EditableText, MoneyInput, PageHeader, Panel, Screen } from "./kit";
@@ -59,11 +58,6 @@ export function SetupScreen() {
           <TabsTrigger value="rent" className="px-3">
             Rent
           </TabsTrigger>
-          {store.adapter.listAccounts ? (
-            <TabsTrigger value="logins" className="px-3">
-              Logins
-            </TabsTrigger>
-          ) : null}
         </TabsList>
         <TabsContent value="people">
           <Panel
@@ -197,7 +191,6 @@ export function SetupScreen() {
                                 normalise(store.state);
                               });
                             }
-                            void store.adapter.disablePersonLogin?.(p.id);
                           })();
                         }}
                       >
@@ -615,11 +608,6 @@ export function SetupScreen() {
           </Panel>
         </TabsContent>
 
-        {store.adapter.listAccounts ? (
-          <TabsContent value="logins" keepMounted>
-            <AccessSection />
-          </TabsContent>
-        ) : null}
       </Tabs>
     </Screen>
   );

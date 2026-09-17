@@ -24,7 +24,7 @@ export type ConfirmAsk = (request: ConfirmRequest) => Promise<boolean>;
 
 export const SIGN_OUT_REQUEST: ConfirmRequest = {
   title: "Sign out?",
-  description: "This browser will forget the session.",
+  description: "This browser will forget who you are.",
   confirmLabel: "Sign out",
   destructive: true,
 };

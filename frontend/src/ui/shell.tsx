@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BookOpenIcon,
   CalendarDaysIcon,
@@ -13,16 +13,16 @@ import {
   SunIcon,
   UsersIcon,
 } from "lucide-react";
+import { PERSON_COLORS } from "../domain/defaults";
 import { computeBalances, monthAllActual } from "../domain/engine";
-import { personById } from "../domain/format";
+import { initials, personById } from "../domain/format";
 import { ensureMonth } from "../domain/months";
+import type { PickerPerson } from "../lib/api-types";
 import type { TabId } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { resolvedTheme, type Tweaks } from "../theme/tweaks";
 import { SIGN_OUT_REQUEST, useConfirm } from "./confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -37,9 +37,9 @@ export type AppShellProps = {
   children: ReactNode;
   tweaks: Tweaks;
   onTweaks: (t: Tweaks) => void;
-  loginOpen: boolean;
-  loginError: string;
-  onLogin: (username: string, password: string) => Promise<void>;
+  pickerOpen: boolean;
+  pickerPeople: PickerPerson[];
+  onPickPerson: (person: PickerPerson) => void;
   onLogout: () => void;
   toast: string;
 };
@@ -78,9 +78,6 @@ const NAV: NavItem[] = [
 export function AppShell(props: AppShellProps) {
   const { store, state, activeTab } = useHousehold();
   const ask = useConfirm();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [signingIn, setSigningIn] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const tenant = store.isTenant();
   const linkedId = store.linkedPersonId();
@@ -155,60 +152,8 @@ export function AppShell(props: AppShellProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function submitLogin(e: FormEvent): Promise<void> {
-    e.preventDefault();
-    setSigningIn(true);
-    try {
-      await props.onLogin(username, password);
-    } finally {
-      setSigningIn(false);
-    }
-  }
-
-  if (props.loginOpen) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-6">
-        <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="mb-5">
-            <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-              Rent Split
-            </p>
-            <h1 className="font-heading mt-1 text-2xl font-semibold tracking-tight">Sign in</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Use the username the household admin gave you.
-            </p>
-          </div>
-          <form className="grid gap-3" onSubmit={(e) => void submitLogin(e)} autoComplete="on">
-            <div className="grid gap-1.5">
-              <Label htmlFor="login-user">Username</Label>
-              <Input
-                id="login-user"
-                type="text"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="login-pass">Password</Label>
-              <Input
-                id="login-pass"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {props.loginError ? (
-              <p className="text-sm text-destructive">{props.loginError}</p>
-            ) : null}
-            <Button type="submit" disabled={signingIn} className="mt-1 w-full">
-              {signingIn ? "Checking…" : "Sign in"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    );
+  if (props.pickerOpen) {
+    return <PersonPicker people={props.pickerPeople} onPick={props.onPickPerson} />;
   }
 
   return (
@@ -239,15 +184,13 @@ export function AppShell(props: AppShellProps) {
           <div className="flex items-center justify-between gap-2 px-1">
             <div className="min-w-0">
               <div className="truncate text-xs font-medium">
-                {store.session && store.session.accountId !== "local"
-                  ? store.session.username
-                  : "This browser"}
+                {store.session?.personName ?? "This browser"}
               </div>
               <div className="truncate text-[11px] text-muted-foreground">
                 {store.session?.role === "admin"
-                  ? "Admin"
+                  ? "Household"
                   : store.session?.role === "tenant"
-                    ? "Tenant"
+                    ? "Your dashboard"
                     : syncLabel}
                 {store.session?.role ? ` · ${syncLabel}` : ""}
               </div>
@@ -412,6 +355,42 @@ export function AppShell(props: AppShellProps) {
         )}
       >
         {props.toast}
+      </div>
+    </div>
+  );
+}
+
+function PersonPicker(props: { people: PickerPerson[]; onPick: (person: PickerPerson) => void }) {
+  return (
+    <div className="flex min-h-dvh items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          Rent Split
+        </p>
+        <h1 className="font-heading mt-1 text-2xl font-semibold tracking-tight">Who are you?</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          This browser will remember until you switch.
+        </p>
+        <div className="mt-6 grid gap-2 sm:grid-cols-2">
+          {props.people.map((person, index) => (
+            <button
+              key={person.id}
+              type="button"
+              className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-left shadow-sm transition hover:bg-accent"
+              onClick={() => props.onPick(person)}
+            >
+              <span
+                className="inline-flex size-10 items-center justify-center rounded-full font-semibold text-white"
+                style={{
+                  background: PERSON_COLORS[index % PERSON_COLORS.length] ?? "#ff9f0a",
+                }}
+              >
+                {initials(person.name)}
+              </span>
+              <span className="font-medium">{person.name}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { currentTenancyMonthKey } from "./domain/dates";
 import { ensureMonth } from "./domain/months";
 import { normalise } from "./domain/normalise";
+import type { PickerPerson } from "./lib/api-types";
+import { sessionFromPerson, writeStoredWho } from "./storage/who";
 import { HouseholdProvider, useHousehold } from "./store/household-context";
 import { HouseholdStore } from "./store/household-store";
 import { applyTheme, loadTweaks, saveTweaks, type Tweaks } from "./theme/tweaks";
@@ -32,7 +34,6 @@ function RentSplitApp() {
   const ask = useConfirm();
   const [tweaks, setTweaks] = useState<Tweaks>(() => loadTweaks());
   const [toast, setToast] = useState("");
-  const [loginError, setLoginError] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
   const [booted, setBooted] = useState(false);
@@ -78,15 +79,9 @@ function RentSplitApp() {
     };
   }, [store]);
 
-  async function onLogin(username: string, password: string): Promise<void> {
-    setLoginError("");
-    const login = store.adapter.login;
-    if (!login) return;
-    const session = await login(username, password);
-    if (!session) {
-      setLoginError("That username or password didn't work.");
-      return;
-    }
+  async function onPickPerson(person: PickerPerson): Promise<void> {
+    writeStoredWho(person.id);
+    const session = sessionFromPerson(person);
     store.needAuth = false;
     store.applySession(session);
     const data = await store.loadRaw();
@@ -97,7 +92,7 @@ function RentSplitApp() {
     store.saveLocal();
     store.startPolling();
     store.notifyPublic();
-    store.announce("Signed in.");
+    store.announce(`Hello ${person.name}.`);
   }
 
   async function exportBackup(): Promise<void> {
@@ -165,9 +160,9 @@ function RentSplitApp() {
     <AppShell
       tweaks={tweaks}
       onTweaks={setTweaks}
-      loginOpen={store.needAuth}
-      loginError={loginError}
-      onLogin={onLogin}
+      pickerOpen={store.needAuth}
+      pickerPeople={store.pickerPeople}
+      onPickPerson={(person) => void onPickPerson(person)}
       onLogout={() => {
         void store.adapter.logout?.().then(() => location.reload());
       }}

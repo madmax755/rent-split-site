@@ -14,6 +14,13 @@ export const LS = {
       return false;
     }
   },
+  remove(k: string): void {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+  },
   available(): boolean {
     try {
       localStorage.setItem("__t", "1");

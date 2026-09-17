@@ -210,42 +210,6 @@ def assemble_document(household: Household | None) -> StoredDocument:
     )
 
 
-def tenant_document(doc: StoredDocument, person_id: str) -> StoredDocument:
-    payload = doc.payload
-    if payload is None:
-        return doc
-    data = payload.get("data")
-    if not isinstance(data, dict):
-        return doc
-    ledger = data.get("ledger")
-    filtered = (
-        [entry for entry in ledger if isinstance(entry, dict) and entry.get("personId") == person_id]
-        if isinstance(ledger, list)
-        else []
-    )
-    return StoredDocument(
-        rev=doc.rev,
-        savedAt=doc.savedAt,
-        payload={
-            **payload,
-            "data": {
-                **data,
-                "ledger": filtered,
-                "presets": [],
-            },
-        },
-    )
-
-
-def person_name(household: Household | None, person_id: str | None) -> str | None:
-    if household is None or not person_id:
-        return None
-    for person in household.people:
-        if person.id == person_id:
-            return person.name
-    return None
-
-
 def _clear_live_rows(session: Session, household: Household) -> None:
     household.people.clear()
     household.rooms.clear()
@@ -580,7 +544,7 @@ def replace_person_stints(
     rooms = {room.id: room for room in household.rooms}
     people = {person.id for person in household.people}
     if person_id not in people:
-        raise StintWriteError("This login is not linked to a person in the household.")
+        raise StintWriteError("That person is not in the household.")
     seen_ids: set[str] = set()
     for stint in stints:
         if not STINT_ID_RE.match(stint.id):

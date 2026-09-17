@@ -51,8 +51,8 @@ export function TenantHomeScreen() {
     return (
       <Screen id="home" active={activeTab === "home"}>
         <EmptyState
-          title="This login is not linked to a person yet"
-          description="Ask the household admin."
+          title="Pick who you are"
+          description="Sign out and choose your name."
         />
       </Screen>
     );
@@ -202,7 +202,7 @@ export function TenantBalancesScreen() {
   if (!personId || !me) {
     return (
       <Screen id="balances" active={activeTab === "balances"}>
-        <EmptyState title="This login is not linked to a person yet." />
+        <EmptyState title="Pick who you are." />
       </Screen>
     );
   }
