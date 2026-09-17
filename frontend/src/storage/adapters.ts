@@ -11,7 +11,7 @@ import type {
   SettleRequest,
   StoredDocument,
 } from "../lib/api-types";
-import { clearStoredWho, livePickerPeople, sessionFromStored } from "./who";
+import { clearStoredWho, livePickerPeople, resolvePickerPeople, sessionFromStored } from "./who";
 
 export class ForbiddenError extends Error {
   readonly kind = "forbidden" as const;
@@ -205,7 +205,7 @@ export async function pickAdapter(): Promise<{
       if (r.ok) {
         const h = (await r.json()) as HealthResponse;
         if (h && h.app === "rent-split") {
-          const people = livePickerPeople(h.people.length ? h.people : defaultPickerPeople());
+          const people = resolvePickerPeople(h.people, defaultPickerPeople());
           const adapter = httpAdapter("");
           const session = sessionFromStored(people);
           if (session) adapter.setRole?.(session.role);

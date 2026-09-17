@@ -2,6 +2,7 @@ import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import {
   clearStoredWho,
   livePickerPeople,
+  resolvePickerPeople,
   sessionFromPerson,
   sessionFromStored,
   writeStoredWho,
@@ -61,6 +62,15 @@ describe("who", () => {
 
   test("hides archived people from the picker", () => {
     expect(livePickerPeople(people).map((person) => person.name)).toEqual(["Ach", "Joe", "Max"]);
+  });
+
+  test("falls back when the household has no live people", () => {
+    const archivedOnly = people.map((person) => ({ ...person, archived: true }));
+    const fallback = [{ id: "p1", name: "Ach", isPayer: true, archived: false }];
+    expect(resolvePickerPeople([], fallback).map((person) => person.name)).toEqual(["Ach"]);
+    expect(resolvePickerPeople(archivedOnly, fallback).map((person) => person.name)).toEqual([
+      "Ach",
+    ]);
   });
 
   test("restores a stored live person", () => {

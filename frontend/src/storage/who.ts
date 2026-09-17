@@ -53,3 +53,11 @@ export function sessionFromStored(people: PickerPerson[]): SessionInfo | null {
 export function livePickerPeople(people: PickerPerson[]): PickerPerson[] {
   return people.filter((person) => !person.archived);
 }
+
+export function resolvePickerPeople(
+  people: PickerPerson[],
+  fallback: PickerPerson[],
+): PickerPerson[] {
+  const live = livePickerPeople(people);
+  return live.length ? live : livePickerPeople(fallback);
+}
