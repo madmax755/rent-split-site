@@ -607,7 +607,6 @@ export function SetupScreen() {
             </p>
           </Panel>
         </TabsContent>
-
       </Tabs>
     </Screen>
   );

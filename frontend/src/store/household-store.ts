@@ -9,12 +9,7 @@ import { applySnapshot, resetHousehold, snapshotCurrent } from "../domain/snapsh
 import type { DataEnvelope, HouseholdState, LedgerEntry, TabId } from "../domain/types";
 import type { PickerPerson, SessionInfo } from "../lib/api-types";
 import type { ConfirmAsk } from "../ui/confirm-dialog";
-import {
-  ConflictError,
-  localAdapter,
-  pickAdapter,
-  type StorageAdapter,
-} from "../storage/adapters";
+import { ConflictError, localAdapter, pickAdapter, type StorageAdapter } from "../storage/adapters";
 
 export type ToastFn = (msg: string) => void;
 

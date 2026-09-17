@@ -75,10 +75,7 @@ export function StintsScreen() {
   if (selfOnly && !myId) {
     return (
       <Screen id="stints" active={activeTab === "stints"}>
-        <EmptyState
-          title="Pick who you are"
-          description="Sign out and choose your name."
-        />
+        <EmptyState title="Pick who you are" description="Sign out and choose your name." />
       </Screen>
     );
   }
@@ -387,9 +384,7 @@ export function StintsScreen() {
                 : state.people.find((x) => !x.archived);
               if (!p) {
                 store.announce(
-                  selfOnly
-                    ? "Pick who you are first."
-                    : "Add someone on the Household page first.",
+                  selfOnly ? "Pick who you are first." : "Add someone on the Household page first.",
                 );
                 return;
               }

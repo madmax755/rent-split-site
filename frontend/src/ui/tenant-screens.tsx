@@ -50,10 +50,7 @@ export function TenantHomeScreen() {
   if (!personId || !me) {
     return (
       <Screen id="home" active={activeTab === "home"}>
-        <EmptyState
-          title="Pick who you are"
-          description="Sign out and choose your name."
-        />
+        <EmptyState title="Pick who you are" description="Sign out and choose your name." />
       </Screen>
     );
   }
