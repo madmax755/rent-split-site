@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import {
   clearStoredWho,
   livePickerPeople,
@@ -6,6 +6,33 @@ import {
   sessionFromStored,
   writeStoredWho,
 } from "./who";
+
+const memory = new Map<string, string>();
+
+beforeAll(() => {
+  if (typeof globalThis.localStorage !== "undefined") return;
+  const storage: Storage = {
+    get length() {
+      return memory.size;
+    },
+    clear() {
+      memory.clear();
+    },
+    getItem(key) {
+      return memory.get(key) ?? null;
+    },
+    key(index) {
+      return [...memory.keys()][index] ?? null;
+    },
+    removeItem(key) {
+      memory.delete(key);
+    },
+    setItem(key, value) {
+      memory.set(key, value);
+    },
+  };
+  Object.defineProperty(globalThis, "localStorage", { value: storage });
+});
 
 const people = [
   { id: "p1", name: "Ach", isPayer: true, archived: false },
