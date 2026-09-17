@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { SCHEMA, STORAGE_KEY } from "../domain/schema";
 import { snapshotCurrent } from "../domain/snapshot";
 import { sortedMonthKeys } from "../domain/months";
 import { plural } from "../domain/format";
@@ -36,10 +35,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
   return (
     <Screen id="settings" active={activeTab === "settings"}>
-      <PageHeader
-        title="Settings"
-        description="Appearance, saved properties, and backups. Household rent, rooms and bills live on Household."
-      />
+      <PageHeader title="Settings" description="This browser, backups, and saved properties." />
       <div className="grid gap-5">
         <Panel title="Appearance" description="These stay on this browser and are not shared.">
           <div className="grid gap-4">
@@ -96,10 +92,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           </div>
         </Panel>
 
-        <Panel
-          title="Properties"
-          description="Snapshot the entire setup — people, rent, rooms, bills, months and balances — and switch between properties."
-        >
+        <Panel title="Properties" description="Switch between saved households.">
           {!state.presets.length ? (
             <p className="text-sm text-muted-foreground">No saved properties yet.</p>
           ) : (
@@ -215,8 +208,8 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </Panel>
 
         <Panel
-          title="Data, backup & sync"
-          description={`${plural(sortedMonthKeys(state).length, "month")} · ${a.shared ? "shared" : "local"}`}
+          title="Backup and sync"
+          description={`${plural(sortedMonthKeys(state).length, "month")} · ${a.shared ? "shared" : "this browser"}`}
         >
           <div className="callout">
             <p>
@@ -255,9 +248,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </div>
           ) : null}
           <p className="mb-3 text-sm text-muted-foreground">
-            Data is saved under <code>{STORAGE_KEY}</code> in a self-describing envelope (schema{" "}
-            {SCHEMA}). Browser storage can be cleared without warning — export a backup
-            occasionally.
+            Browser storage can be cleared without warning — export a backup occasionally.
           </p>
           <div className="mb-3 flex flex-wrap gap-2">
             <Button onClick={() => props.onExport()}>Export a backup</Button>

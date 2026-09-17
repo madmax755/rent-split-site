@@ -12,7 +12,7 @@ import {
 } from "../domain/format";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
-import { EmptyState, KpiCard, KpiGrid, PageHeader, Panel, Screen } from "./kit";
+import { EmptyState, PageHeader, Panel, Screen } from "./kit";
 import { SettleDialog, type SettleRequest } from "./settle-dialog";
 import { useConfirm } from "./confirm-dialog";
 import { XIcon } from "lucide-react";
@@ -34,36 +34,21 @@ export function BalancesScreen() {
   const everyone = [...new Set([...state.people.map((p) => p.id), ...Object.keys(bal)])].filter(
     (id) => id !== pay.id,
   );
+  const asCollector = !store.session?.personId || store.session.personId === pay.id;
   const [settle, setSettle] = useState<SettleRequest | null>(null);
+  const headerSummary =
+    owedToPayer || owedByPayer
+      ? asCollector
+        ? `${money0(state.currency, owedToPayer)} owed to you · ${money0(state.currency, owedByPayer)} to pay back`
+        : `${money0(state.currency, owedToPayer)} owed to ${pay.name} · ${money0(state.currency, owedByPayer)} to pay out`
+      : "All square";
 
   return (
     <Screen id="balances" active={activeTab === "balances"}>
-      <PageHeader
-        title="Settle"
-        description={`${pay.name} pays the landlord and every provider. Every balance is with them — never a chain of who-pays-whom.`}
-      />
-      <KpiGrid>
-        <KpiCard
-          label={`Owed to ${pay.name}`}
-          value={money0(state.currency, owedToPayer)}
-          sub="under-payments not yet settled"
-        />
-        <KpiCard
-          label={`${pay.name} owes out`}
-          value={money0(state.currency, owedByPayer)}
-          sub="refunds for over-payments"
-        />
-      </KpiGrid>
+      <PageHeader title="Settle" description={headerSummary} />
 
       <div className="grid gap-5">
-        <Panel
-          title="Running balances"
-          description={
-            owedToPayer || owedByPayer
-              ? `${money0(state.currency, owedToPayer)} in · ${money0(state.currency, owedByPayer)} out`
-              : "all square"
-          }
-        >
+        <Panel title="Each person">
           {!everyone.length ? (
             <EmptyState title="Nobody to settle with yet" />
           ) : (
@@ -72,8 +57,17 @@ export function BalancesScreen() {
                 const p = personById(state, id);
                 const v = Math.round(bal[id] || 0);
                 const gone = !p;
-                const label =
-                  v > 0 ? `owes ${pay.name}` : v < 0 ? `${pay.name} owes them` : "square";
+                const label = asCollector
+                  ? v > 0
+                    ? "owes you"
+                    : v < 0
+                      ? "you owe them"
+                      : "square"
+                  : v > 0
+                    ? `owes ${pay.name}`
+                    : v < 0
+                      ? `${pay.name} owes them`
+                      : "square";
                 const mine = items.filter((x) => x.personId === id && x.type === "trueup");
                 const why = mine.length
                   ? mine
@@ -83,7 +77,9 @@ export function BalancesScreen() {
                           `${tenancyMonthLabel(x.monthKey, true)} ${signedMoney(state.currency, x.amount)}`,
                       )
                       .join(" · ") + (mine.length > 3 ? " · …" : "")
-                  : "no differences yet";
+                  : v === 0
+                    ? ""
+                    : "from bill differences";
                 return (
                   <div
                     key={id}
@@ -139,7 +135,7 @@ export function BalancesScreen() {
           )}
         </Panel>
 
-        <Panel title="Every adjustment" description={plural(items.length, "entry", "entries")}>
+        <Panel title="What changed" description={plural(items.length, "entry", "entries")}>
           {!items.length ? (
             <EmptyState
               title="Nothing to show yet"
@@ -167,15 +163,15 @@ export function BalancesScreen() {
                         <span className="font-normal text-muted-foreground">
                           —{" "}
                           {isTrue
-                            ? `${tenancyMonthLabel(x.monthKey)} adjustment`
+                            ? `${tenancyMonthLabel(x.monthKey)} bill difference`
                             : x.note || "settled up"}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {isTrue
                           ? x.amount > 0
-                            ? "real bills came in higher than collected"
-                            : "real bills came in lower than collected"
+                            ? "bills came in higher"
+                            : "bills came in lower"
                           : `recorded${x.date ? " on " + x.date : ""}`}
                       </div>
                     </div>

@@ -11,7 +11,6 @@ import {
   computeMonth,
   computeMonthInner,
   monthAllActual,
-  monthHasActuals,
   monthStatus,
   monthSummaryText,
   weightedAreas,
@@ -26,8 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   EmptyState,
-  KpiCard,
-  KpiGrid,
   MoneyInput,
   MonthSwitcher,
   PageHeader,
@@ -58,9 +55,16 @@ export function MonthScreen() {
   const c = computeMonth(state, key, "eff");
   const D = c.chargeableDays;
   const status = monthStatus(state, key);
-  const totalNights = Object.values(c.counts.liableDays).reduce((s, v) => s + v, 0);
   const liableIds = state.people.filter((p) => (c.counts.liableDays[p.id] || 0) > 0);
   const pending = state.bills.length - c.lines.filter((l) => l.isActual).length;
+  const allReal = monthAllActual(state, M);
+  const headerSummary = !liableIds.length
+    ? "Add their dates on Who's here."
+    : !M.collected
+      ? "Lock these amounts once you've asked people to pay."
+      : allReal
+        ? `${money0(state.currency, c.grand)} · all realised`
+        : "Type realised bills when they land. Differences go to Settle.";
   const warns: string[] = [...c.warn];
   if (!liableIds.length) warns.push("Nobody is down as living here this month.");
   bedroomGaps(state, key).forEach((g) => {
@@ -88,7 +92,7 @@ export function MonthScreen() {
     <Screen id="month" active={activeTab === "month"}>
       <PageHeader
         title="This month"
-        description={`${periodLabel(key, tenancyCycleDay(state.tenancyStart))} · ${plural(liableIds.length, "person", "people")} · ${totalNights} person-days`}
+        description={headerSummary}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
@@ -97,29 +101,11 @@ export function MonthScreen() {
         }
       />
       <WarnList items={warns} />
-      <KpiGrid>
-        <KpiCard
-          label="Total this month"
-          value={money0(state.currency, c.grand)}
-          sub={`${money(state.currency, c.rentPence)} rent + ${money(state.currency, c.billsTotalPence)} bills`}
-        />
-        <KpiCard
-          label="Bills"
-          value={money0(state.currency, c.billsTotalPence)}
-          sub={
-            monthAllActual(state, M)
-              ? "all realised"
-              : monthHasActuals(M)
-                ? "partly realised"
-                : "still estimated"
-          }
-        />
-      </KpiGrid>
 
       <div className="grid gap-5">
         <Panel
-          title="What it cost"
-          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}. Type the estimate at the start of the month, and the realised figure when the bill lands.`}
+          title="Rent and bills"
+          description={`${money0(state.currency, c.grand)} · ${pending ? `${pending} still estimated` : "all realised"}`}
         >
           <div className="hidden grid-cols-[1fr_118px_118px_92px] gap-2 px-1 pb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase md:grid">
             <span>Line</span>
@@ -200,10 +186,10 @@ export function MonthScreen() {
         </Panel>
 
         <Panel
-          title="Who owes what"
+          title="What to collect"
           description={`${money0(state.currency, stmtSum)} across ${plural(ids.length, "person", "people")}`}
           action={
-            <div className="flex flex-wrap gap-2" data-print-hide>
+            <div data-print-hide>
               <Button
                 size="sm"
                 variant={M.collected ? "outline" : "default"}
@@ -214,7 +200,7 @@ export function MonthScreen() {
                       !(await ask({
                         title: "Unlock this month?",
                         description:
-                          "It goes back to following the current rent, rooms and bills. Adjustments come off the balances until you lock it again.",
+                          "It goes back to following the current rent, rooms and bills. Differences come off Settle until you lock it again.",
                         confirmLabel: "Unlock",
                       }))
                     ) {
@@ -238,33 +224,7 @@ export function MonthScreen() {
                   });
                 }}
               >
-                {M.collected ? "Unlock this month" : "Lock what people were asked"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  void copyText(monthSummaryText(state, key), (m) => store.announce(m));
-                }}
-              >
-                Copy summary
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  store.mutate(
-                    () => {
-                      store.state.people.forEach((p) => {
-                        store.state.openStatements[p.id] = true;
-                      });
-                    },
-                    { persist: false },
-                  );
-                  setTimeout(() => window.print(), 120);
-                }}
-              >
-                Print / PDF
+                {M.collected ? "Unlock" : "Lock these amounts"}
               </Button>
             </div>
           }
@@ -272,15 +232,12 @@ export function MonthScreen() {
           <Statements state={state} store={store} monthKey={key} M={M} c={c} />
           <p className="mt-3 text-xs text-muted-foreground">
             {M.collected
-              ? `Locked${M.chargedAt ? ` on ${M.chargedAt}` : ""}. Differences against realised bills sit on Settle.`
-              : "Locking records what everyone was asked for. Until you lock, the figures just move with the estimates."}
+              ? `Locked${M.chargedAt ? ` on ${M.chargedAt}` : ""}. Differences land on Settle.`
+              : "Until you lock, these figures still move with the bills and dates."}
           </p>
         </Panel>
 
-        <Panel
-          title="Notes"
-          description="This month only — a boiler repair, a rent review, who had guests."
-        >
+        <Panel title="Notes">
           <Textarea
             className="min-h-20"
             placeholder="Anything worth remembering about this month…"
@@ -293,7 +250,35 @@ export function MonthScreen() {
           />
         </Panel>
 
-        <div className="flex justify-end" data-print-hide>
+        <div className="flex flex-wrap items-center justify-between gap-2" data-print-hide>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void copyText(monthSummaryText(state, key), (m) => store.announce(m));
+              }}
+            >
+              Copy summary
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                store.mutate(
+                  () => {
+                    store.state.people.forEach((p) => {
+                      store.state.openStatements[p.id] = true;
+                    });
+                  },
+                  { persist: false },
+                );
+                setTimeout(() => window.print(), 120);
+              }}
+            >
+              Print / PDF
+            </Button>
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -302,7 +287,7 @@ export function MonthScreen() {
               if (
                 !(await ask({
                   title: `Delete ${tenancyMonthLabel(key)}?`,
-                  description: "Its bills, dates and adjustments all go.",
+                  description: "Its bills, dates and recorded differences all go.",
                   confirmLabel: "Delete month",
                   destructive: true,
                 }))
