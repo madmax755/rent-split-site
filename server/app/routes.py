@@ -75,12 +75,13 @@ def household_people(session: Session) -> list[dict[str, Any]]:
 
 
 @router.get("/api/health")
-def health(db: Db) -> JSONResponse:
+def health(db: Db, settings: Cfg) -> JSONResponse:
     return json_ok(
         200,
         {
             "app": "rent-split",
             "version": 2,
+            "siteTitle": settings.display_title,
             "people": household_people(db),
         },
     )

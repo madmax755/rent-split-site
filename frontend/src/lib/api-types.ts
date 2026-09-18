@@ -19,6 +19,7 @@ export type PickerPerson = {
 export type HealthResponse = {
   app: "rent-split";
   version: number;
+  siteTitle?: string;
   people: PickerPerson[];
 };
 

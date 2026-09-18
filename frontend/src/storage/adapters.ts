@@ -1,6 +1,6 @@
 import { LS } from "./browser-storage";
 import { BACKUP_KEY, STORAGE_KEY } from "../domain/schema";
-import { DEFAULT_PEOPLE } from "../domain/defaults";
+import { DEFAULT_PEOPLE, DEFAULT_SITE_TITLE } from "../domain/defaults";
 import type { DataEnvelope, LedgerEntry, Stint } from "../domain/types";
 import type {
   AccountRole,
@@ -198,6 +198,7 @@ export async function pickAdapter(): Promise<{
   needAuth: boolean;
   session: SessionInfo | null;
   people: PickerPerson[];
+  siteTitle: string;
 }> {
   if (location.protocol === "http:" || location.protocol === "https:") {
     try {
@@ -209,11 +210,16 @@ export async function pickAdapter(): Promise<{
           const adapter = httpAdapter("");
           const session = sessionFromStored(people);
           if (session) adapter.setRole?.(session.role);
+          const siteTitle =
+            typeof h.siteTitle === "string" && h.siteTitle.trim()
+              ? h.siteTitle.trim()
+              : DEFAULT_SITE_TITLE;
           return {
             adapter,
             needAuth: session === null,
             session,
             people,
+            siteTitle,
           };
         }
       }
@@ -223,5 +229,11 @@ export async function pickAdapter(): Promise<{
   }
   const people = defaultPickerPeople();
   const session = sessionFromStored(people);
-  return { adapter: localAdapter(), needAuth: session === null, session, people };
+  return {
+    adapter: localAdapter(),
+    needAuth: session === null,
+    session,
+    people,
+    siteTitle: DEFAULT_SITE_TITLE,
+  };
 }

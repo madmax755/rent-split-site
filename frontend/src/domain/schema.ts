@@ -1,4 +1,11 @@
-import { addMonths, daysInMonth, tenancyMonthKey, tenancyOwnerKey, tenancyPeriodDays } from "./dates";
+import {
+  addMonths,
+  daysInMonth,
+  parseIsoDate,
+  tenancyMonthKey,
+  tenancyOwnerKey,
+  tenancyPeriodDays,
+} from "./dates";
 import { DEFAULT_TENANCY_START } from "./defaults";
 import { uid } from "./ids";
 
@@ -142,7 +149,7 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
     return d;
   },
   5: function (d) {
-    if (typeof d.tenancyStart !== "string") d.tenancyStart = "2026-08-09";
+    if (typeof d.tenancyStart !== "string") d.tenancyStart = DEFAULT_TENANCY_START;
     const months = asRecord(d.months) ?? {};
     Object.values(months).forEach((M) => {
       const rec = asRecord(M);
@@ -150,7 +157,9 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
       const cfg = asRecord(rec.config);
       if (!cfg || typeof cfg.tenancyStart === "string") return;
       const key = typeof rec.key === "string" ? rec.key : "";
-      cfg.tenancyStart = key && key < "2026-08" ? `${key}-01` : "2026-08-09";
+      const start = parseIsoDate(DEFAULT_TENANCY_START);
+      const floorKey = start?.key ?? "2000-01";
+      cfg.tenancyStart = key && key < floorKey ? `${key}-01` : DEFAULT_TENANCY_START;
     });
     return d;
   },

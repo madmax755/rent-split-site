@@ -13,6 +13,7 @@ def test_health_lists_people(settings) -> None:
         assert empty.status_code == 200
         body = empty.json()
         assert body["app"] == "rent-split"
+        assert body["siteTitle"] == "Rent Split"
         assert body["people"] == []
         written = client.put("/api/data", json={"rev": 0, "payload": ENVELOPE})
         assert written.status_code == 200
@@ -20,6 +21,29 @@ def test_health_lists_people(settings) -> None:
         assert health.status_code == 200
         names = [row["name"] for row in health.json()["people"]]
         assert names == ["Ach", "Joe"]
+
+
+def test_health_site_title_from_env(settings, monkeypatch) -> None:
+    from app.config import reset_settings
+    from app.main import app
+
+    monkeypatch.setenv("SITE_TITLE", "Friend Flat")
+    reset_settings()
+    with TestClient(app) as client:
+        health = client.get("/api/health")
+        assert health.status_code == 200
+        assert health.json()["siteTitle"] == "Friend Flat"
+        assert health.json()["people"] == []
+
+
+def test_empty_database_has_no_seeded_people(db, settings) -> None:
+    from sqlalchemy import text
+
+    from app.household import load_household
+
+    assert load_household(db) is None
+    assert db.execute(text("select count(*) from person")).scalar_one() == 0
+    assert db.execute(text("select count(*) from household")).scalar_one() == 0
 
 
 def test_put_and_get_data(settings) -> None:

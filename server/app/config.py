@@ -24,6 +24,7 @@ class Settings(BaseSettings):
         default=REPO_ROOT / "frontend" / "dist",
         validation_alias="PUBLIC_DIR",
     )
+    site_title: str = Field(default="Rent Split", validation_alias="SITE_TITLE")
 
     @property
     def database_path(self) -> Path:
@@ -40,6 +41,11 @@ class Settings(BaseSettings):
     @property
     def json_data_file(self) -> Path:
         return self.data_dir / "rent-split.json"
+
+    @property
+    def display_title(self) -> str:
+        title = self.site_title.strip()
+        return title if title else "Rent Split"
 
 
 @lru_cache(maxsize=1)

@@ -1,5 +1,5 @@
 import { deep } from "../domain/clone";
-import { freshHousehold } from "../domain/defaults";
+import { DEFAULT_SITE_TITLE, freshHousehold } from "../domain/defaults";
 import { currentTenancyMonthKey } from "../domain/dates";
 import { ensureMonth } from "../domain/months";
 import { normalise } from "../domain/normalise";
@@ -18,6 +18,7 @@ export class HouseholdStore {
   adapter: StorageAdapter = localAdapter();
   session: SessionInfo | null = null;
   pickerPeople: PickerPerson[] = [];
+  siteTitle = DEFAULT_SITE_TITLE;
   dirty = false;
   lastError = "";
   needAuth = false;
@@ -118,6 +119,8 @@ export class HouseholdStore {
     this.needAuth = picked.needAuth;
     this.session = picked.session;
     this.pickerPeople = picked.people;
+    this.siteTitle = picked.siteTitle;
+    if (typeof document !== "undefined") document.title = this.siteTitle;
     if (this.session) this.adapter.setRole?.(this.session.role);
     this.notify();
   }
