@@ -1,14 +1,17 @@
-# Production compose for server1 (tms.maxkendall.com).
+# Production compose example (one household per stack).
 #
 # Expects:
-#   - Image already in the Tailscale registry (see .github/workflows/build-push.yml)
-#   - Env file /etc/rent-split.env (optional leftover host paths)
-#   - Existing SQLite tree at /opt/rent-split-site/data (bind-mounted; preserved)
+#   - Image already in your registry (see .github/workflows/build-push.yml)
+#   - Env file e.g. /etc/rent-split.env (SITE_TITLE, optional leftovers)
+#   - Empty or existing SQLite tree bind-mounted (preserved across deploys)
 #
-# Usage on server1:
-#   export IMAGE=100.81.62.22:5000/rent-split:<tag>
-#   docker compose -f /opt/rent-split-site/docker-compose.prod.yml pull
-#   docker compose -f /opt/rent-split-site/docker-compose.prod.yml up -d
+# For a second household: copy this file, change container_name, host port,
+# env_file, and the data volume path — see README "Second household".
+#
+# Usage:
+#   export IMAGE=registry.example/rent-split:<tag>
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 
 services:
   rent-split:
@@ -21,7 +24,7 @@ services:
       - /etc/rent-split.env
     environment:
       # Compose wins over env_file so container paths stay correct even if the
-      # host env still has legacy DATA_DIR=/opt/rent-split-site/data.
+      # host env still has a host-side DATA_DIR path.
       PORT: "8080"
       DATA_DIR: /data
       PUBLIC_DIR: /app/public

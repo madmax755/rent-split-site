@@ -1,4 +1,4 @@
-import { currentTenancyMonthKey } from "./dates";
+import { currentTenancyMonthKey, todayIsoDate } from "./dates";
 import type { Bill, HouseholdState, Person, Room } from "./types";
 
 export const MAX_PEOPLE = 8;
@@ -13,44 +13,44 @@ export const PERSON_COLORS = [
   "#66d4cf",
 ];
 
+/** Generic layout for a new empty household — replace dimensions in-app. */
 export const DEFAULT_ROOMS: Room[] = [
-  { id: "bed1", name: "Master Bedroom", w: 3.89, l: 3.0, weight: 1.0, communal: false },
-  { id: "bed2", name: "2nd Bedroom", w: 3.89, l: 2.41, weight: 1.0, communal: false },
-  { id: "bed3", name: "3rd Bedroom", w: 3.89, l: 1.96, weight: 1.0, communal: false },
-  { id: "bath1", name: "Bathroom 1", w: 2.0, l: 1.5, weight: 0.5, communal: true },
-  { id: "bath2", name: "Bathroom 2", w: 1.5, l: 1.2, weight: 0.5, communal: true },
-  { id: "kitchen", name: "Kitchen", w: 4.26, l: 2.69, weight: 1.0, communal: true },
-  { id: "lounge", name: "Lounge", w: 4.78, l: 4.26, weight: 1.0, communal: true },
+  { id: "bed1", name: "Bedroom 1", w: 3, l: 3, weight: 1.0, communal: false },
+  { id: "bed2", name: "Bedroom 2", w: 3, l: 3, weight: 1.0, communal: false },
+  { id: "bed3", name: "Bedroom 3", w: 3, l: 2.5, weight: 1.0, communal: false },
+  { id: "bath1", name: "Bathroom", w: 2, l: 1.5, weight: 0.5, communal: true },
+  { id: "kitchen", name: "Kitchen", w: 3, l: 3, weight: 1.0, communal: true },
+  { id: "lounge", name: "Lounge", w: 4, l: 4, weight: 1.0, communal: true },
 ];
 
+/** Placeholder people for a fresh install; rename in Household setup. */
 export const DEFAULT_PEOPLE: Person[] = [
-  { id: "p1", name: "Ach", isPayer: true, archived: false },
-  { id: "p2", name: "Joe", isPayer: false, archived: false },
-  { id: "p3", name: "Alice", isPayer: false, archived: false },
-  { id: "p4", name: "Max", isPayer: false, archived: false },
+  { id: "p1", name: "Person 1", isPayer: true, archived: false },
+  { id: "p2", name: "Person 2", isPayer: false, archived: false },
 ];
-
-export const DEFAULT_ROOM_OF: Record<string, string> = {
-  p1: "bed2",
-  p2: "bed3",
-  p3: "bed1",
-  p4: "bed1",
-};
 
 export const DEFAULT_CYCLE_START_DAY = 1;
-export const DEFAULT_TENANCY_START = "2026-08-09";
+
+/** Fallback only when a stored date is missing or invalid — not a real tenancy. */
+export const DEFAULT_TENANCY_START = "2000-01-01";
+
+export function freshTenancyStart(now: Date = new Date()): string {
+  return todayIsoDate(now);
+}
 
 export const DEFAULT_BILLS: Bill[] = [
-  { id: "energy", name: "Energy (gas & electric)", est: 195, payers: null, cycleStartDay: 1 },
-  { id: "water", name: "Water", est: 36, payers: null, cycleStartDay: 1 },
-  { id: "wifi", name: "Wi-Fi", est: 35, payers: null, cycleStartDay: 1 },
-  { id: "insurance", name: "Renters insurance", est: 15, payers: null, cycleStartDay: 1 },
-  { id: "counciltax", name: "Council tax", est: 200, payers: null, cycleStartDay: 1 },
+  { id: "energy", name: "Energy", est: 0, payers: null, cycleStartDay: 1 },
+  { id: "water", name: "Water", est: 0, payers: null, cycleStartDay: 1 },
+  { id: "wifi", name: "Internet", est: 0, payers: null, cycleStartDay: 1 },
+  { id: "insurance", name: "Insurance", est: 0, payers: null, cycleStartDay: 1 },
+  { id: "counciltax", name: "Council tax", est: 0, payers: null, cycleStartDay: 1 },
 ];
 
-export const DEFAULT_RENT = 3500;
-export const DEFAULT_CATCHALL = 14.3;
+export const DEFAULT_RENT = 0;
+export const DEFAULT_CATCHALL = 0;
 export const DEFAULT_CATCHALL_WEIGHT = 0.5;
+
+export const DEFAULT_SITE_TITLE = "Rent Split";
 
 export const DEFAULT_SECTIONS_OPEN: Record<string, boolean> = {
   mbills: true,
@@ -74,12 +74,13 @@ export const DEFAULT_SECTIONS_OPEN: Record<string, boolean> = {
   setlook: false,
 };
 
-export function freshHousehold(): HouseholdState {
+export function freshHousehold(now: Date = new Date()): HouseholdState {
+  const tenancyStart = freshTenancyStart(now);
   return {
     currency: "£",
     rent: DEFAULT_RENT,
     rentCycleStartDay: DEFAULT_CYCLE_START_DAY,
-    tenancyStart: DEFAULT_TENANCY_START,
+    tenancyStart,
     catchall: DEFAULT_CATCHALL,
     catchallWeight: DEFAULT_CATCHALL_WEIGHT,
     rooms: DEFAULT_ROOMS.map((r) => ({ ...r })),
@@ -89,7 +90,7 @@ export function freshHousehold(): HouseholdState {
     ledger: [],
     presets: [],
     activePresetName: null,
-    currentMonth: currentTenancyMonthKey(DEFAULT_TENANCY_START),
+    currentMonth: currentTenancyMonthKey(tenancyStart, now),
     activeTab: "month",
     sectionsOpen: { ...DEFAULT_SECTIONS_OPEN },
     openStatements: {},

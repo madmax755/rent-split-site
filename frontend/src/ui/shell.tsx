@@ -153,7 +153,13 @@ export function AppShell(props: AppShellProps) {
   }
 
   if (props.pickerOpen) {
-    return <PersonPicker people={props.pickerPeople} onPick={props.onPickPerson} />;
+    return (
+      <PersonPicker
+        siteTitle={store.siteTitle}
+        people={props.pickerPeople}
+        onPick={props.onPickPerson}
+      />
+    );
   }
 
   return (
@@ -164,10 +170,10 @@ export function AppShell(props: AppShellProps) {
       >
         <div className="flex items-center gap-2 px-4 py-4">
           <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
-            RS
+            {brandMark(store.siteTitle)}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">Rent Split</div>
+            <div className="truncate text-sm font-semibold">{store.siteTitle}</div>
             <div className="truncate text-[11px] text-muted-foreground">
               {state.activePresetName || "Household"}
             </div>
@@ -243,10 +249,10 @@ export function AppShell(props: AppShellProps) {
           className="sticky top-0 z-40 flex items-center gap-2 border-b bg-background/85 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl lg:hidden"
         >
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-xs font-semibold text-primary-foreground">
-            RS
+            {brandMark(store.siteTitle)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">Rent Split</div>
+            <div className="truncate text-sm font-semibold">{store.siteTitle}</div>
             <div className="truncate text-[11px] text-muted-foreground">
               {pageTitle(activeTab, linkedName)}
             </div>
@@ -360,12 +366,16 @@ export function AppShell(props: AppShellProps) {
   );
 }
 
-function PersonPicker(props: { people: PickerPerson[]; onPick: (person: PickerPerson) => void }) {
+function PersonPicker(props: {
+  siteTitle: string;
+  people: PickerPerson[];
+  onPick: (person: PickerPerson) => void;
+}) {
   return (
     <div className="flex min-h-dvh items-center justify-center p-6">
       <div className="w-full max-w-md">
         <p className="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-          Rent Split
+          {props.siteTitle}
         </p>
         <h1 className="font-heading mt-1 text-2xl font-semibold tracking-tight">Who are you?</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -436,6 +446,18 @@ function NavGroup(props: NavGroupProps) {
       </div>
     </div>
   );
+}
+
+function brandMark(title: string): string {
+  const words = title
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0]![0] ?? ""}${words[1]![0] ?? ""}`.toUpperCase();
+  }
+  const compact = title.replace(/[^A-Za-z0-9]/g, "");
+  return (compact.slice(0, 2) || "RS").toUpperCase();
 }
 
 function pageTitle(tab: TabId, personName?: string): string {

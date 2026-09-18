@@ -29,7 +29,7 @@ describe("schema 5 cycle days", () => {
     expect(outcome).toBe(true);
     expect(state.rentCycleStartDay).toBe(1);
     expect(state.bills.every((b) => b.cycleStartDay === 1)).toBe(true);
-    expect(state.tenancyStart).toBe("2026-08-09");
+    expect(state.tenancyStart).toBe("2000-01-01");
   });
 
   test("schema 6 calendar stints become period-relative on the tenancy month", () => {

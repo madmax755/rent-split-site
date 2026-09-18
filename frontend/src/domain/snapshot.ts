@@ -7,8 +7,9 @@ import {
   DEFAULT_PEOPLE,
   DEFAULT_RENT,
   DEFAULT_ROOMS,
-  DEFAULT_TENANCY_START,
+  freshTenancyStart,
 } from "./defaults";
+import { currentTenancyMonthKey } from "./dates";
 import { SNAPSHOT_FIELDS, type HouseholdState, type Snapshot } from "./types";
 
 export function snapshotCurrent(state: HouseholdState): Snapshot {
@@ -26,10 +27,11 @@ export function applySnapshot(state: HouseholdState, snap: Snapshot): void {
 }
 
 export function resetHousehold(state: HouseholdState): void {
+  const tenancyStart = freshTenancyStart();
   state.currency = "£";
   state.rent = DEFAULT_RENT;
   state.rentCycleStartDay = DEFAULT_CYCLE_START_DAY;
-  state.tenancyStart = DEFAULT_TENANCY_START;
+  state.tenancyStart = tenancyStart;
   state.catchall = DEFAULT_CATCHALL;
   state.catchallWeight = DEFAULT_CATCHALL_WEIGHT;
   state.rooms = DEFAULT_ROOMS.map((r) => ({ ...r }));
@@ -38,6 +40,7 @@ export function resetHousehold(state: HouseholdState): void {
   state.months = {};
   state.ledger = [];
   state.activePresetName = null;
+  state.currentMonth = currentTenancyMonthKey(tenancyStart);
 }
 
 export function serializeData(state: HouseholdState): Record<string, unknown> {

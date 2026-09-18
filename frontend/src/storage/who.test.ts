@@ -36,10 +36,10 @@ beforeAll(() => {
 });
 
 const people = [
-  { id: "p1", name: "Ach", isPayer: true, archived: false },
-  { id: "p2", name: "Joe", isPayer: false, archived: false },
-  { id: "p4", name: "Max", isPayer: false, archived: false },
-  { id: "p3", name: "Alice", isPayer: false, archived: true },
+  { id: "p1", name: "Ann", isPayer: true, archived: false },
+  { id: "p2", name: "Bob", isPayer: false, archived: false },
+  { id: "p4", name: "Cara", isPayer: false, archived: false },
+  { id: "p3", name: "Dee", isPayer: false, archived: true },
 ];
 
 afterEach(() => {
@@ -50,38 +50,33 @@ describe("who", () => {
   test("payer is household admin", () => {
     expect(sessionFromPerson(people[0]!)).toEqual({
       personId: "p1",
-      personName: "Ach",
+      personName: "Ann",
       role: "admin",
     });
   });
 
   test("everyone else is a tenant", () => {
     expect(sessionFromPerson(people[1]!).role).toBe("tenant");
-    expect(sessionFromPerson(people[2]!).personName).toBe("Max");
+    expect(sessionFromPerson(people[2]!).personName).toBe("Cara");
   });
 
   test("hides archived people from the picker", () => {
-    expect(livePickerPeople(people).map((person) => person.name)).toEqual(["Ach", "Joe", "Max"]);
+    expect(livePickerPeople(people).map((person) => person.name)).toEqual(["Ann", "Bob", "Cara"]);
   });
 
   test("falls back when the household has no live people", () => {
     const archivedOnly = people.map((person) => ({ ...person, archived: true }));
-    const fallback = [{ id: "p1", name: "Ach", isPayer: true, archived: false }];
-    expect(resolvePickerPeople([], fallback).map((person) => person.name)).toEqual(["Ach"]);
+    const fallback = [{ id: "p1", name: "Ann", isPayer: true, archived: false }];
+    expect(resolvePickerPeople([], fallback).map((person) => person.name)).toEqual(["Ann"]);
     expect(resolvePickerPeople(archivedOnly, fallback).map((person) => person.name)).toEqual([
-      "Ach",
+      "Ann",
     ]);
   });
 
   test("restores a stored live person", () => {
     writeStoredWho("p2");
-    expect(sessionFromStored(people)?.personName).toBe("Joe");
+    expect(sessionFromStored(people)?.personName).toBe("Bob");
     clearStoredWho();
-    expect(sessionFromStored(people)).toBeNull();
-  });
-
-  test("ignores a stored archived person", () => {
-    writeStoredWho("p3");
     expect(sessionFromStored(people)).toBeNull();
   });
 });

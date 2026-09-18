@@ -13,9 +13,14 @@ const MONTH_NAMES = [
   "December",
 ] as const;
 
-export function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+export function todayKey(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function todayIsoDate(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate(),
+  ).padStart(2, "0")}`;
 }
 
 export function parseKey(key: string): { y: number; m: number } {
@@ -98,7 +103,7 @@ export function clampTenancyStart(iso: string, fallback: string): string {
   return parseIsoDate(iso) ? iso : fallback;
 }
 
-export function tenancyMonthKey(tenancyStart: string, fallback = "2026-08"): string {
+export function tenancyMonthKey(tenancyStart: string, fallback = todayKey()): string {
   return parseIsoDate(tenancyStart)?.key ?? fallback;
 }
 

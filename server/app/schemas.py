@@ -104,7 +104,7 @@ class HouseholdData(BaseModel):
     currency: str = "£"
     rent: float = 0
     rentCycleStartDay: int = Field(default=1, ge=1, le=31)
-    tenancyStart: str = "2026-08-09"
+    tenancyStart: str = "2000-01-01"
     catchall: float = 0
     catchallWeight: float = 0
     rooms: list[RoomModel] = Field(default_factory=list)

@@ -1,6 +1,5 @@
 import { uid } from "./ids";
 import { addMonths, tenancyPeriodLength } from "./dates";
-import { DEFAULT_ROOM_OF } from "./defaults";
 import type { HouseholdState, MonthRecord, Stint } from "./types";
 
 export function sortedMonthKeys(state: HouseholdState): string[] {
@@ -15,8 +14,10 @@ export function lastRoomOf(state: HouseholdState, personId: string): string {
     const st = (month.stints || []).filter((x) => x.personId === personId).pop();
     if (st) return st.roomId;
   }
-  if (DEFAULT_ROOM_OF[personId]) return DEFAULT_ROOM_OF[personId];
   const bedrooms = state.rooms.filter((r) => !r.communal);
+  const livePeople = state.people.filter((p) => !p.archived);
+  const index = livePeople.findIndex((p) => p.id === personId);
+  if (index >= 0 && bedrooms[index]) return bedrooms[index].id;
   return bedrooms[0]?.id ?? state.rooms[0]?.id ?? "";
 }
 
