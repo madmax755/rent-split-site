@@ -15,7 +15,7 @@ import { personById, personColor, plural } from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf, seedStints } from "../domain/months";
 import { togglePersonDay } from "../domain/stint-edit";
-import type { Stint } from "../domain/types";
+import type { BedroomGap, DayModel, HouseholdState, Person, Room, Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
 import { EmptyState, MonthSwitcher, PageHeader, Panel, Screen, WarnList } from "./kit";
@@ -36,6 +36,7 @@ export function StintsScreen() {
   const periodDays = tenancyPeriodDays(key, state.tenancyStart);
   const D = periodDays.length;
   const days = buildDayModel(state, key);
+  const dayColumns = { gridTemplateColumns: `repeat(${Math.max(D, 1)}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
   const chartPeople = state.people.filter(
     (person) => !person.archived || involved.some((present) => present.id === person.id),
@@ -126,19 +127,23 @@ export function StintsScreen() {
               : "Tap a day to mark someone in or out."}
           </p>
         </div>
-        <div className="overflow-x-auto p-4 pt-2">
+        <div className="min-w-0 p-4 pt-2" data-house-chart>
           {chartPeople.length ? (
             <>
-            <style>{`
-              .house-day-cols { grid-template-columns: repeat(${D}, minmax(1.75rem, 1fr)); }
-              .house-day-board { min-width: max(35rem, calc(8rem + ${D} * 1.75rem)); }
-              @media (min-width: 64rem) {
-                .house-day-cols { grid-template-columns: repeat(${D}, minmax(0, 1fr)); }
-                .house-day-board { min-width: 35rem; }
-              }
-            `}</style>
-            <div className="house-day-board">
-              <div className="house-day-cols mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]">
+            <HouseWeeks
+              days={days}
+              people={chartPeople}
+              rooms={state.rooms}
+              gaps={gaps}
+              state={state}
+              editable={canEditPerson}
+              onToggle={toggleHouseDay}
+            />
+            <div className="hidden min-w-0 lg:block">
+              <div
+                className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]"
+                style={dayColumns}
+              >
                 {periodDays.map((date, i) => {
                   const dow = dayDate(date.key, date.d).getDay();
                   const wk = dow === 0 || dow === 6;
@@ -162,7 +167,7 @@ export function StintsScreen() {
                     <Avatar state={state} person={p} size={22} />
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
-                  <div className="house-day-cols grid h-9 flex-1 gap-0.5">
+                  <div className="grid h-9 min-w-0 flex-1 gap-0.5" style={dayColumns}>
                     {days.map((day, index) => {
                       const isHere = day.liable.includes(p.id);
                       let sharing = false;
@@ -186,7 +191,10 @@ export function StintsScreen() {
                   </div>
                 </div>
               ))}
-              <div className="house-day-cols mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]">
+              <div
+                className="mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]"
+                style={dayColumns}
+              >
                 {days.map((day) => (
                   <div
                     key={`${day.key}-${day.d}`}
@@ -215,7 +223,7 @@ export function StintsScreen() {
                               {room.name}
                             </span>
                           </div>
-                          <div className="house-day-cols grid h-6 flex-1 gap-0.5">
+                          <div className="grid h-6 min-w-0 flex-1 gap-0.5" style={dayColumns}>
                             {days.map((day) => {
                               const occ = (day.rooms[room.id] || []).length;
                               return (
@@ -313,10 +321,10 @@ export function StintsScreen() {
                       </NativeSelect>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="grid w-full min-w-0 grid-cols-1 items-center gap-2 text-xs text-muted-foreground sm:flex sm:w-auto sm:gap-1.5">
                     <input
                       type="date"
-                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-[9.5rem]"
                       min={startIso}
                       max={endIso}
                       value={periodDayIso(key, state.tenancyStart, s.from)}
@@ -329,10 +337,10 @@ export function StintsScreen() {
                         });
                       }}
                     />
-                    →
+                    <span className="text-center sm:w-auto">→</span>
                     <input
                       type="date"
-                      className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-[9.5rem]"
                       min={startIso}
                       max={endIso}
                       value={periodDayIso(key, state.tenancyStart, s.to)}
@@ -533,6 +541,187 @@ export function StintsScreen() {
         }}
       />
     </Screen>
+  );
+}
+
+type HouseChartProps = {
+  days: DayModel[];
+  people: Person[];
+  rooms: Room[];
+  gaps: BedroomGap[];
+  state: HouseholdState;
+  editable: (personId: string) => boolean;
+  onToggle: (personId: string, periodDay: number) => void;
+};
+
+type DatedDay = { day: DayModel; index: number };
+
+const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+
+function mondayIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+function mondayWeeks(days: DayModel[]): Array<Array<DatedDay | null>> {
+  const first = days[0];
+  if (!first) return [];
+  const leading = mondayIndex(dayDate(first.key, first.d));
+  const padded: Array<DatedDay | null> = Array.from({ length: leading }, () => null);
+  days.forEach((day, index) => padded.push({ day, index }));
+  const weeks: Array<Array<DatedDay | null>> = [];
+  for (let start = 0; start < padded.length; start += 7) {
+    const week = padded.slice(start, start + 7);
+    while (week.length < 7) week.push(null);
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+function personIsSharing(day: DayModel, personId: string): boolean {
+  for (const occupants of Object.values(day.rooms)) {
+    if (occupants.includes(personId) && occupants.length > 1) return true;
+  }
+  return false;
+}
+
+function bedroomClass(occupants: number): string {
+  if (occupants > 1) return "bg-emerald-500 ring-1 ring-inset ring-foreground/60";
+  if (occupants > 0) return "bg-emerald-500/80";
+  return "bg-destructive/25 ring-1 ring-destructive";
+}
+
+function HouseWeeks(props: HouseChartProps) {
+  const weeks = mondayWeeks(props.days);
+  const bedrooms = props.rooms.filter((room) => !room.communal);
+  return (
+    <div className="lg:hidden">
+      <div className="mb-2 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
+        <div />
+        <div className="grid grid-cols-7 gap-1">
+          {WEEKDAY_LABELS.map((label, index) => (
+            <div
+              key={`${label}-${index}`}
+              className={`text-center text-[10px] ${
+                index >= 5 ? "font-semibold text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+      </div>
+      {weeks.map((week, weekIndex) => {
+        const first = week.find((cell) => cell !== null);
+        return (
+          <div
+            key={first ? `${first.day.key}-${first.day.d}` : `week-${weekIndex}`}
+            className="mb-4 border-b pb-4 last:mb-0 last:border-b-0 last:pb-0"
+          >
+            <div className="mb-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
+              <div />
+              <div className="grid grid-cols-7 gap-1">
+                {week.map((cell, column) => (
+                  <div
+                    key={cell ? `${cell.day.key}-${cell.day.d}` : `blank-${weekIndex}-${column}`}
+                    className={`text-center text-[10px] tabular-nums ${
+                      column >= 5 ? "font-semibold text-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {cell ? cell.day.d : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {props.people.map((person) => (
+              <div
+                key={person.id}
+                className="mb-1.5 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+              >
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <Avatar state={props.state} person={person} size={16} />
+                  <span className="truncate text-[11px] font-medium">{person.name}</span>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {week.map((cell, column) =>
+                    cell ? (
+                      <div key={`${person.id}-${cell.day.key}-${cell.day.d}`} className="aspect-square">
+                        <HouseDayCell
+                          personName={person.name}
+                          dayLabel={dayMonthLabel(cell.day.key, cell.day.d)}
+                          filled={cell.day.liable.includes(person.id)}
+                          colour={personColor(props.state, person.id)}
+                          sharing={personIsSharing(cell.day, person.id)}
+                          editable={props.editable(person.id)}
+                          onToggle={() => props.onToggle(person.id, cell.index + 1)}
+                        />
+                      </div>
+                    ) : (
+                      <div key={`${person.id}-blank-${weekIndex}-${column}`} />
+                    ),
+                  )}
+                </div>
+              </div>
+            ))}
+            <div className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
+              <div />
+              <div className="grid grid-cols-7 gap-1">
+                {week.map((cell, column) => (
+                  <div
+                    key={cell ? `count-${cell.day.key}-${cell.day.d}` : `count-blank-${weekIndex}-${column}`}
+                    className={
+                      cell
+                        ? "flex h-6 items-center justify-center rounded-[3px] bg-muted text-[10px] font-bold tabular-nums text-muted-foreground"
+                        : "h-6"
+                    }
+                  >
+                    {cell ? cell.day.liable.length : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {bedrooms.length ? (
+              <div className="mt-3">
+                {weekIndex === 0 ? (
+                  <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                    Bedrooms
+                  </div>
+                ) : null}
+                {bedrooms.map((room) => {
+                  const gap = props.gaps.find((item) => item.roomId === room.id);
+                  return (
+                    <div
+                      key={room.id}
+                      className="mb-1.5 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+                    >
+                      <div
+                        className={`truncate text-[11px] font-medium ${gap ? "text-destructive" : "text-muted-foreground"}`}
+                      >
+                        {room.name}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {week.map((cell, column) => {
+                          const occupants = cell ? (cell.day.rooms[room.id] || []).length : 0;
+                          return cell ? (
+                            <div
+                              key={`${room.id}-${cell.day.key}-${cell.day.d}`}
+                              title={`${room.name} — ${cell.day.d} ${cell.day.key}: ${occupants ? plural(occupants, "person", "people") : "EMPTY"}`}
+                              className={`h-6 rounded-[3px] ${bedroomClass(occupants)}`}
+                            />
+                          ) : (
+                            <div key={`${room.id}-blank-${weekIndex}-${column}`} />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      <p className="text-[11px] text-muted-foreground">people in the house each day</p>
+    </div>
   );
 }
 
