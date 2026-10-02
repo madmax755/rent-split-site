@@ -70,10 +70,6 @@ export function StintsScreen() {
     });
   }
 
-  function canEdit(stint: Stint): boolean {
-    return !selfOnly || stint.personId === myId;
-  }
-
   function canEditPerson(personId: string): boolean {
     return !selfOnly || personId === myId;
   }
@@ -282,150 +278,76 @@ export function StintsScreen() {
         {!(M.stints || []).length ? (
           <EmptyState title="No dates yet" />
         ) : (
-          <div className="grid gap-2">
-            {(M.stints || []).map((s) => {
-              const p = personById(state, s.personId);
-              const editable = canEdit(s);
+          <div className="grid gap-3">
+            {groupStintsByPerson(M.stints || [], state.people).map((stints) => {
+              const personId = stints[0]?.personId ?? "";
+              const person = personById(state, personId);
+              const editable = canEditPerson(personId);
               return (
-                <div
-                  key={s.id}
-                  className={`grid gap-2 rounded-xl bg-muted/50 p-3 sm:flex sm:flex-wrap sm:items-center ${editable ? "" : "opacity-70"}`}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={
-                        {
-                          background: p ? personColor(state, p.id) : "var(--muted-foreground)",
-                        } as CSSProperties
+                <PersonDatesCard
+                  key={personId}
+                  person={person}
+                  colour={person ? personColor(state, person.id) : "var(--muted-foreground)"}
+                  stints={stints}
+                  people={state.people}
+                  rooms={state.rooms}
+                  editable={editable}
+                  selfOnly={selfOnly}
+                  startIso={startIso}
+                  endIso={endIso}
+                  dateFor={(day) => periodDayIso(key, state.tenancyStart, day)}
+                  onPerson={(nextId) => {
+                    commitStints(() => {
+                      const month = ensureMonth(store.state, key);
+                      for (const stint of month.stints || []) {
+                        if (stint.personId === personId) stint.personId = nextId;
                       }
-                    />
-                    {selfOnly ? (
-                      <span className="min-w-0 flex-1 font-medium">{p?.name ?? "Unknown"}</span>
-                    ) : (
-                      <NativeSelect
-                        className="min-w-0 flex-1 sm:flex-none"
-                        value={s.personId}
-                        disabled={!editable}
-                        onChange={(e) => {
-                          patchStint(s.id, (st) => {
-                            st.personId = e.target.value;
-                          });
-                        }}
-                      >
-                        {state.people.map((person) => (
-                          <NativeSelectOption key={person.id} value={person.id}>
-                            {person.name}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    )}
-                  </div>
-                  <div className="grid w-full min-w-0 grid-cols-1 items-center gap-2 text-xs text-muted-foreground sm:flex sm:w-auto sm:gap-1.5">
-                    <input
-                      type="date"
-                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-[9.5rem]"
-                      min={startIso}
-                      max={endIso}
-                      value={periodDayIso(key, state.tenancyStart, s.from)}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        const from = isoToPeriodDay(key, state.tenancyStart, e.target.value);
-                        if (from === null) return;
-                        patchStint(s.id, (st) => {
-                          st.from = from;
-                        });
-                      }}
-                    />
-                    <span className="text-center sm:w-auto">→</span>
-                    <input
-                      type="date"
-                      className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-[9.5rem]"
-                      min={startIso}
-                      max={endIso}
-                      value={periodDayIso(key, state.tenancyStart, s.to)}
-                      disabled={!editable}
-                      onChange={(e) => {
-                        const to = isoToPeriodDay(key, state.tenancyStart, e.target.value);
-                        if (to === null) return;
-                        patchStint(s.id, (st) => {
-                          st.to = to;
-                        });
-                      }}
-                    />
-                  </div>
-                  <NativeSelect
-                    className="w-full sm:w-auto"
-                    value={s.roomId}
-                    disabled={!editable}
-                    onChange={(e) => {
-                      patchStint(s.id, (st) => {
-                        st.roomId = e.target.value;
-                      });
-                    }}
-                  >
-                    {state.rooms.map((r) => (
-                      <NativeSelectOption key={r.id} value={r.id} disabled={r.communal}>
-                        {r.name}
-                        {r.communal ? " (shared)" : ""}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                  <div className="flex items-center gap-2 sm:ml-auto">
-                    <span className="tabular-nums text-xs text-muted-foreground">
-                      {plural(s.to - s.from + 1, "day")}
-                    </span>
-                    <div className="flex-1 sm:hidden" />
-                    {editable ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (s.to - s.from < 1) {
-                              store.announce("A one-day stay can't be split.");
-                              return;
-                            }
-                            commitStints(() => {
-                              const month = ensureMonth(store.state, key);
-                              const stints = month.stints || [];
-                              const cur = stints.find((x) => x.id === s.id);
-                              if (!cur) return;
-                              const mid = Math.floor((cur.from + cur.to) / 2);
-                              const copy: Stint = {
-                                ...cur,
-                                id: uid("st"),
-                                from: mid + 1,
-                                to: cur.to,
-                              };
-                              cur.to = mid;
-                              stints.splice(stints.indexOf(cur) + 1, 0, copy);
-                            });
-                            store.announce(
-                              "Split in two — adjust the dates, or delete the half that was away.",
-                            );
-                          }}
-                        >
-                          Split
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="max-sm:size-10"
-                          title="Remove"
-                          onClick={() => {
-                            commitStints(() => {
-                              const month = ensureMonth(store.state, key);
-                              month.stints = (month.stints || []).filter((x) => x.id !== s.id);
-                            });
-                          }}
-                        >
-                          <XIcon />
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
+                    });
+                  }}
+                  onFrom={(id, iso) => {
+                    const from = isoToPeriodDay(key, state.tenancyStart, iso);
+                    if (from === null) return;
+                    patchStint(id, (stint) => {
+                      stint.from = from;
+                    });
+                  }}
+                  onTo={(id, iso) => {
+                    const to = isoToPeriodDay(key, state.tenancyStart, iso);
+                    if (to === null) return;
+                    patchStint(id, (stint) => {
+                      stint.to = to;
+                    });
+                  }}
+                  onRoom={(id, roomId) => {
+                    patchStint(id, (stint) => {
+                      stint.roomId = roomId;
+                    });
+                  }}
+                  onSplit={(id) => {
+                    const current = stints.find((stint) => stint.id === id);
+                    if (!current || current.to - current.from < 1) {
+                      store.announce("A one-day stay can't be split.");
+                      return;
+                    }
+                    commitStints(() => {
+                      const month = ensureMonth(store.state, key);
+                      const list = month.stints || [];
+                      const cur = list.find((stint) => stint.id === id);
+                      if (!cur) return;
+                      const mid = Math.floor((cur.from + cur.to) / 2);
+                      const copy: Stint = { ...cur, id: uid("st"), from: mid + 1, to: cur.to };
+                      cur.to = mid;
+                      list.splice(list.indexOf(cur) + 1, 0, copy);
+                    });
+                    store.announce("Split in two — adjust the dates, or delete the half that was away.");
+                  }}
+                  onRemove={(id) => {
+                    commitStints(() => {
+                      const month = ensureMonth(store.state, key);
+                      month.stints = (month.stints || []).filter((stint) => stint.id !== id);
+                    });
+                  }}
+                />
               );
             })}
           </div>
@@ -764,5 +686,148 @@ function HouseDayCell(props: HouseDayCellProps) {
       title={`${label}. Tap to ${props.filled ? "mark away" : "mark in the house"}`}
       onClick={props.onToggle}
     />
+  );
+}
+
+const dateInputClass =
+  "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2 text-sm tabular-nums outline-none disabled:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+function groupStintsByPerson(stints: Stint[], people: Person[]): Stint[][] {
+  const buckets = new Map<string, Stint[]>();
+  for (const stint of stints) {
+    const bucket = buckets.get(stint.personId);
+    if (bucket) bucket.push(stint);
+    else buckets.set(stint.personId, [stint]);
+  }
+  for (const bucket of buckets.values()) {
+    bucket.sort((a, b) => a.from - b.from || a.to - b.to || (a.id < b.id ? -1 : 1));
+  }
+  const groups: Stint[][] = [];
+  const seen = new Set<string>();
+  for (const person of people) {
+    const bucket = buckets.get(person.id);
+    if (!bucket) continue;
+    groups.push(bucket);
+    seen.add(person.id);
+  }
+  for (const [personId, bucket] of buckets) {
+    if (!seen.has(personId)) groups.push(bucket);
+  }
+  return groups;
+}
+
+type PersonDatesCardProps = {
+  person: Person | null;
+  colour: string;
+  stints: Stint[];
+  people: Person[];
+  rooms: Room[];
+  editable: boolean;
+  selfOnly: boolean;
+  startIso: string;
+  endIso: string;
+  dateFor: (periodDay: number) => string;
+  onPerson: (personId: string) => void;
+  onFrom: (stintId: string, iso: string) => void;
+  onTo: (stintId: string, iso: string) => void;
+  onRoom: (stintId: string, roomId: string) => void;
+  onSplit: (stintId: string) => void;
+  onRemove: (stintId: string) => void;
+};
+
+function PersonDatesCard(props: PersonDatesCardProps) {
+  const personId = props.stints[0]?.personId ?? "";
+  return (
+    <div
+      className={`rounded-xl bg-muted/50 p-3 ${props.editable ? "" : "opacity-70"}`}
+      data-person-dates={personId}
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <span
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ background: props.colour } as CSSProperties}
+        />
+        {props.selfOnly || !props.editable ? (
+          <span className="min-w-0 flex-1 font-medium">{props.person?.name ?? "Unknown"}</span>
+        ) : (
+          <NativeSelect
+            className="min-w-0 flex-1 sm:max-w-56"
+            value={personId}
+            onChange={(event) => props.onPerson(event.target.value)}
+          >
+            {props.people.map((person) => (
+              <NativeSelectOption key={person.id} value={person.id}>
+                {person.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        )}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {props.stints.map((stint) => (
+          <div key={stint.id} className="grid min-w-0 gap-2">
+            <label className="grid min-w-0 gap-1">
+              <span className="text-[11px] text-muted-foreground">From</span>
+              <input
+                type="date"
+                className={dateInputClass}
+                min={props.startIso}
+                max={props.endIso}
+                value={props.dateFor(stint.from)}
+                disabled={!props.editable}
+                onChange={(event) => props.onFrom(stint.id, event.target.value)}
+              />
+            </label>
+            <label className="grid min-w-0 gap-1">
+              <span className="text-[11px] text-muted-foreground">To</span>
+              <input
+                type="date"
+                className={dateInputClass}
+                min={props.startIso}
+                max={props.endIso}
+                value={props.dateFor(stint.to)}
+                disabled={!props.editable}
+                onChange={(event) => props.onTo(stint.id, event.target.value)}
+              />
+            </label>
+            <NativeSelect
+              className="w-full min-w-0"
+              value={stint.roomId}
+              disabled={!props.editable}
+              aria-label={`${props.person?.name ?? "Stay"} bedroom`}
+              onChange={(event) => props.onRoom(stint.id, event.target.value)}
+            >
+              {props.rooms.map((room) => (
+                <NativeSelectOption key={room.id} value={room.id} disabled={room.communal}>
+                  {room.name}
+                  {room.communal ? " (shared)" : ""}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <div className="flex items-center gap-2">
+              <span className="tabular-nums text-xs text-muted-foreground">
+                {plural(stint.to - stint.from + 1, "day")}
+              </span>
+              <div className="flex-1" />
+              {props.editable ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => props.onSplit(stint.id)}>
+                    Split
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Remove"
+                    onClick={() => props.onRemove(stint.id)}
+                  >
+                    <XIcon />
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
