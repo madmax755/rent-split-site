@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import {
   dayDate,
+  dayMonthLabel,
   daySpanLabel,
   isoToPeriodDay,
   periodDayIso,
@@ -13,6 +14,7 @@ import { bedroomGaps, buildDayModel } from "../domain/engine";
 import { personById, personColor, plural } from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf, seedStints } from "../domain/months";
+import { togglePersonDay } from "../domain/stint-edit";
 import type { Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
@@ -36,6 +38,9 @@ export function StintsScreen() {
   const days = buildDayModel(state, key);
   const cols = { gridTemplateColumns: `repeat(${D}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
+  const chartPeople = state.people.filter(
+    (person) => !person.archived || involved.some((present) => present.id === person.id),
+  );
   const gaps = bedroomGaps(state, key);
   const gapCount = gaps.reduce((s, g) => s + g.days.length, 0);
   const startIso = periodDayIso(key, state.tenancyStart, 1);
@@ -69,6 +74,25 @@ export function StintsScreen() {
     return !selfOnly || stint.personId === myId;
   }
 
+  function canEditPerson(personId: string): boolean {
+    return !selfOnly || personId === myId;
+  }
+
+  function toggleHouseDay(personId: string, day: number): void {
+    if (!canEditPerson(personId)) return;
+    commitStints(() => {
+      const month = ensureMonth(store.state, key);
+      month.stints = togglePersonDay(
+        month.stints || [],
+        personId,
+        day,
+        D,
+        lastRoomOf(store.state, personId),
+        () => uid("st"),
+      );
+    });
+  }
+
   if (selfOnly && !myId) {
     return (
       <Screen id="stints" active={activeTab === "stints"}>
@@ -95,9 +119,16 @@ export function StintsScreen() {
         className="order-2 overflow-hidden rounded-xl border bg-card lg:order-1"
         data-store-version={version}
       >
-        <div className="px-4 pt-4 text-sm font-medium">In the house</div>
+        <div className="px-4 pt-4">
+          <div className="text-sm font-medium">In the house</div>
+          <p className="text-[11px] text-muted-foreground">
+            {selfOnly
+              ? "Tap your days to mark yourself in or out."
+              : "Tap a day to mark someone in or out."}
+          </p>
+        </div>
         <div className="overflow-x-auto p-4 pt-2">
-          {involved.length ? (
+          {chartPeople.length ? (
             <div className="min-w-[560px]">
               <div className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
                 {periodDays.map((date, i) => {
@@ -117,14 +148,14 @@ export function StintsScreen() {
                   );
                 })}
               </div>
-              {involved.map((p) => (
+              {chartPeople.map((p) => (
                 <div key={p.id} className="mb-1.5 flex items-center gap-2.5">
                   <div className="flex w-16 shrink-0 items-center gap-2 sm:w-[106px]">
                     <Avatar state={state} person={p} size={22} />
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
-                  <div className="grid h-6 flex-1 gap-0.5" style={cols}>
-                    {days.map((day) => {
+                  <div className="grid h-9 flex-1 gap-0.5" style={cols}>
+                    {days.map((day, index) => {
                       const isHere = day.liable.includes(p.id);
                       let sharing = false;
                       Object.keys(day.rooms).forEach((rid) => {
@@ -132,11 +163,15 @@ export function StintsScreen() {
                         if (occ.includes(p.id) && occ.length > 1) sharing = true;
                       });
                       return (
-                        <div
+                        <HouseDayCell
                           key={`${day.key}-${day.d}`}
-                          className={`rounded-[3px] ${isHere ? "" : "bg-muted"} ${sharing ? "ring-1 ring-inset ring-white/85" : ""}`}
-                          style={isHere ? { background: personColor(state, p.id) } : undefined}
-                          title={`${p.name} — ${day.d} ${day.key}${isHere ? "" : " (out)"}`}
+                          personName={p.name}
+                          dayLabel={dayMonthLabel(day.key, day.d)}
+                          filled={isHere}
+                          colour={personColor(state, p.id)}
+                          sharing={sharing}
+                          editable={canEditPerson(p.id)}
+                          onToggle={() => toggleHouseDay(p.id, index + 1)}
                         />
                       );
                     })}
@@ -489,5 +524,47 @@ export function StintsScreen() {
         }}
       />
     </Screen>
+  );
+}
+
+type HouseDayCellProps = {
+  personName: string;
+  dayLabel: string;
+  filled: boolean;
+  colour: string;
+  sharing: boolean;
+  editable: boolean;
+  onToggle: () => void;
+};
+
+function HouseDayCell(props: HouseDayCellProps) {
+  const className = [
+    "block h-full w-full min-w-0 rounded-[3px] border-0 p-0",
+    props.filled ? "" : "bg-muted",
+    props.sharing ? "ring-1 ring-inset ring-white/85" : "",
+    props.editable
+      ? "cursor-pointer touch-manipulation select-none hover:ring-2 hover:ring-inset hover:ring-foreground/80 focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:opacity-70"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const style = props.filled ? { background: props.colour } : undefined;
+  const presence = props.filled ? "in the house" : "away";
+  const label = `${props.personName}, ${props.dayLabel}, ${presence}`;
+
+  if (!props.editable) {
+    return <div className={className} style={style} title={label} />;
+  }
+
+  return (
+    <button
+      type="button"
+      className={className}
+      style={style}
+      aria-pressed={props.filled}
+      aria-label={props.filled ? `${label}. Mark away` : `${label}. Mark in the house`}
+      title={`${label}. Tap to ${props.filled ? "mark away" : "mark in the house"}`}
+      onClick={props.onToggle}
+    />
   );
 }
