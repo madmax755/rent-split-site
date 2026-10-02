@@ -92,7 +92,7 @@ export function HowScreen() {
             of days in one bedroom in a tenancy month, including the early days of the next calendar
             month that belong to that period. The full rent for that period is split; none of it is
             kicked into the following month. There is no second occupancy record, so nothing can
-            fall out of step. Tap a day on the strip to mark that person out, and tap it again to
+            fall out of step. Tap a day on Who's here to mark that person out, and tap it again to
             put them back. A gap splits the stay; filling the gap joins it again.
           </p>
           <div className="callout">
@@ -114,8 +114,8 @@ export function HowScreen() {
               <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
               bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere to
               go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
-              <b>Who's here</b>, with the exact days listed. The <em>Bedrooms</em> strip under the
-              timeline shows this at a glance.
+              <b>Who's here</b>, with the exact days listed. The bedroom marks on that page show
+              this at a glance.
             </p>
           </div>
 

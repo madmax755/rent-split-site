@@ -112,7 +112,7 @@ export function StintsScreen() {
 
       <div className="flex flex-col gap-5">
       <div
-        className="order-2 overflow-hidden rounded-xl border bg-card lg:order-1"
+        className="order-2 overflow-x-clip rounded-xl border bg-card lg:order-1"
         data-store-version={version}
       >
         <div className="px-4 pt-4">
@@ -126,7 +126,7 @@ export function StintsScreen() {
         <div className="min-w-0 p-4 pt-2" data-house-chart>
           {chartPeople.length ? (
             <>
-            <HouseWeeks
+            <HouseDays
               days={days}
               people={chartPeople}
               rooms={state.rooms}
@@ -251,7 +251,7 @@ export function StintsScreen() {
             />
           )}
         </div>
-        <div className="flex flex-wrap gap-4 border-t px-4 py-3 text-xs text-muted-foreground">
+        <div className="hidden gap-4 border-t px-4 py-3 text-xs text-muted-foreground lg:flex lg:flex-wrap">
           <span className="inline-flex items-center gap-1.5">
             <i className="inline-block size-3 rounded-sm bg-primary" /> In the house
           </span>
@@ -476,27 +476,21 @@ type HouseChartProps = {
   onToggle: (personId: string, periodDay: number) => void;
 };
 
-type DatedDay = { day: DayModel; index: number };
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
-
-function mondayIndex(date: Date): number {
-  return (date.getDay() + 6) % 7;
+function weekdayName(date: Date): (typeof WEEKDAY_NAMES)[number] {
+  return WEEKDAY_NAMES[date.getDay()] ?? "Sun";
 }
 
-function mondayWeeks(days: DayModel[]): Array<Array<DatedDay | null>> {
-  const first = days[0];
-  if (!first) return [];
-  const leading = mondayIndex(dayDate(first.key, first.d));
-  const padded: Array<DatedDay | null> = Array.from({ length: leading }, () => null);
-  days.forEach((day, index) => padded.push({ day, index }));
-  const weeks: Array<Array<DatedDay | null>> = [];
-  for (let start = 0; start < padded.length; start += 7) {
-    const week = padded.slice(start, start + 7);
-    while (week.length < 7) week.push(null);
-    weeks.push(week);
-  }
-  return weeks;
+function monthHeading(key: string, day: number): string {
+  return dayDate(key, day).toLocaleDateString("en-GB", { month: "long" });
+}
+
+function roomMark(name: string): string {
+  const trimmed = name.trim();
+  const numbered = /(\d+)\s*$/.exec(trimmed);
+  if (numbered?.[1]) return numbered[1];
+  return trimmed.slice(0, 1).toUpperCase();
 }
 
 function personIsSharing(day: DayModel, personId: string): boolean {
@@ -512,137 +506,120 @@ function bedroomClass(occupants: number): string {
   return "bg-destructive/25 ring-1 ring-destructive";
 }
 
-function HouseWeeks(props: HouseChartProps) {
-  const weeks = mondayWeeks(props.days);
+function HouseDays(props: HouseChartProps) {
   const bedrooms = props.rooms.filter((room) => !room.communal);
+  const columns = [
+    "3.25rem",
+    `repeat(${Math.max(props.people.length, 1)}, minmax(0, 1fr))`,
+    "1.5rem",
+    bedrooms.length ? `repeat(${bedrooms.length}, 0.9rem)` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="lg:hidden">
-      <div className="mb-2 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
-        <div />
-        <div className="grid grid-cols-7 gap-1">
-          {WEEKDAY_LABELS.map((label, index) => (
-            <div
-              key={`${label}-${index}`}
-              className={`text-center text-[10px] ${
-                index >= 5 ? "font-semibold text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
+      <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block size-3 rounded-sm bg-primary" /> In the house
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block size-3 rounded-sm bg-muted ring-1 ring-foreground" /> Sharing
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <i className="inline-block size-3 rounded-sm bg-destructive/40 ring-1 ring-destructive" />{" "}
+          Empty bedroom
+        </span>
       </div>
-      {weeks.map((week, weekIndex) => {
-        const first = week.find((cell) => cell !== null);
+      <div
+        className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 grid items-end gap-1 border-b bg-card px-4 pt-1 pb-2"
+        style={{ gridTemplateColumns: columns }}
+      >
+        <div />
+        {props.people.map((person) => (
+          <div key={person.id} className="flex min-w-0 flex-col items-center gap-1">
+            <Avatar state={props.state} person={person} size={22} />
+            <span className="w-full truncate text-center text-[10px] leading-tight font-medium">
+              {person.name}
+            </span>
+          </div>
+        ))}
+        <div
+          className="pb-0.5 text-center text-[10px] font-medium text-muted-foreground"
+          title="People in the house"
+        >
+          #
+        </div>
+        {bedrooms.map((room) => {
+          const gap = props.gaps.find((item) => item.roomId === room.id);
+          return (
+            <div
+              key={room.id}
+              className={`pb-0.5 text-center text-[10px] font-semibold ${gap ? "text-destructive" : "text-muted-foreground"}`}
+              title={room.name}
+            >
+              {roomMark(room.name)}
+            </div>
+          );
+        })}
+      </div>
+      {props.days.map((day, index) => {
+        const date = dayDate(day.key, day.d);
+        const weekend = date.getDay() === 0 || date.getDay() === 6;
+        const previous = props.days[index - 1];
+        const showMonth = !previous || previous.key !== day.key;
         return (
-          <div
-            key={first ? `${first.day.key}-${first.day.d}` : `week-${weekIndex}`}
-            className="mb-4 border-b pb-4 last:mb-0 last:border-b-0 last:pb-0"
-          >
-            <div className="mb-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
-              <div />
-              <div className="grid grid-cols-7 gap-1">
-                {week.map((cell, column) => (
-                  <div
-                    key={cell ? `${cell.day.key}-${cell.day.d}` : `blank-${weekIndex}-${column}`}
-                    className={`text-center text-[10px] tabular-nums ${
-                      column >= 5 ? "font-semibold text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {cell ? cell.day.d : ""}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {props.people.map((person) => (
-              <div
-                key={person.id}
-                className="mb-1.5 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-              >
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Avatar state={props.state} person={person} size={16} />
-                  <span className="truncate text-[11px] font-medium">{person.name}</span>
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {week.map((cell, column) =>
-                    cell ? (
-                      <div key={`${person.id}-${cell.day.key}-${cell.day.d}`} className="aspect-square">
-                        <HouseDayCell
-                          personName={person.name}
-                          dayLabel={dayMonthLabel(cell.day.key, cell.day.d)}
-                          filled={cell.day.liable.includes(person.id)}
-                          colour={personColor(props.state, person.id)}
-                          sharing={personIsSharing(cell.day, person.id)}
-                          editable={props.editable(person.id)}
-                          onToggle={() => props.onToggle(person.id, cell.index + 1)}
-                        />
-                      </div>
-                    ) : (
-                      <div key={`${person.id}-blank-${weekIndex}-${column}`} />
-                    ),
-                  )}
-                </div>
-              </div>
-            ))}
-            <div className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
-              <div />
-              <div className="grid grid-cols-7 gap-1">
-                {week.map((cell, column) => (
-                  <div
-                    key={cell ? `count-${cell.day.key}-${cell.day.d}` : `count-blank-${weekIndex}-${column}`}
-                    className={
-                      cell
-                        ? "flex h-6 items-center justify-center rounded-[3px] bg-muted text-[10px] font-bold tabular-nums text-muted-foreground"
-                        : "h-6"
-                    }
-                  >
-                    {cell ? cell.day.liable.length : ""}
-                  </div>
-                ))}
-              </div>
-            </div>
-            {bedrooms.length ? (
-              <div className="mt-3">
-                {weekIndex === 0 ? (
-                  <div className="mb-1.5 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Bedrooms
-                  </div>
-                ) : null}
-                {bedrooms.map((room) => {
-                  const gap = props.gaps.find((item) => item.roomId === room.id);
-                  return (
-                    <div
-                      key={room.id}
-                      className="mb-1.5 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
-                    >
-                      <div
-                        className={`truncate text-[11px] font-medium ${gap ? "text-destructive" : "text-muted-foreground"}`}
-                      >
-                        {room.name}
-                      </div>
-                      <div className="grid grid-cols-7 gap-1">
-                        {week.map((cell, column) => {
-                          const occupants = cell ? (cell.day.rooms[room.id] || []).length : 0;
-                          return cell ? (
-                            <div
-                              key={`${room.id}-${cell.day.key}-${cell.day.d}`}
-                              title={`${room.name} — ${cell.day.d} ${cell.day.key}: ${occupants ? plural(occupants, "person", "people") : "EMPTY"}`}
-                              className={`h-6 rounded-[3px] ${bedroomClass(occupants)}`}
-                            />
-                          ) : (
-                            <div key={`${room.id}-blank-${weekIndex}-${column}`} />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+          <div key={`${day.key}-${day.d}`}>
+            {showMonth ? (
+              <div className="pt-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                {monthHeading(day.key, day.d)}
               </div>
             ) : null}
+            <div
+              className={`grid items-center gap-1 border-b border-border/60 py-1 ${weekend ? "bg-muted/50" : ""}`}
+              style={{ gridTemplateColumns: columns }}
+            >
+              <div className="min-w-0">
+                <div
+                  className={`text-[10px] leading-none ${weekend ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+                >
+                  {weekdayName(date)}
+                </div>
+                <div className="text-sm font-medium tabular-nums">{day.d}</div>
+              </div>
+              {props.people.map((person) => (
+                <div key={person.id} className="h-10">
+                  <HouseDayCell
+                    personName={person.name}
+                    dayLabel={dayMonthLabel(day.key, day.d)}
+                    filled={day.liable.includes(person.id)}
+                    colour={personColor(props.state, person.id)}
+                    sharing={personIsSharing(day, person.id)}
+                    editable={props.editable(person.id)}
+                    onToggle={() => props.onToggle(person.id, index + 1)}
+                  />
+                </div>
+              ))}
+              <div
+                className="text-center text-xs font-bold tabular-nums text-muted-foreground"
+                title={`${plural(day.liable.length, "person", "people")} in the house`}
+              >
+                {day.liable.length}
+              </div>
+              {bedrooms.map((room) => {
+                const occupants = (day.rooms[room.id] || []).length;
+                return (
+                  <div
+                    key={room.id}
+                    title={`${room.name} — ${dayMonthLabel(day.key, day.d)}: ${occupants ? plural(occupants, "person", "people") : "empty"}`}
+                    className={`h-10 rounded-[3px] ${bedroomClass(occupants)}`}
+                  />
+                );
+              })}
+            </div>
           </div>
         );
       })}
-      <p className="text-[11px] text-muted-foreground">people in the house each day</p>
     </div>
   );
 }
