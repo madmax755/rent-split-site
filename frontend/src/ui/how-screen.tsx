@@ -92,7 +92,8 @@ export function HowScreen() {
             of days in one bedroom in a tenancy month, including the early days of the next calendar
             month that belong to that period. The full rent for that period is split; none of it is
             kicked into the following month. There is no second occupancy record, so nothing can
-            fall out of step.
+            fall out of step. Tap a day on Who's here to mark that person out, and tap it again to
+            put them back. A gap splits the stay; filling the gap joins it again.
           </p>
           <div className="callout">
             <p>
@@ -113,8 +114,8 @@ export function HowScreen() {
               <b>Every bedroom needs somebody in it, every day.</b> The landlord charges for a
               bedroom whether or not anybody is in it. If one is left empty, its rent has nowhere to
               go: it gets spread across everyone and a warning appears on <b>This month</b> and{" "}
-              <b>Who's here</b>, with the exact days listed. The <em>Bedrooms</em> strip under the
-              timeline shows this at a glance.
+              <b>Who's here</b>, with the exact days listed. The bedroom marks on that page show
+              this at a glance.
             </p>
           </div>
 
@@ -465,8 +466,8 @@ export function HowScreen() {
           <p>
             Because your stint still covers those days, which is correct if you kept your room and
             stayed on the bills. The room was yours, the broadband ran, the council tax was
-            identical. If you genuinely stopped paying for that period, shorten the stint — but then
-            somebody else has to be in that bedroom for those days.
+            identical. If you genuinely stopped paying for that period, tap those days off on Who's
+            here — but then somebody else has to be in that bedroom for those days.
           </p>
           <h3>So when does my share actually go down?</h3>
           <p>
