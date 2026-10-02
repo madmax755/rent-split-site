@@ -486,13 +486,6 @@ function monthHeading(key: string, day: number): string {
   return dayDate(key, day).toLocaleDateString("en-GB", { month: "long" });
 }
 
-function roomMark(name: string): string {
-  const trimmed = name.trim();
-  const numbered = /(\d+)\s*$/.exec(trimmed);
-  if (numbered?.[1]) return numbered[1];
-  return trimmed.slice(0, 1).toUpperCase();
-}
-
 function personIsSharing(day: DayModel, personId: string): boolean {
   for (const occupants of Object.values(day.rooms)) {
     if (occupants.includes(personId) && occupants.length > 1) return true;
@@ -500,95 +493,91 @@ function personIsSharing(day: DayModel, personId: string): boolean {
   return false;
 }
 
-function bedroomClass(occupants: number): string {
-  if (occupants > 1) return "bg-emerald-500 ring-1 ring-inset ring-foreground/60";
-  if (occupants > 0) return "bg-emerald-500/80";
-  return "bg-destructive/25 ring-1 ring-destructive";
+function bedroomDotClass(occupants: number): string {
+  if (occupants > 0) return "bg-emerald-500/70";
+  return "ring-[1.5px] ring-inset ring-destructive";
+}
+
+function emptyBedroomNames(day: DayModel, bedrooms: Room[]): string[] {
+  return bedrooms.filter((room) => !(day.rooms[room.id] || []).length).map((room) => room.name);
 }
 
 function HouseDays(props: HouseChartProps) {
   const bedrooms = props.rooms.filter((room) => !room.communal);
   const columns = [
-    "3.25rem",
+    "2.75rem",
     `repeat(${Math.max(props.people.length, 1)}, minmax(0, 1fr))`,
-    "1.5rem",
-    bedrooms.length ? `repeat(${bedrooms.length}, 0.9rem)` : "",
+    bedrooms.length ? "2rem" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
     <div className="lg:hidden">
-      <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="mb-1 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-3 rounded-sm bg-primary" /> In the house
+          <i className="inline-block h-3 w-4 rounded-[4px] bg-muted" /> Away
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-3 rounded-sm bg-muted ring-1 ring-foreground" /> Sharing
+          <i className="inline-block h-3 w-4 rounded-[4px] bg-muted-foreground/50 ring-1 ring-inset ring-white/85" />{" "}
+          Sharing a room
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <i className="inline-block size-3 rounded-sm bg-destructive/40 ring-1 ring-destructive" />{" "}
-          Empty bedroom
-        </span>
+        {bedrooms.length ? (
+          <span className="inline-flex items-center gap-1.5">
+            <i className="inline-block h-3 w-[5px] rounded-full ring-[1.5px] ring-inset ring-destructive" />{" "}
+            Empty bedroom
+          </span>
+        ) : null}
       </div>
       <div
-        className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 grid items-end gap-1 border-b bg-card px-4 pt-1 pb-2"
+        className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] z-30 -mx-4 grid items-end gap-x-1.5 border-b border-border/60 bg-card/95 px-4 pt-2 pb-2 backdrop-blur"
         style={{ gridTemplateColumns: columns }}
       >
         <div />
         {props.people.map((person) => (
           <div key={person.id} className="flex min-w-0 flex-col items-center gap-1">
-            <Avatar state={props.state} person={person} size={22} />
-            <span className="w-full truncate text-center text-[10px] leading-tight font-medium">
+            <Avatar state={props.state} person={person} size={20} />
+            <span className="w-full truncate text-center text-[11px] leading-tight font-medium">
               {person.name}
             </span>
           </div>
         ))}
-        <div
-          className="pb-0.5 text-center text-[10px] font-medium text-muted-foreground"
-          title="People in the house"
-        >
-          #
-        </div>
-        {bedrooms.map((room) => {
-          const gap = props.gaps.find((item) => item.roomId === room.id);
-          return (
-            <div
-              key={room.id}
-              className={`pb-0.5 text-center text-[10px] font-semibold ${gap ? "text-destructive" : "text-muted-foreground"}`}
-              title={room.name}
-            >
-              {roomMark(room.name)}
-            </div>
-          );
-        })}
+        {bedrooms.length ? (
+          <div className="pb-px text-center text-[10px] text-muted-foreground">Rooms</div>
+        ) : null}
       </div>
       {props.days.map((day, index) => {
         const date = dayDate(day.key, day.d);
         const weekend = date.getDay() === 0 || date.getDay() === 6;
         const previous = props.days[index - 1];
         const showMonth = !previous || previous.key !== day.key;
+        const newWeek = index > 0 && !showMonth && date.getDay() === 1;
+        const empty = emptyBedroomNames(day, bedrooms);
         return (
           <div key={`${day.key}-${day.d}`}>
             {showMonth ? (
-              <div className="pt-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <div className="pt-3 pb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {monthHeading(day.key, day.d)}
               </div>
             ) : null}
             <div
-              className={`grid items-center gap-1 border-b border-border/60 py-1 ${weekend ? "bg-muted/50" : ""}`}
+              className={`grid items-center gap-x-1.5 py-[3px] ${newWeek ? "mt-2 border-t border-border/50 pt-[11px]" : ""}`}
               style={{ gridTemplateColumns: columns }}
             >
-              <div className="min-w-0">
-                <div
-                  className={`text-[10px] leading-none ${weekend ? "font-semibold text-foreground" : "text-muted-foreground"}`}
+              <div className="flex items-baseline gap-1 tabular-nums">
+                <span
+                  className={`w-4 text-right text-sm ${weekend ? "font-semibold text-foreground" : "font-medium text-foreground/85"}`}
+                >
+                  {day.d}
+                </span>
+                <span
+                  className={`text-[10px] ${weekend ? "font-medium text-foreground/80" : "text-muted-foreground"}`}
                 >
                   {weekdayName(date)}
-                </div>
-                <div className="text-sm font-medium tabular-nums">{day.d}</div>
+                </span>
               </div>
               {props.people.map((person) => (
-                <div key={person.id} className="h-10">
+                <div key={person.id} className="mx-auto h-7 w-full max-w-14 overflow-hidden rounded-md">
                   <HouseDayCell
                     personName={person.name}
                     dayLabel={dayMonthLabel(day.key, day.d)}
@@ -600,22 +589,23 @@ function HouseDays(props: HouseChartProps) {
                   />
                 </div>
               ))}
-              <div
-                className="text-center text-xs font-bold tabular-nums text-muted-foreground"
-                title={`${plural(day.liable.length, "person", "people")} in the house`}
-              >
-                {day.liable.length}
-              </div>
-              {bedrooms.map((room) => {
-                const occupants = (day.rooms[room.id] || []).length;
-                return (
-                  <div
-                    key={room.id}
-                    title={`${room.name} — ${dayMonthLabel(day.key, day.d)}: ${occupants ? plural(occupants, "person", "people") : "empty"}`}
-                    className={`h-10 rounded-[3px] ${bedroomClass(occupants)}`}
-                  />
-                );
-              })}
+              {bedrooms.length ? (
+                <div
+                  className="flex items-center justify-center gap-[3px] px-0.5"
+                  title={
+                    empty.length
+                      ? `${dayMonthLabel(day.key, day.d)}: ${empty.join(", ")} empty`
+                      : `${dayMonthLabel(day.key, day.d)}: every bedroom taken`
+                  }
+                >
+                  {bedrooms.map((room) => (
+                    <i
+                      key={room.id}
+                      className={`block h-4 w-[5px] rounded-full ${bedroomDotClass((day.rooms[room.id] || []).length)}`}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
         );
