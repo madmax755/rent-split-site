@@ -74,14 +74,33 @@ export function togglePersonDay(
     return stints.map((stint) => (stint.id === right.id ? { ...stint, from: day } : stint));
   }
 
-  return [
-    ...stints,
-    {
-      id: newId(),
-      personId,
-      roomId: nearestRoom(mine, day, roomId),
-      from: day,
-      to: day,
-    },
-  ];
+  return insertStint(stints, {
+    id: newId(),
+    personId,
+    roomId: nearestRoom(mine, day, roomId),
+    from: day,
+    to: day,
+  });
+}
+
+function insertStint(stints: readonly Stint[], created: Stint): Stint[] {
+  const next = stints.slice();
+  let insertAt = next.length;
+  for (let index = 0; index < next.length; index++) {
+    const stint = next[index];
+    if (stint && stint.personId === created.personId && stint.from > created.from) {
+      insertAt = index;
+      break;
+    }
+  }
+  if (insertAt === next.length) {
+    for (let index = next.length - 1; index >= 0; index--) {
+      if (next[index]?.personId === created.personId) {
+        insertAt = index + 1;
+        break;
+      }
+    }
+  }
+  next.splice(insertAt, 0, created);
+  return next;
 }

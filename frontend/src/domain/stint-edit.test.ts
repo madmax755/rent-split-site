@@ -84,9 +84,9 @@ describe("togglePersonDay", () => {
   test("an isolated day uses the nearer bedroom, preferring the earlier stay on a tie", () => {
     const stays = [stint("s1", "p1", "bed1", 1, 5), stint("s2", "p1", "bed2", 20, 25)];
     const nearerStart = togglePersonDay(stays, "p1", 12, 30, "bed3", () => "n1");
-    expect(nearerStart.at(-1)).toEqual(stint("n1", "p1", "bed1", 12, 12));
+    expect(nearerStart.find((item) => item.id === "n1")).toEqual(stint("n1", "p1", "bed1", 12, 12));
     const nearerEnd = togglePersonDay(stays, "p1", 13, 30, "bed3", () => "n2");
-    expect(nearerEnd.at(-1)).toEqual(stint("n2", "p1", "bed2", 13, 13));
+    expect(nearerEnd.find((item) => item.id === "n2")).toEqual(stint("n2", "p1", "bed2", 13, 13));
     const tie = togglePersonDay(
       [stint("s1", "p1", "bed1", 1, 10), stint("s2", "p1", "bed2", 14, 20)],
       "p1",
@@ -95,7 +95,24 @@ describe("togglePersonDay", () => {
       "bed3",
       () => "n3",
     );
-    expect(tie.at(-1)).toEqual(stint("n3", "p1", "bed1", 12, 12));
+    expect(tie.find((item) => item.id === "n3")).toEqual(stint("n3", "p1", "bed1", 12, 12));
+  });
+
+  test("an isolated day is inserted among that person's stays, in date order", () => {
+    const next = togglePersonDay(
+      [
+        stint("s1", "p1", "bed1", 1, 10),
+        stint("s2", "p1", "bed1", 18, 30),
+        stint("s3", "p2", "bed2", 1, 30),
+      ],
+      "p1",
+      14,
+      30,
+      "bed1",
+      () => "n1",
+    );
+    expect(next.map((item) => item.id)).toEqual(["s1", "n1", "s2", "s3"]);
+    expect(next[1]).toEqual(stint("n1", "p1", "bed1", 14, 14));
   });
 
   test("someone with no stay gets the fallback bedroom", () => {
