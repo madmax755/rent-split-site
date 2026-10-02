@@ -36,7 +36,6 @@ export function StintsScreen() {
   const periodDays = tenancyPeriodDays(key, state.tenancyStart);
   const D = periodDays.length;
   const days = buildDayModel(state, key);
-  const cols = { gridTemplateColumns: `repeat(${D}, minmax(0, 1fr))` };
   const involved = state.people.filter((p) => (M.stints || []).some((s) => s.personId === p.id));
   const chartPeople = state.people.filter(
     (person) => !person.archived || involved.some((present) => present.id === person.id),
@@ -129,8 +128,17 @@ export function StintsScreen() {
         </div>
         <div className="overflow-x-auto p-4 pt-2">
           {chartPeople.length ? (
-            <div className="min-w-[560px]">
-              <div className="mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
+            <>
+            <style>{`
+              .house-day-cols { grid-template-columns: repeat(${D}, minmax(1.75rem, 1fr)); }
+              .house-day-board { min-width: max(35rem, calc(8rem + ${D} * 1.75rem)); }
+              @media (min-width: 64rem) {
+                .house-day-cols { grid-template-columns: repeat(${D}, minmax(0, 1fr)); }
+                .house-day-board { min-width: 35rem; }
+              }
+            `}</style>
+            <div className="house-day-board">
+              <div className="house-day-cols mb-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]">
                 {periodDays.map((date, i) => {
                   const dow = dayDate(date.key, date.d).getDay();
                   const wk = dow === 0 || dow === 6;
@@ -154,7 +162,7 @@ export function StintsScreen() {
                     <Avatar state={state} person={p} size={22} />
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
-                  <div className="grid h-9 flex-1 gap-0.5" style={cols}>
+                  <div className="house-day-cols grid h-9 flex-1 gap-0.5">
                     {days.map((day, index) => {
                       const isHere = day.liable.includes(p.id);
                       let sharing = false;
@@ -178,7 +186,7 @@ export function StintsScreen() {
                   </div>
                 </div>
               ))}
-              <div className="mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]" style={cols}>
+              <div className="house-day-cols mt-2 grid gap-0.5 pl-[4.75rem] sm:pl-[116px]">
                 {days.map((day) => (
                   <div
                     key={`${day.key}-${day.d}`}
@@ -207,7 +215,7 @@ export function StintsScreen() {
                               {room.name}
                             </span>
                           </div>
-                          <div className="grid h-6 flex-1 gap-0.5" style={cols}>
+                          <div className="house-day-cols grid h-6 flex-1 gap-0.5">
                             {days.map((day) => {
                               const occ = (day.rooms[room.id] || []).length;
                               return (
@@ -231,6 +239,7 @@ export function StintsScreen() {
                 </div>
               ) : null}
             </div>
+            </>
           ) : (
             <EmptyState
               title={`Nobody is down for ${tenancyMonthLabel(key)} yet`}
