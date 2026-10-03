@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { togglePersonDay } from "./stint-edit";
+import { resolvePersonOverlaps, togglePersonDay } from "./stint-edit";
 import type { Stint } from "./types";
 
 function stint(id: string, personId: string, roomId: string, from: number, to: number): Stint {
@@ -127,5 +127,71 @@ describe("togglePersonDay", () => {
     expect(original).toEqual([stint("s1", "p1", "bed1", 1, 10)]);
     togglePersonDay(original, "p1", 4, 30, "bed1", () => "s2");
     expect(original).toEqual([stint("s1", "p1", "bed1", 1, 10)]);
+  });
+});
+
+describe("resolvePersonOverlaps", () => {
+  test("a stay inside an earlier stay is dropped", () => {
+    const next = resolvePersonOverlaps(
+      [stint("a", "p1", "bed1", 1, 25), stint("b", "p1", "bed1", 23, 25)],
+      "p1",
+      ids(),
+    );
+    expect(next).toEqual([stint("a", "p1", "bed1", 1, 25)]);
+  });
+
+  test("the edited stay wins and the other one is trimmed", () => {
+    const next = resolvePersonOverlaps(
+      [stint("a", "p1", "bed1", 1, 25), stint("b", "p1", "bed2", 23, 30)],
+      "p1",
+      ids(),
+      "b",
+    );
+    expect(next).toEqual([stint("a", "p1", "bed1", 1, 22), stint("b", "p1", "bed2", 23, 30)]);
+  });
+
+  test("a stay cut in the middle is split, and other people are untouched", () => {
+    const other = stint("o", "p2", "bed3", 1, 30);
+    const next = resolvePersonOverlaps(
+      [stint("a", "p1", "bed1", 1, 30), other, stint("b", "p1", "bed2", 10, 12)],
+      "p1",
+      ids(),
+      "b",
+    );
+    expect(next).toEqual([
+      stint("a", "p1", "bed1", 1, 9),
+      stint("n1", "p1", "bed1", 13, 30),
+      other,
+      stint("b", "p1", "bed2", 10, 12),
+    ]);
+  });
+
+  test("no overlap leaves the list as it was", () => {
+    const original = [stint("a", "p1", "bed1", 1, 9), stint("b", "p1", "bed1", 12, 30)];
+    expect(resolvePersonOverlaps(original, "p1", ids())).toEqual(original);
+  });
+
+  test("tapping a day heals overlapping stays first", () => {
+    const next = togglePersonDay(
+      [stint("a", "p1", "bed1", 1, 25), stint("b", "p1", "bed1", 23, 25)],
+      "p1",
+      26,
+      30,
+      "bed1",
+      ids(),
+    );
+    expect(next).toEqual([stint("a", "p1", "bed1", 1, 26)]);
+  });
+
+  test("tapping an overlapped day off leaves no stay covering it", () => {
+    const next = togglePersonDay(
+      [stint("a", "p1", "bed1", 1, 25), stint("b", "p1", "bed1", 23, 25)],
+      "p1",
+      24,
+      30,
+      "bed1",
+      ids(),
+    );
+    expect(next.some((s) => s.from <= 24 && s.to >= 24)).toBe(false);
   });
 });

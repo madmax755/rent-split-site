@@ -36,6 +36,7 @@ export type StorageAdapter = {
   describe(): string;
   currentRev?: () => Promise<number | null>;
   knownRev?: () => number | null;
+  setKnownRev?: (rev: number | null) => void;
   setRole?: (role: AccountRole) => void;
   logout?: () => Promise<void>;
   settle?: (entry: LedgerEntry) => Promise<void>;
@@ -136,6 +137,9 @@ export function httpAdapter(base: string): StorageAdapter {
     },
     knownRev() {
       return rev;
+    },
+    setKnownRev(next) {
+      rev = next;
     },
     async logout() {
       clearStoredWho();
