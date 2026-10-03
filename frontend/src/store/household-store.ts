@@ -31,6 +31,8 @@ export class HouseholdStore {
   private pushTimer: ReturnType<typeof setTimeout> | null = null;
   private ownStintsTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingOwnStints = new Set<string>();
+  /** Bumped on every local edit that still has to reach the server. */
+  private editSeq = 0;
   private warned = false;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private toast: ToastFn = () => {};
@@ -95,13 +97,41 @@ export class HouseholdStore {
     if (this.readOnly) return;
     this.saveLocal();
     if (!this.adapter.saveMyStints) return;
+    this.editSeq += 1;
     this.pendingOwnStints.add(this.state.currentMonth);
     this.dirty = true;
     this.notify();
+    this.scheduleOwnStintsPush();
+  }
+
+  private scheduleOwnStintsPush(): void {
     if (this.ownStintsTimer) clearTimeout(this.ownStintsTimer);
     this.ownStintsTimer = setTimeout(() => {
       void this.pushOwnStints().catch(() => {});
     }, 1200);
+  }
+
+  private schedulePush(): void {
+    if (this.pushTimer) clearTimeout(this.pushTimer);
+    this.pushTimer = setTimeout(() => {
+      void this.push().catch(() => {});
+    }, 1200);
+  }
+
+  /**
+   * Loads the server copy, but drops it if the user edited something while it
+   * was in flight. The known revision is put back so the next save is checked
+   * against what this client last applied, not what it threw away.
+   */
+  private async loadUnlessEdited(): Promise<unknown> {
+    const before = this.editSeq;
+    const knownRev = this.adapter.knownRev?.() ?? null;
+    const fresh = await this.adapter.load();
+    if (this.editSeq !== before) {
+      this.adapter.setKnownRev?.(knownRev);
+      return null;
+    }
+    return fresh;
   }
 
   async flushOwnStints(): Promise<void> {
@@ -166,14 +196,10 @@ export class HouseholdStore {
     }
     this.saveLocal();
     if (this.adapter.shared) {
+      this.editSeq += 1;
       this.dirty = true;
       this.notify();
-      if (this.adapter.autoPush) {
-        if (this.pushTimer) clearTimeout(this.pushTimer);
-        this.pushTimer = setTimeout(() => {
-          void this.push().catch(() => {});
-        }, 1200);
-      }
+      if (this.adapter.autoPush) this.schedulePush();
     }
   }
 
@@ -191,10 +217,13 @@ export class HouseholdStore {
     if (this.pushing) return;
     this.pushing = true;
     this.notify();
+    const sent = this.editSeq;
+    let saved = false;
     try {
       await this.adapter.save(serializeEnvelope(this.state), force);
-      this.dirty = false;
+      this.dirty = this.editSeq !== sent;
       this.lastError = "";
+      saved = true;
     } catch (e) {
       if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
@@ -221,6 +250,7 @@ export class HouseholdStore {
     } finally {
       this.pushing = false;
       this.notify();
+      if (saved && this.dirty && this.adapter.autoPush) this.schedulePush();
     }
   }
 
@@ -232,18 +262,23 @@ export class HouseholdStore {
     if (!months.length) return;
     this.pushing = true;
     this.notify();
+    const sent = this.editSeq;
+    let saved = false;
     try {
       for (const monthKey of months) {
         const mine = (this.state.months[monthKey]?.stints || []).filter(
           (s) => s.personId === personId,
         );
         await saveMyStints(monthKey, personId, mine, force);
-        this.pendingOwnStints.delete(monthKey);
       }
+      if (this.editSeq === sent) months.forEach((monthKey) => this.pendingOwnStints.delete(monthKey));
       this.dirty = this.pendingOwnStints.size > 0;
       this.lastError = "";
-      const fresh = await this.adapter.load();
-      if (fresh) this.applyHydrate(fresh);
+      saved = true;
+      if (!this.dirty) {
+        const fresh = await this.loadUnlessEdited();
+        if (fresh) this.applyHydrate(fresh);
+      }
     } catch (e) {
       if (e instanceof ConflictError) {
         this.lastError = "Someone else saved first.";
@@ -271,6 +306,7 @@ export class HouseholdStore {
     } finally {
       this.pushing = false;
       this.notify();
+      if (saved && this.pendingOwnStints.size) this.scheduleOwnStintsPush();
     }
   }
 
@@ -282,7 +318,7 @@ export class HouseholdStore {
       const server = await this.adapter.currentRev?.();
       if (server == null || server === this.adapter.knownRev?.()) return;
       try {
-        const fresh = await this.adapter.load();
+        const fresh = await this.loadUnlessEdited();
         if (fresh) {
           const { outcome } = hydrate(this.state, fresh);
           if (outcome === true) {
