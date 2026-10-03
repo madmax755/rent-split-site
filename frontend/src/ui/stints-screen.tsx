@@ -14,7 +14,7 @@ import { bedroomGaps, buildDayModel } from "../domain/engine";
 import { personById, personColor, plural } from "../domain/format";
 import { uid } from "../domain/ids";
 import { ensureMonth, lastRoomOf, seedStints } from "../domain/months";
-import { togglePersonDay } from "../domain/stint-edit";
+import { resolvePersonOverlaps, togglePersonDay } from "../domain/stint-edit";
 import type { BedroomGap, DayModel, HouseholdState, Person, Room, Stint } from "../domain/types";
 import { useHousehold } from "../store/household-context";
 import { Avatar } from "./avatar";
@@ -67,6 +67,7 @@ export function StintsScreen() {
       if (selfOnly && s.personId !== myId) return;
       patch(s, stints);
       clampAll(stints);
+      month.stints = resolvePersonOverlaps(stints, s.personId, () => uid("st"), s.id);
     });
   }
 
@@ -302,6 +303,11 @@ export function StintsScreen() {
                       for (const stint of month.stints || []) {
                         if (stint.personId === personId) stint.personId = nextId;
                       }
+                      month.stints = resolvePersonOverlaps(
+                        month.stints || [],
+                        nextId,
+                        () => uid("st"),
+                      );
                     });
                   }}
                   onFrom={(id, iso) => {
@@ -365,16 +371,28 @@ export function StintsScreen() {
                 );
                 return;
               }
+              const length = tenancyPeriodLength(key, store.state.tenancyStart);
+              const daysDown = days.filter((day) => day.liable.includes(p.id)).length;
+              if (daysDown >= length) {
+                store.announce(`${p.name} is already down for every day.`);
+                return;
+              }
               commitStints(() => {
                 const month = ensureMonth(store.state, key);
-                const length = tenancyPeriodLength(key, store.state.tenancyStart);
-                month.stints.push({
-                  id: uid("st"),
-                  personId: p.id,
-                  roomId: lastRoomOf(store.state, p.id),
-                  from: 1,
-                  to: length,
-                });
+                month.stints = resolvePersonOverlaps(
+                  [
+                    ...(month.stints || []),
+                    {
+                      id: uid("st"),
+                      personId: p.id,
+                      roomId: lastRoomOf(store.state, p.id),
+                      from: 1,
+                      to: length,
+                    },
+                  ],
+                  p.id,
+                  () => uid("st"),
+                );
               });
             }}
           >
