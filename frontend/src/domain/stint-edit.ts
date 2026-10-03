@@ -34,15 +34,62 @@ function nearestRoom(stints: readonly Stint[], day: number, fallback: string): s
   return bestRoom;
 }
 
-export function togglePersonDay(
+/**
+ * A person can only be in one stay on any given day. Where their stays overlap,
+ * `winnerId` keeps its days, then earlier entries in the list beat later ones.
+ * Stays that lose every day are dropped; a stay cut in the middle is split.
+ */
+export function resolvePersonOverlaps(
   stints: readonly Stint[],
+  personId: string,
+  newId: () => string,
+  winnerId?: string,
+): Stint[] {
+  const mine = stints.filter((stint) => stint.personId === personId);
+  const claimOrder = winnerId
+    ? [
+        ...mine.filter((stint) => stint.id === winnerId),
+        ...mine.filter((stint) => stint.id !== winnerId),
+      ]
+    : mine;
+  const owner = new Map<number, string>();
+  let claimed = 0;
+  for (const stint of claimOrder) {
+    for (let day = stint.from; day <= stint.to; day++) {
+      claimed++;
+      if (!owner.has(day)) owner.set(day, stint.id);
+    }
+  }
+  if (claimed === owner.size) return stints.slice();
+
+  return stints.flatMap((stint) => {
+    if (stint.personId !== personId) return [stint];
+    const runs: Array<{ from: number; to: number }> = [];
+    for (let day = stint.from; day <= stint.to; day++) {
+      if (owner.get(day) !== stint.id) continue;
+      const last = runs[runs.length - 1];
+      if (last && last.to === day - 1) last.to = day;
+      else runs.push({ from: day, to: day });
+    }
+    return runs.map((run, index) => ({
+      ...stint,
+      id: index === 0 ? stint.id : newId(),
+      from: run.from,
+      to: run.to,
+    }));
+  });
+}
+
+export function togglePersonDay(
+  current: readonly Stint[],
   personId: string,
   day: number,
   periodLength: number,
   roomId: string,
   newId: () => string,
 ): Stint[] {
-  if (!Number.isInteger(day) || day < 1 || day > periodLength) return stints.slice();
+  if (!Number.isInteger(day) || day < 1 || day > periodLength) return current.slice();
+  const stints = resolvePersonOverlaps(current, personId, newId);
 
   const here = stints.some((stint) => stint.personId === personId && covers(stint, day));
   if (here) {
