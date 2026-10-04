@@ -361,12 +361,16 @@ export class HouseholdStore {
     try {
       await saveUpgrade(serializeEnvelope(this.state));
     } catch (e) {
-      if (!(e instanceof ConflictError)) return;
-      const fresh = await this.adapter.load();
-      if (!fresh) return;
-      const { changed } = this.applyHydrate(fresh);
-      this.notify();
-      if (changed) await saveUpgrade(serializeEnvelope(this.state)).catch(() => {});
+      try {
+        if (!(e instanceof ConflictError)) throw e;
+        const fresh = await this.adapter.load();
+        if (!fresh) throw e;
+        const { changed } = this.applyHydrate(fresh);
+        this.notify();
+        if (changed) await saveUpgrade(serializeEnvelope(this.state));
+      } catch {
+        this.toast("Couldn't update the shared household — your dates may not save. Reload to retry.");
+      }
     }
   }
 
