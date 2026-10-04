@@ -85,11 +85,12 @@ function RentSplitApp() {
     store.needAuth = false;
     store.applySession(session);
     const data = await store.loadRaw();
-    if (data) store.applyHydrate(data);
+    const upgraded = data ? store.applyHydrate(data).changed : false;
     store.state.currentMonth = currentTenancyMonthKey(store.state.tenancyStart);
     ensureMonth(store.state, store.state.currentMonth);
     if (store.isTenant()) store.state.activeTab = "home";
     store.saveLocal();
+    if (upgraded) await store.saveUpgradedCopy();
     store.startPolling();
     store.notifyPublic();
     store.announce(`Hello ${person.name}.`);
@@ -263,6 +264,8 @@ async function boot(store: HouseholdStore): Promise<void> {
   if (!store.readOnly && !store.isTenant()) {
     if (changed) store.save();
     else store.saveLocal();
+  } else if (store.isTenant() && res.outcome === true && res.changed) {
+    await store.saveUpgradedCopy();
   }
   store.startPolling();
   store.notifyPublic();

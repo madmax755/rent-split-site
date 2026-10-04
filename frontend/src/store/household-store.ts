@@ -341,6 +341,32 @@ export class HouseholdStore {
     return { outcome: result.outcome, changed: result.changed };
   }
 
+  /**
+   * After loading an old-format household, write the upgraded copy back once.
+   * Tenants can't normally save the whole household, but if nobody upgrades
+   * it, their own-stint saves land in the old format and get converted again
+   * on every load.
+   */
+  async saveUpgradedCopy(): Promise<void> {
+    if (this.readOnly || !this.adapter.shared) return;
+    if (this.isAdmin()) {
+      this.save();
+      return;
+    }
+    const saveUpgrade = this.adapter.saveUpgrade;
+    if (!saveUpgrade) return;
+    try {
+      await saveUpgrade(serializeEnvelope(this.state));
+    } catch (e) {
+      if (!(e instanceof ConflictError)) return;
+      const fresh = await this.adapter.load();
+      if (!fresh) return;
+      const { changed } = this.applyHydrate(fresh);
+      this.notify();
+      if (changed) await saveUpgrade(serializeEnvelope(this.state)).catch(() => {});
+    }
+  }
+
   importPayload(o: unknown): "ok" | "tooNew" | "unrecognised" {
     if (o && typeof o === "object" && (o as { app?: unknown }).app === APP_ID) {
       const { outcome } = this.applyHydrate(o);

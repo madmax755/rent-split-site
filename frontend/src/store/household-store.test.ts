@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { serializeEnvelope } from "../domain/hydrate";
 import { ensureMonth } from "../domain/months";
+import { SCHEMA } from "../domain/schema";
 import { togglePersonDay } from "../domain/stint-edit";
 import type { DataEnvelope, Stint } from "../domain/types";
 import type { StorageAdapter } from "../storage/adapters";
@@ -109,6 +110,36 @@ function tapOff(store: HouseholdStore, personId: string, day: number, tenant: bo
 async function tick(): Promise<void> {
   await new Promise((done) => setTimeout(done, 0));
 }
+
+describe("old-format households", () => {
+  test("a tenant who loads one writes the upgraded copy back", async () => {
+    const store = new HouseholdStore();
+    const old = serializeEnvelope(store.state);
+    old.schema = SCHEMA - 1;
+    const written: DataEnvelope[] = [];
+    let rev = 3;
+    store.adapter = {
+      name: "server",
+      shared: true,
+      autoPush: true,
+      load: async () => structuredClone(old),
+      save: async () => {
+        throw new Error("tenants never use save");
+      },
+      saveUpgrade: async (data) => {
+        written.push(structuredClone(data));
+        rev += 1;
+      },
+      knownRev: () => rev,
+      describe: () => "test",
+    };
+    store.session = { personId: "p2", personName: "Test", role: "tenant" };
+    const { changed } = store.applyHydrate(await store.adapter.load());
+    expect(changed).toBe(true);
+    await store.saveUpgradedCopy();
+    expect(written.map((doc) => doc.schema)).toEqual([SCHEMA]);
+  });
+});
 
 describe("saving while the user keeps tapping", () => {
   test("a tenant's tap during a save is not undone by the reload", async () => {

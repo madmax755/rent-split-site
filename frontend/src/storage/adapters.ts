@@ -1,5 +1,5 @@
 import { LS } from "./browser-storage";
-import { BACKUP_KEY, STORAGE_KEY } from "../domain/schema";
+import { BACKUP_KEY, SCHEMA, STORAGE_KEY } from "../domain/schema";
 import { DEFAULT_PEOPLE, DEFAULT_SITE_TITLE } from "../domain/defaults";
 import type { DataEnvelope, LedgerEntry, Stint } from "../domain/types";
 import type {
@@ -33,6 +33,8 @@ export type StorageAdapter = {
   autoPush?: boolean;
   load(): Promise<unknown>;
   save(data: DataEnvelope, force?: boolean): Promise<void>;
+  /** Writes an upgraded copy of an old-format household, whatever the role. */
+  saveUpgrade?: (data: DataEnvelope) => Promise<void>;
   describe(): string;
   currentRev?: () => Promise<number | null>;
   knownRev?: () => number | null;
@@ -99,6 +101,17 @@ export function httpAdapter(base: string): StorageAdapter {
     if (r.status === 403) throw new ForbiddenError(await readError(r));
     return r;
   }
+  async function putData(data: DataEnvelope, force: boolean): Promise<void> {
+    const r = await req("/api/data", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rev, payload: data, force }),
+    });
+    if (r.status === 409) throw new ConflictError();
+    if (!r.ok) throw new Error(await readError(r));
+    const j = (await r.json()) as PutDataResponse;
+    rev = j.rev;
+  }
   return {
     name: "server",
     shared: true,
@@ -115,15 +128,10 @@ export function httpAdapter(base: string): StorageAdapter {
     },
     async save(data, force) {
       if (role === "tenant") return;
-      const r = await req("/api/data", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rev, payload: data, force: !!force }),
-      });
-      if (r.status === 409) throw new ConflictError();
-      if (!r.ok) throw new Error(await readError(r));
-      const j = (await r.json()) as PutDataResponse;
-      rev = j.rev;
+      await putData(data, !!force);
+    },
+    async saveUpgrade(data) {
+      await putData(data, false);
     },
     async currentRev() {
       try {
@@ -178,6 +186,7 @@ export function httpAdapter(base: string): StorageAdapter {
           monthKey,
           personId,
           stints,
+          schema: SCHEMA,
           rev: rev ?? undefined,
           force: !!force,
         }),
