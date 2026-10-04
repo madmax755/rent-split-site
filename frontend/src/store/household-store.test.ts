@@ -139,6 +139,27 @@ describe("old-format households", () => {
     await store.saveUpgradedCopy();
     expect(written.map((doc) => doc.schema)).toEqual([SCHEMA]);
   });
+
+  test("a failed upgrade write tells the tenant", async () => {
+    const store = new HouseholdStore();
+    const toasts: string[] = [];
+    store.setToast((msg) => toasts.push(msg));
+    store.adapter = {
+      name: "server",
+      shared: true,
+      autoPush: true,
+      load: async () => null,
+      save: async () => {},
+      saveUpgrade: async () => {
+        throw new Error("offline");
+      },
+      knownRev: () => 1,
+      describe: () => "test",
+    };
+    store.session = { personId: "p2", personName: "Test", role: "tenant" };
+    await store.saveUpgradedCopy();
+    expect(toasts).toHaveLength(1);
+  });
 });
 
 describe("saving while the user keeps tapping", () => {
