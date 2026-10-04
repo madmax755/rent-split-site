@@ -241,7 +241,7 @@ export class HouseholdStore {
           return;
         }
         const fresh = await this.adapter.load();
-        if (fresh) hydrate(this.state, fresh);
+        if (fresh) this.applyHydrate(fresh);
         this.dirty = false;
         return;
       }
@@ -320,7 +320,7 @@ export class HouseholdStore {
       try {
         const fresh = await this.loadUnlessEdited();
         if (fresh) {
-          const { outcome } = hydrate(this.state, fresh);
+          const { outcome } = this.applyHydrate(fresh);
           if (outcome === true) {
             this.notify();
             this.toast("Updated — somebody else made a change.");
@@ -337,6 +337,9 @@ export class HouseholdStore {
     changed: boolean;
   } {
     const result = hydrate(this.state, saved);
+    // hydrate edits in place; a new identity stops React Compiler caches from
+    // rendering the pre-load household.
+    if (result.outcome === true) this.state = deep(this.state);
     this.loadNote = result.loadNote;
     return { outcome: result.outcome, changed: result.changed };
   }
