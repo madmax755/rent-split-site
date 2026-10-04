@@ -26,7 +26,10 @@ function fillCycleStartDay(rec: Record<string, unknown>, field: string): void {
 
 type OccupiedDay = { personId: string; roomId: string; day: number; id: string };
 
-function rebuildPeriodStints(occupied: OccupiedDay[]): Array<{
+function rebuildPeriodStints(
+  occupied: OccupiedDay[],
+  usedIds: Set<string>,
+): Array<{
   id: string;
   personId: string;
   roomId: string;
@@ -43,9 +46,14 @@ function rebuildPeriodStints(occupied: OccupiedDay[]): Array<{
   const out: Array<{ id: string; personId: string; roomId: string; from: number; to: number }> = [];
   groups.forEach((rows) => {
     const days = [...new Set(rows.map((row) => row.day))].sort((a, b) => a - b);
-    const ids = rows.map((row) => row.id).filter(Boolean);
+    const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))];
+    const nextId = (): string => {
+      const reused = ids.find((id) => !usedIds.has(id));
+      const id = reused ?? uid("st");
+      usedIds.add(id);
+      return id;
+    };
     let i = 0;
-    let idIndex = 0;
     while (i < days.length) {
       const from = days[i];
       if (from === undefined) break;
@@ -58,13 +66,12 @@ function rebuildPeriodStints(occupied: OccupiedDay[]): Array<{
         to = next;
       }
       out.push({
-        id: ids[idIndex] || uid("st"),
+        id: nextId(),
         personId: rows[0]?.personId ?? "",
         roomId: rows[0]?.roomId ?? "",
         from,
         to,
       });
-      idIndex += 1;
       i = j + 1;
     }
   });
@@ -141,11 +148,14 @@ export const MIGRATIONS: Record<number, MigrationFn> = {
       });
     });
 
-    Object.entries(months).forEach(([key, raw]) => {
-      const rec = asRecord(raw);
-      if (!rec) return;
-      rec.stints = rebuildPeriodStints(occupied[key] ?? []);
-    });
+    const usedIds = new Set<string>();
+    Object.keys(months)
+      .sort()
+      .forEach((key) => {
+        const rec = asRecord(months[key]);
+        if (!rec) return;
+        rec.stints = rebuildPeriodStints(occupied[key] ?? [], usedIds);
+      });
     return d;
   },
   5: function (d) {

@@ -81,6 +81,7 @@ def test_can_edit_own_stints(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-03",
                 "personId": "p2",
                 "stints": [
@@ -111,6 +112,7 @@ def test_cannot_edit_someone_elses_stints(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-03",
                 "personId": "p2",
                 "stints": [{"id": "st1", "personId": "p1", "roomId": "bed1", "from": 1, "to": 2}],
@@ -126,7 +128,13 @@ def test_empty_stints_means_out(settings) -> None:
         client.put("/api/data", json={"rev": 0, "payload": ENVELOPE})
         cleared = client.put(
             "/api/stints",
-            json={"rev": 1, "monthKey": "2026-03", "personId": "p2", "stints": []},
+            json={
+                "rev": 1,
+                "schema": ENVELOPE["schema"],
+                "monthKey": "2026-03",
+                "personId": "p2",
+                "stints": [],
+            },
         )
         assert cleared.status_code == 200
         data = client.get("/api/data").json()["payload"]["data"]
@@ -144,6 +152,7 @@ def test_new_month_copies_other_people(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-05",
                 "personId": "p2",
                 "stints": [
@@ -172,6 +181,7 @@ def test_can_edit_own_stints_when_linked(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-04",
                 "personId": "p1",
                 "stints": [{"id": "st3", "personId": "p1", "roomId": "bed1", "from": 8, "to": 20}],
@@ -192,6 +202,7 @@ def test_unknown_person_cannot_use_own_stints(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-04",
                 "personId": "p-missing",
                 "stints": [{"id": "st3", "personId": "p-missing", "roomId": "bed1", "from": 1, "to": 2}],
@@ -209,6 +220,7 @@ def test_own_stints_reject_bad_days_and_communal_room(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-03",
                 "personId": "p2",
                 "stints": [{"id": "st2", "personId": "p2", "roomId": "bed1", "from": 1, "to": 40}],
@@ -219,9 +231,47 @@ def test_own_stints_reject_bad_days_and_communal_room(settings) -> None:
             "/api/stints",
             json={
                 "rev": 1,
+                "schema": ENVELOPE["schema"],
                 "monthKey": "2026-03",
                 "personId": "p2",
                 "stints": [{"id": "st2", "personId": "p2", "roomId": "lounge", "from": 1, "to": 10}],
             },
         )
         assert communal.status_code == 400
+
+
+def test_own_stints_in_another_format_are_refused(settings) -> None:
+    from app.main import app
+
+    with TestClient(app) as client:
+        client.put("/api/data", json={"rev": 0, "payload": ENVELOPE})
+        stint = {"id": "st2", "personId": "p2", "roomId": "bed1", "from": 1, "to": 5}
+        for schema in (None, ENVELOPE["schema"] + 1):
+            body: dict[str, object] = {
+                "rev": 1,
+                "monthKey": "2026-03",
+                "personId": "p2",
+                "stints": [stint],
+            }
+            if schema is not None:
+                body["schema"] = schema
+            refused = client.put("/api/stints", json=body)
+            assert refused.status_code == 400
+            assert "Reload the page" in refused.json()["error"]
+        data = client.get("/api/data").json()
+        assert data["rev"] == 1
+        march = data["payload"]["data"]["months"]["2026-03"]["stints"]
+        assert {"id": "st2", "personId": "p2", "roomId": "bed1", "from": 10, "to": 31} in march
+
+
+def test_older_format_cannot_overwrite_newer(settings) -> None:
+    from app.main import app
+
+    newer = {**ENVELOPE, "schema": ENVELOPE["schema"] + 1}
+    with TestClient(app) as client:
+        assert client.put("/api/data", json={"rev": 0, "payload": newer}).status_code == 200
+        stale = client.put("/api/data", json={"rev": 1, "payload": ENVELOPE, "force": True})
+        assert stale.status_code == 400
+        assert client.get("/api/data").json()["payload"]["schema"] == newer["schema"]
+        upgraded = client.put("/api/data", json={"rev": 1, "payload": newer})
+        assert upgraded.status_code == 200

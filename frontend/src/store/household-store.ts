@@ -241,7 +241,7 @@ export class HouseholdStore {
           return;
         }
         const fresh = await this.adapter.load();
-        if (fresh) hydrate(this.state, fresh);
+        if (fresh) this.applyHydrate(fresh);
         this.dirty = false;
         return;
       }
@@ -320,7 +320,7 @@ export class HouseholdStore {
       try {
         const fresh = await this.loadUnlessEdited();
         if (fresh) {
-          const { outcome } = hydrate(this.state, fresh);
+          const { outcome } = this.applyHydrate(fresh);
           if (outcome === true) {
             this.notify();
             this.toast("Updated — somebody else made a change.");
@@ -337,8 +337,37 @@ export class HouseholdStore {
     changed: boolean;
   } {
     const result = hydrate(this.state, saved);
+    // hydrate edits in place; a new identity stops React Compiler caches from
+    // rendering the pre-load household.
+    if (result.outcome === true) this.state = deep(this.state);
     this.loadNote = result.loadNote;
     return { outcome: result.outcome, changed: result.changed };
+  }
+
+  /**
+   * After loading an old-format household, write the upgraded copy back once.
+   * Tenants can't normally save the whole household, but if nobody upgrades
+   * it, their own-stint saves land in the old format and get converted again
+   * on every load.
+   */
+  async saveUpgradedCopy(): Promise<void> {
+    if (this.readOnly || !this.adapter.shared) return;
+    if (this.isAdmin()) {
+      this.save();
+      return;
+    }
+    const saveUpgrade = this.adapter.saveUpgrade;
+    if (!saveUpgrade) return;
+    try {
+      await saveUpgrade(serializeEnvelope(this.state));
+    } catch (e) {
+      if (!(e instanceof ConflictError)) return;
+      const fresh = await this.adapter.load();
+      if (!fresh) return;
+      const { changed } = this.applyHydrate(fresh);
+      this.notify();
+      if (changed) await saveUpgrade(serializeEnvelope(this.state)).catch(() => {});
+    }
   }
 
   importPayload(o: unknown): "ok" | "tooNew" | "unrecognised" {

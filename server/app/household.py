@@ -11,7 +11,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import HOUSEHOLD_ID, MAX_BACKUPS, Settings, get_settings
-from app.errors import ConflictError, NoHouseholdError, StintWriteError
+from app.errors import (
+    ConflictError,
+    FormatMismatch,
+    FormatMismatchError,
+    NoHouseholdError,
+    StintWriteError,
+)
 from app.models import (
     Bill,
     BillPayer,
@@ -393,6 +399,10 @@ def put_household(
     current_rev = 0 if household is None else household.rev
     if not force and current_rev != 0 and expected_rev is not None and int(expected_rev) != current_rev:
         raise ConflictError(current_rev)
+    if household is not None and envelope.schema_version < household.schema_version:
+        raise FormatMismatchError(
+            FormatMismatch.DOWNGRADE, household.schema_version, envelope.schema_version
+        )
     previous = assemble_document(household)
     if household is None:
         household = Household(
@@ -536,8 +546,16 @@ def _ensure_month_for_own_stints(household: Household, key: str, person_id: str)
 
 
 def replace_person_stints(
-    household: Household, month_key: str, person_id: str, stints: list[StintModel]
+    household: Household,
+    month_key: str,
+    person_id: str,
+    stints: list[StintModel],
+    sent_schema: int | None,
 ) -> None:
+    # Stint days mean different things in different formats, so own-stint
+    # writes must use the same format as the stored household.
+    if sent_schema != household.schema_version:
+        raise FormatMismatchError(FormatMismatch.STINTS_FORMAT, household.schema_version, sent_schema)
     days = tenancy_period_length(month_key, household.tenancy_start)
     if len(stints) > MAX_OWN_STINTS:
         raise StintWriteError(f"That's more than {MAX_OWN_STINTS} stints.")
