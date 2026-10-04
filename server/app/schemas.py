@@ -169,5 +169,6 @@ class PutStintsRequest(BaseModel):
     monthKey: str = ""
     personId: str = ""
     stints: list[StintModel] = Field(default_factory=list)
+    schema_version: int | None = Field(default=None, validation_alias="schema")
     rev: int | None = None
     force: bool = False

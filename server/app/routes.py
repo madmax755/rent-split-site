@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_session_factory
-from app.errors import ApiError, ConflictError, NoHouseholdError, StintWriteError
+from app.errors import (
+    ApiError,
+    ConflictError,
+    FormatMismatchError,
+    NoHouseholdError,
+    StintWriteError,
+)
 from app.household import (
     append_ledger,
     assemble_document,
@@ -120,6 +126,9 @@ def put_data(db: Db, settings: Cfg, body: PutDataRequest) -> JSONResponse:
         except ConflictError as err:
             db.rollback()
             return json_error(409, "conflict", err.rev)
+        except FormatMismatchError as err:
+            db.rollback()
+            return json_error(400, str(err))
         except Exception:
             db.rollback()
             raise
@@ -171,13 +180,15 @@ def put_stints(db: Db, settings: Cfg, body: PutStintsRequest) -> JSONResponse:
             return json_error(403, "You can only edit your own stints.")
 
     def mutate(household: Any) -> None:
-        replace_person_stints(household, body.monthKey, person_id, body.stints)
+        replace_person_stints(
+            household, body.monthKey, person_id, body.stints, body.schema_version
+        )
 
     with locked_write():
         try:
             doc = mutate_household(db, mutate, body.rev, body.force, settings)
             db.commit()
-        except StintWriteError as err:
+        except (StintWriteError, FormatMismatchError) as err:
             db.rollback()
             return json_error(400, str(err))
         except ConflictError as err:
