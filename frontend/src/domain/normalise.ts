@@ -59,6 +59,9 @@ export function normalise(state: HouseholdState): void {
   });
 
   if (!state.months || typeof state.months !== "object") state.months = {};
+  // Stint ids are unique across every month: edits look stints up by id, and
+  // the server refuses an id that another month already uses.
+  const stintIds = new Set<string>();
   Object.keys(state.months).forEach((k) => {
     const M = state.months[k];
     if (!M || typeof M !== "object") {
@@ -96,7 +99,8 @@ export function normalise(state: HouseholdState): void {
       : firstPrivate;
     M.stints = M.stints.filter((s) => validPeople.includes(s.personId));
     M.stints.forEach((s) => {
-      if (!s.id) s.id = uid("st");
+      if (!s.id || stintIds.has(s.id)) s.id = uid("st");
+      stintIds.add(s.id);
       s.from = Math.min(D, Math.max(1, Math.round(+s.from || 1)));
       s.to = Math.min(D, Math.max(s.from, Math.round(+s.to || D)));
       if (!validRooms.includes(s.roomId)) s.roomId = fallbackRoom;
