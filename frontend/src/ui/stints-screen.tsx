@@ -164,7 +164,7 @@ export function StintsScreen() {
                     <Avatar state={state} person={p} size={22} />
                     <span className="truncate text-xs font-medium">{p.name}</span>
                   </div>
-                  <div className="grid h-9 min-w-0 flex-1 gap-0.5" style={dayColumns}>
+                  <div className="grid h-9 min-w-0 flex-1 gap-0.5 rounded-[3px]" style={dayColumns}>
                     {days.map((day, index) => {
                       const isHere = day.liable.includes(p.id);
                       let sharing = false;
@@ -595,7 +595,7 @@ function HouseDays(props: HouseChartProps) {
                 </span>
               </div>
               {props.people.map((person) => (
-                <div key={person.id} className="mx-auto h-7 w-full max-w-14 overflow-hidden rounded-md">
+                <div key={person.id} className="mx-auto h-7 w-full max-w-14 rounded-md">
                   <HouseDayCell
                     personName={person.name}
                     dayLabel={dayMonthLabel(day.key, day.d)}
@@ -644,7 +644,7 @@ type HouseDayCellProps = {
 
 function HouseDayCell(props: HouseDayCellProps) {
   const className = [
-    "block h-full w-full min-w-0 rounded-[3px] border-0 p-0",
+    "block h-full w-full min-w-0 rounded-[inherit] border-0 p-0",
     props.filled ? "" : "bg-muted",
     props.sharing ? "ring-1 ring-inset ring-white/85" : "",
     props.editable
